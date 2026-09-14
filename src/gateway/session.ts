@@ -1,6 +1,6 @@
 /**
  * Same-origin gateway-session client (Phase 3, requirements #1-#3): the
- * browser's only channel to the PadawanOS gateway's auth routes
+ * browser's only channel to the JusticeOS gateway's auth routes
  * (`gateway/src/auth.ts`). Every call is a plain same-origin `fetch` with
  * `credentials: 'same-origin'` -- the gateway's session cookie is HttpOnly
  * (see gateway/src/cookies.ts), so it rides along on these requests

@@ -10,8 +10,8 @@ afterEach(async () => {
 
 function extractCookie(setCookieHeader: string | null): string | null {
   if (!setCookieHeader) return null;
-  const match = /pg_session=([^;]*)/.exec(setCookieHeader);
-  return match ? `pg_session=${match[1]}` : null;
+  const match = /justiceos_session=([^;]*)/.exec(setCookieHeader);
+  return match ? `justiceos_session=${match[1]}` : null;
 }
 
 describe('POST /acp/session (login)', () => {
@@ -120,7 +120,7 @@ describe('GET /acp/session (status)', () => {
     cleanup = close;
 
     const res = await fetch(`http://127.0.0.1:${port}/acp/session`, {
-      headers: { Cookie: 'pg_session=1111111111111.deadbeef.notarealsignature' }
+      headers: { Cookie: 'justiceos_session=1111111111111.deadbeef.notarealsignature' }
     });
     const body = (await res.json()) as { authenticated: boolean };
     expect(body.authenticated).toBe(false);

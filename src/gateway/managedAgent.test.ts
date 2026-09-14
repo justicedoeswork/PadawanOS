@@ -81,7 +81,7 @@ beforeEach(() => {
   });
   __resetLiveConnections();
   stopManagedAgentSupervisor();
-  stubWindowLocation('https:', 'padawanos.example.com');
+  stubWindowLocation('https:', 'justiceos.example.com');
 });
 
 afterEach(() => {
@@ -93,8 +93,8 @@ afterEach(() => {
 
 describe('managedInsuranceAgentUrl', () => {
   it('derives wss:// from https://', () => {
-    expect(managedInsuranceAgentUrl({ protocol: 'https:', host: 'padawanos.fly.dev' })).toBe(
-      'wss://padawanos.fly.dev/acp/insurance',
+    expect(managedInsuranceAgentUrl({ protocol: 'https:', host: 'justiceos.fly.dev' })).toBe(
+      'wss://justiceos.fly.dev/acp/insurance',
     );
   });
 
@@ -117,7 +117,7 @@ describe('managedInsuranceAgentProfile', () => {
     expect(profile.id).toBe(MANAGED_INSURANCE_PROFILE_ID);
     expect(profile.kind).toBe('websocket');
     if (profile.kind === 'websocket') {
-      expect(profile.url).toBe('wss://padawanos.example.com/acp/insurance');
+      expect(profile.url).toBe('wss://justiceos.example.com/acp/insurance');
       expect(profile.url).not.toMatch(/token|password|secret|key=/i);
     }
   });
@@ -179,7 +179,7 @@ describe('automatic managed connection (requirement #6/#9)', () => {
     expect(stubs).toHaveLength(1);
     expect(stubs[0]!.client.connect).toHaveBeenCalledTimes(1);
     expect(usePanda.getState().connections[MANAGED_INSURANCE_PROFILE_ID]?.connection.url).toBe(
-      'wss://padawanos.example.com/acp/insurance',
+      'wss://justiceos.example.com/acp/insurance',
     );
   });
 });

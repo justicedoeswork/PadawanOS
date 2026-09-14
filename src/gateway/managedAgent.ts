@@ -1,6 +1,6 @@
 /**
  * The managed Insurance Agent connection (Phase 3, requirements #6-#11):
- * the one agent every PadawanOS/gateway session connects to automatically,
+ * the one agent every JusticeOS/gateway session connects to automatically,
  * with no endpoint Austin has to type.
  *
  * It rides the SAME profile/connection machinery every other agent uses

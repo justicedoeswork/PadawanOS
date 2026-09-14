@@ -3,7 +3,7 @@
  * runs -- see the isProduction check at the single call site in
  * server.ts -- so the convenient throwaway config every test and
  * `pnpm dev` run relies on (a short test secret, a plain
- * PADAWAN_GATEWAY_PASSWORD, ws://127.0.0.1 upstream URLs) is
+ * JUSTICEOS_GATEWAY_PASSWORD, ws://127.0.0.1 upstream URLs) is
  * completely unaffected.
  *
  * In production, a missing or weak value here used to only log an
@@ -35,7 +35,7 @@ export interface ProductionConfigInput {
 
 /**
  * Catches an obvious copy-pasted example value rather than a real
- * secret -- gateway/.env.example's own PADAWAN_SESSION_SECRET
+ * secret -- gateway/.env.example's own JUSTICEOS_SESSION_SECRET
  * placeholder ("replace-me-with-a-random-64-char-hex-string") is
  * deliberately long and descriptive for a human reading the file, but
  * that same length would otherwise sail past the MIN_SECRET_LENGTH
@@ -98,21 +98,21 @@ export function findProductionConfigProblems(input: ProductionConfigInput): stri
 
   if (input.gatewayPassword) {
     problems.push(
-      'PADAWAN_GATEWAY_PASSWORD (plaintext) must not be set in production -- configure PADAWAN_GATEWAY_PASSWORD_HASH instead.'
+      'JUSTICEOS_GATEWAY_PASSWORD (plaintext) must not be set in production -- configure JUSTICEOS_GATEWAY_PASSWORD_HASH instead.'
     );
   }
 
   if (!input.gatewayPasswordHash) {
-    problems.push('PADAWAN_GATEWAY_PASSWORD_HASH is required in production.');
+    problems.push('JUSTICEOS_GATEWAY_PASSWORD_HASH is required in production.');
   } else if (looksLikePlaceholder(input.gatewayPasswordHash)) {
-    problems.push('PADAWAN_GATEWAY_PASSWORD_HASH looks like an example/placeholder value, not a real generated hash.');
+    problems.push('JUSTICEOS_GATEWAY_PASSWORD_HASH looks like an example/placeholder value, not a real generated hash.');
   }
 
   if (!input.sessionSecret || input.sessionSecret.length < MIN_SECRET_LENGTH) {
-    problems.push(`PADAWAN_SESSION_SECRET must be at least ${MIN_SECRET_LENGTH} characters in production.`);
+    problems.push(`JUSTICEOS_SESSION_SECRET must be at least ${MIN_SECRET_LENGTH} characters in production.`);
   } else if (looksLikePlaceholder(input.sessionSecret)) {
     problems.push(
-      'PADAWAN_SESSION_SECRET looks like an example/placeholder value (e.g. copied from .env.example) rather than a real generated secret.'
+      'JUSTICEOS_SESSION_SECRET looks like an example/placeholder value (e.g. copied from .env.example) rather than a real generated secret.'
     );
   }
 
@@ -123,7 +123,7 @@ export function findProductionConfigProblems(input: ProductionConfigInput): stri
   }
 
   if (!input.allowedOrigins.some(isHttpsOrigin)) {
-    problems.push('At least one exact HTTPS origin must be configured in PADAWAN_ALLOWED_ORIGINS in production.');
+    problems.push('At least one exact HTTPS origin must be configured in JUSTICEOS_ALLOWED_ORIGINS in production.');
   }
 
   if (!input.insuranceAgentAcpUrl) {

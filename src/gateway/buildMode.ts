@@ -1,6 +1,6 @@
 /**
  * Non-secret build-mode switch (Phase 3, requirement #13): distinguishes the
- * production gateway build (served by the PadawanOS gateway, behind the
+ * production gateway build (served by the JusticeOS gateway, behind the
  * login gate, auto-connecting the managed Insurance Agent) from the
  * GitHub Pages demo build (the existing public deploy.yml target — a plain
  * `vite build` with no gateway behind it).

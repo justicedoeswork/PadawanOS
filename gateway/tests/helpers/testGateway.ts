@@ -23,7 +23,7 @@ export const TEST_PRODUCTION_PASSWORD_HASH =
   'ddbb23de8d20cde044c7c576fb37639d:105da2541e9e7f8ded99e14e2bd82580f90ad3daffb54091cb276267944cd11975911d72bad4df38f82dad68fc01c7723f80c3749753d9dd84b06fd5efc8c72e';
 export const TEST_PRODUCTION_SESSION_SECRET = 'a'.repeat(32);
 export const TEST_PRODUCTION_SERVICE_KEY = 'b'.repeat(32);
-export const TEST_PRODUCTION_ORIGIN = 'https://padawanos.example.com';
+export const TEST_PRODUCTION_ORIGIN = 'https://justiceos.example.com';
 export const TEST_PRODUCTION_ACP_URL = 'ws://insurance-agent.internal:9000/acp';
 
 export const TEST_PRODUCTION_OVERRIDES: GatewayOverrides = {

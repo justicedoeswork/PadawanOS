@@ -10,7 +10,7 @@ const validInput: ProductionConfigInput = {
   gatewayPasswordHash: 'somesalt:somehash',
   sessionSecret: 'a'.repeat(32),
   acpGatewayServiceKey: 'b'.repeat(32),
-  allowedOrigins: ['https://padawanos.example.com'],
+  allowedOrigins: ['https://justiceos.example.com'],
   insuranceAgentAcpUrl: 'ws://insurance-agent.internal:9000/acp',
   allowedUserId: 'austin',
   allowedRealmId: '123'
@@ -23,20 +23,20 @@ describe('findProductionConfigProblems', () => {
 
   it('rejects a plaintext gateway password even alongside a hash', () => {
     const problems = findProductionConfigProblems({ ...validInput, gatewayPassword: 'plaintext' });
-    expect(problems.some((p) => p.includes('PADAWAN_GATEWAY_PASSWORD'))).toBe(true);
+    expect(problems.some((p) => p.includes('JUSTICEOS_GATEWAY_PASSWORD'))).toBe(true);
   });
 
   it('requires a password hash', () => {
     const problems = findProductionConfigProblems({ ...validInput, gatewayPasswordHash: null });
-    expect(problems.some((p) => p.includes('PADAWAN_GATEWAY_PASSWORD_HASH'))).toBe(true);
+    expect(problems.some((p) => p.includes('JUSTICEOS_GATEWAY_PASSWORD_HASH'))).toBe(true);
   });
 
   it('requires a session secret meeting the minimum length', () => {
     expect(
-      findProductionConfigProblems({ ...validInput, sessionSecret: 'short' }).some((p) => p.includes('PADAWAN_SESSION_SECRET'))
+      findProductionConfigProblems({ ...validInput, sessionSecret: 'short' }).some((p) => p.includes('JUSTICEOS_SESSION_SECRET'))
     ).toBe(true);
     expect(
-      findProductionConfigProblems({ ...validInput, sessionSecret: null }).some((p) => p.includes('PADAWAN_SESSION_SECRET'))
+      findProductionConfigProblems({ ...validInput, sessionSecret: null }).some((p) => p.includes('JUSTICEOS_SESSION_SECRET'))
     ).toBe(true);
   });
 
@@ -50,7 +50,7 @@ describe('findProductionConfigProblems', () => {
 
   it('requires at least one exact HTTPS origin', () => {
     expect(
-      findProductionConfigProblems({ ...validInput, allowedOrigins: ['http://padawanos.example.com'] }).some((p) =>
+      findProductionConfigProblems({ ...validInput, allowedOrigins: ['http://justiceos.example.com'] }).some((p) =>
         p.includes('HTTPS')
       )
     ).toBe(true);
@@ -103,7 +103,7 @@ describe('findProductionConfigProblems', () => {
         ...validInput,
         sessionSecret: 'replace-me-with-a-random-64-char-hex-string-padding-to-length'
       });
-      expect(problems.some((p) => p.includes('PADAWAN_SESSION_SECRET') && p.includes('placeholder'))).toBe(true);
+      expect(problems.some((p) => p.includes('JUSTICEOS_SESSION_SECRET') && p.includes('placeholder'))).toBe(true);
     });
 
     it('rejects a service key or password hash that still looks like an example value', () => {
@@ -115,7 +115,7 @@ describe('findProductionConfigProblems', () => {
       ).toBe(true);
       expect(
         findProductionConfigProblems({ ...validInput, gatewayPasswordHash: `salt:${longPlaceholder}` }).some((p) =>
-          p.includes('PADAWAN_GATEWAY_PASSWORD_HASH') && p.includes('placeholder')
+          p.includes('JUSTICEOS_GATEWAY_PASSWORD_HASH') && p.includes('placeholder')
         )
       ).toBe(true);
     });
@@ -170,8 +170,8 @@ describe('assertProductionConfigIsValid', () => {
 
     expect(thrown).not.toBeNull();
     const message = thrown!.message;
-    expect(message).toContain('PADAWAN_GATEWAY_PASSWORD_HASH');
-    expect(message).toContain('PADAWAN_SESSION_SECRET');
+    expect(message).toContain('JUSTICEOS_GATEWAY_PASSWORD_HASH');
+    expect(message).toContain('JUSTICEOS_SESSION_SECRET');
     expect(message).toContain('ACP_GATEWAY_SERVICE_KEY');
     expect(message).toContain('HTTPS');
     expect(message).toContain('INSURANCE_AGENT_ACP_URL');
@@ -210,7 +210,7 @@ describe('createGatewayServer production startup gate', () => {
         sessionSecret: 'a'.repeat(32),
         gatewayPassword: null,
         gatewayPasswordHash: 'somesalt:somehash',
-        allowedOrigins: ['https://padawanos.example.com'],
+        allowedOrigins: ['https://justiceos.example.com'],
         insuranceAgentAcpUrl: 'ws://agent.internal:9000/acp',
         acpGatewayServiceKey: 'b'.repeat(32),
         allowedUserId: 'austin',

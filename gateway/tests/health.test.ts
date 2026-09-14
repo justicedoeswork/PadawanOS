@@ -47,8 +47,8 @@ describe('GET /health', () => {
     const text = await res.text();
 
     for (const identifier of [
-      'PADAWAN_GATEWAY_PASSWORD',
-      'PADAWAN_SESSION_SECRET',
+      'JUSTICEOS_GATEWAY_PASSWORD',
+      'JUSTICEOS_SESSION_SECRET',
       'ACP_GATEWAY_SERVICE_KEY',
       'ACP_ALLOWED_USER_ID',
       'ACP_ALLOWED_REALM_ID',

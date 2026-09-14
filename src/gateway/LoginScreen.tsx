@@ -8,7 +8,7 @@ export type LoginNoticeKind = 'info' | 'error';
 export type LoginBusyState = 'idle' | 'submitting';
 
 /**
- * The PadawanOS login screen (Phase 3, requirement #4): plain semantic HTML
+ * The JusticeOS login screen (Phase 3, requirement #4): plain semantic HTML
  * rather than the Astryx design-system inputs used elsewhere in Panda —
  * deliberately, so the password field's font-size and touch target sizing
  * can be guaranteed (requirement #5) rather than inherited from a compact

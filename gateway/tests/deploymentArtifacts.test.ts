@@ -18,9 +18,9 @@ const DOCKERFILE_PATH = path.join(REPO_ROOT, 'Dockerfile');
 const DOCKERIGNORE_PATH = path.join(REPO_ROOT, '.dockerignore');
 
 const SECRET_ENV_NAMES = [
-  'PADAWAN_GATEWAY_PASSWORD',
-  'PADAWAN_GATEWAY_PASSWORD_HASH',
-  'PADAWAN_SESSION_SECRET',
+  'JUSTICEOS_GATEWAY_PASSWORD',
+  'JUSTICEOS_GATEWAY_PASSWORD_HASH',
+  'JUSTICEOS_SESSION_SECRET',
   'ACP_GATEWAY_SERVICE_KEY',
   'ACP_ALLOWED_USER_ID',
   'ACP_ALLOWED_REALM_ID'
@@ -48,13 +48,16 @@ function findSuspiciousSecretLikeTokens(text: string): string[] {
 }
 
 describe('fly.toml (production deployment prep)', () => {
-  it('exists and marks its app name as an unreplaced placeholder', () => {
+  it('proposes the justiceos app name, documented as unconfirmed/unreserved rather than final', () => {
     const toml = readFlyToml();
     const appLine = toml.split('\n').find((line) => /^app\s*=/.test(line.trim()));
-    expect(appLine).toBeDefined();
-    // Must not already be a plausible real app name -- it should read
-    // as obviously unfinished so nobody deploys it by accident.
-    expect(appLine).toMatch(/replace/i);
+    expect(appLine).toBe('app = "justiceos"');
+    // The name itself is a real candidate (per requirement), not an
+    // obviously-broken string -- so the "not yet decided" signal must
+    // come from the surrounding comments instead: the fallback name
+    // and an explicit "not reserved" statement must both be present.
+    expect(toml).toMatch(/justice-exteriors-justiceos/);
+    expect(toml).toMatch(/not (?:yet )?(?:confirmed|reserved)/i);
   });
 
   it('sets the correct internal port, matching gateway/src/config.ts default', () => {
@@ -87,9 +90,9 @@ describe('fly.toml (production deployment prep)', () => {
   it('never sets a real secret env var -- those five are absent from [env] entirely', () => {
     const toml = readFlyToml();
     const secretsThatMustNeverBeSet = [
-      'PADAWAN_GATEWAY_PASSWORD',
-      'PADAWAN_GATEWAY_PASSWORD_HASH',
-      'PADAWAN_SESSION_SECRET',
+      'JUSTICEOS_GATEWAY_PASSWORD',
+      'JUSTICEOS_GATEWAY_PASSWORD_HASH',
+      'JUSTICEOS_SESSION_SECRET',
       'ACP_GATEWAY_SERVICE_KEY',
       'ACP_ALLOWED_USER_ID',
       'ACP_ALLOWED_REALM_ID'

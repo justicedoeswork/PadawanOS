@@ -13,7 +13,7 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 // -- deploy.yml's plain `vite build` never sets this, so Pages can never
 // accidentally ship the gateway-connected build. `pnpm build:gateway` sets it
 // for the one build that's actually deployed behind the gateway.
-const isGatewayBuild = process.env.PANDA_BUILD_MODE === 'gateway';
+const isGatewayBuild = process.env.JUSTICEOS_BUILD_MODE === 'gateway';
 
 export default defineConfig({
   plugins: [react()],
@@ -35,11 +35,11 @@ export default defineConfig({
     // Without this, the gateway's SameSite=Strict session cookie and
     // its exact-Origin WebSocket check would both need a second,
     // dev-only allowance instead of just working. Run the gateway
-    // itself (`pnpm --filter panda-gateway dev`) on PANDA_GATEWAY_DEV_PORT
+    // itself (`pnpm --filter panda-gateway dev`) on JUSTICEOS_GATEWAY_DEV_PORT
     // (default 4600) alongside this.
     proxy: {
       '/acp': {
-        target: `http://127.0.0.1:${process.env.PANDA_GATEWAY_DEV_PORT || 4600}`,
+        target: `http://127.0.0.1:${process.env.JUSTICEOS_GATEWAY_DEV_PORT || 4600}`,
         ws: true,
       },
     },

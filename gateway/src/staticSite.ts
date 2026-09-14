@@ -28,7 +28,7 @@ export function createStaticSiteRouter(distDir: string): Router {
       }
 
       res.status(503).send(
-        'PadawanOS has not been built yet (dist/ is missing). Run `pnpm build` at the repo root, or use `pnpm dev` for local development.'
+        'JusticeOS has not been built yet (dist/ is missing). Run `pnpm build` at the repo root, or use `pnpm dev` for local development.'
       );
     });
 

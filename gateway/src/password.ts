@@ -1,6 +1,6 @@
 /**
- * Verifies a login attempt against whichever of PADAWAN_GATEWAY_PASSWORD /
- * PADAWAN_GATEWAY_PASSWORD_HASH is configured. No third-party hashing
+ * Verifies a login attempt against whichever of JUSTICEOS_GATEWAY_PASSWORD /
+ * JUSTICEOS_GATEWAY_PASSWORD_HASH is configured. No third-party hashing
  * dependency: scrypt is built into Node and is a legitimate password
  * hash (memory-hard, unlike a bare HMAC), avoiding one more supply-chain
  * dependency for a single-owner tool's one credential.

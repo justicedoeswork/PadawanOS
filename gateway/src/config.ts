@@ -32,11 +32,11 @@ export const config = {
    * (`scrypt` salt:hash hex, see auth.ts) is preferred once this is
    * actually deployed. Neither is ever logged or sent to a client.
    */
-  gatewayPassword: requireEnv('PADAWAN_GATEWAY_PASSWORD'),
-  gatewayPasswordHash: requireEnv('PADAWAN_GATEWAY_PASSWORD_HASH'),
+  gatewayPassword: requireEnv('JUSTICEOS_GATEWAY_PASSWORD'),
+  gatewayPasswordHash: requireEnv('JUSTICEOS_GATEWAY_PASSWORD_HASH'),
 
-  /** Signs/verifies the pg_session cookie. Distinct from every other secret here on purpose -- rotating it revokes every session without touching anything else. */
-  sessionSigningSecret: requireEnv('PADAWAN_SESSION_SECRET'),
+  /** Signs/verifies the justiceos_session cookie. Distinct from every other secret here on purpose -- rotating it revokes every session without touching anything else. */
+  sessionSigningSecret: requireEnv('JUSTICEOS_SESSION_SECRET'),
 
   /**
    * The Insurance Agent's PRIVATE ACP listener, e.g.
@@ -65,9 +65,9 @@ export const config = {
    * Exact-match allowlist for both the WebSocket upgrade's Origin
    * header and (if the gateway is ever run split from its own
    * frontend during development) CORS. Comma-separated, e.g.
-   * "https://padawanos.justiceexteriors.app,http://127.0.0.1:5173".
+   * "https://justiceos.justiceexteriors.app,http://127.0.0.1:5173".
    */
-  allowedOrigins: (process.env.PADAWAN_ALLOWED_ORIGINS || '')
+  allowedOrigins: (process.env.JUSTICEOS_ALLOWED_ORIGINS || '')
     .split(',')
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0)

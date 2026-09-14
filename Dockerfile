@@ -1,4 +1,4 @@
-# Production image for the PadawanOS gateway (gateway/) -- the one Fly
+# Production image for the JusticeOS gateway (gateway/) -- the one Fly
 # service that serves the gateway-mode Vite build and terminates the
 # authenticated /acp/insurance WebSocket proxy to the Insurance Agent's
 # private ACP listener. This builds and packages the gateway; it does

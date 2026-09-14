@@ -57,7 +57,7 @@ async function setup() {
   });
   cleanupGateway = close;
 
-  const validCookie = `pg_session=${createSessionToken(TEST_SESSION_SECRET)}`;
+  const validCookie = `justiceos_session=${createSessionToken(TEST_SESSION_SECRET)}`;
 
   return { gatewayPort: port, agent: mockAgent, validCookie, instance };
 }
@@ -77,7 +77,7 @@ async function setupWithHangingUpstream() {
     await close();
   };
 
-  const validCookie = `pg_session=${createSessionToken(TEST_SESSION_SECRET)}`;
+  const validCookie = `justiceos_session=${createSessionToken(TEST_SESSION_SECRET)}`;
 
   return { gatewayPort: port, validCookie, instance };
 }
@@ -138,7 +138,7 @@ describe('/acp/insurance upgrade auth', () => {
   it('rejects a disallowed Origin even with a valid session', async () => {
     const { gatewayPort, validCookie } = await setup();
     const result = await connectRaw(gatewayPort, {
-      origin: 'https://not-padawanos.example.com',
+      origin: 'https://not-justiceos.example.com',
       cookie: validCookie
     });
     expect(result.outcome).not.toBe('open');

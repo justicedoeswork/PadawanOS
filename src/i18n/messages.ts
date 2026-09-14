@@ -290,8 +290,8 @@ export const messages = {
   },
   'side.managed': { en: 'Managed', zh: '托管' },
   'side.managedTooltip': {
-    en: 'Managed by PadawanOS — connects automatically, no endpoint to configure',
-    zh: '由 PadawanOS 托管:自动连接,无需配置端点',
+    en: 'Managed by Justice Manager — connects automatically, no endpoint to configure',
+    zh: '由 Justice Manager 托管:自动连接,无需配置端点',
   },
   'side.needsAttention': { en: 'Needs attention', zh: '需要关注' },
   'side.attentionTooltip': { en: 'Needs attention: {reasons}', zh: '需要关注:{reasons}' },
@@ -687,7 +687,7 @@ export const messages = {
   // ---- Gateway login gate (Phase 3): production-gateway-build only, never
   // shown in the GitHub Pages demo build. ----
   'gateway.checkingSession': { en: 'Checking your session…', zh: '正在检查登录状态…' },
-  'gateway.title': { en: 'PadawanOS', zh: 'PadawanOS' },
+  'gateway.title': { en: 'JusticeOS', zh: 'JusticeOS' },
   'gateway.tagline': { en: 'Sign in to reach your Insurance Agent', zh: '登录以连接你的 Insurance Agent' },
   'gateway.passwordLabel': { en: 'Password', zh: '密码' },
   'gateway.passwordPlaceholder': { en: 'Enter password', zh: '输入密码' },
@@ -699,8 +699,8 @@ export const messages = {
     zh: '尝试次数过多,请等待几分钟后重试。',
   },
   'gateway.unavailable': {
-    en: 'PadawanOS is temporarily unavailable. Try again shortly.',
-    zh: 'PadawanOS 暂时不可用,请稍后重试。',
+    en: 'JusticeOS is temporarily unavailable. Try again shortly.',
+    zh: 'JusticeOS 暂时不可用,请稍后重试。',
   },
   'gateway.sessionExpired': {
     en: 'Your session expired. Sign in again to continue.',

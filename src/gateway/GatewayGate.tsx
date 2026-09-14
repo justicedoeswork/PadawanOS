@@ -10,7 +10,7 @@ import './LoginScreen.css';
  * complete no-op -- not just "renders children," but literally never calls
  * `isGatewayBuild()`'s consumer, `checkSession()`, so the demo build makes
  * zero requests to `/acp/session` or any other gateway route (requirement
- * #14). In the gateway build it gates the whole tree behind the PadawanOS
+ * #14). In the gateway build it gates the whole tree behind the JusticeOS
  * login screen until `GET /acp/session` (or a fresh login) confirms Austin
  * is authenticated.
  */

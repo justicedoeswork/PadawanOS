@@ -6,7 +6,7 @@ afterEach(() => {
 });
 
 describe('buildMode', () => {
-  it('defaults to the compiled build mode (demo, since PANDA_BUILD_MODE is unset for the test run)', () => {
+  it('defaults to the compiled build mode (demo, since JUSTICEOS_BUILD_MODE is unset for the test run)', () => {
     expect(buildMode()).toBe('demo');
     expect(isGatewayBuild()).toBe(false);
   });

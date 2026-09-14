@@ -1,5 +1,9 @@
 # PRODUCTION FLY CONFIGURATION -- PREPARATION ONLY.
 #
+# JusticeOS is currently an internal Justice Exteriors application
+# name. Perform formal name clearance and rebranding review before
+# public or App Store distribution.
+#
 # This file does not create a Fly app, does not deploy anything, and
 # does not connect to the Insurance Agent by itself. It is committed
 # so Austin's actual `fly launch`/`fly deploy` has a reviewed starting
@@ -8,10 +12,12 @@
 # (choosing the app name, generating/setting every secret, and only
 # then deploying) before this is ever used for real.
 #
-# app: PLACEHOLDER -- Austin has not chosen a name yet. This is NOT a
-# real Fly app and must be replaced (see docs/fly-deployment.md for
-# name options) before `fly launch` is ever run against this file.
-app = "REPLACE-ME-PADAWANOS-APP-NAME"
+# app: PROPOSED, not yet confirmed or reserved. "justiceos" is the
+# primary choice; if unavailable, use "justice-exteriors-justiceos"
+# instead (see docs/fly-deployment.md). Confirm availability before
+# `fly launch`/`fly deploy` is ever run against this file -- this
+# value is a candidate, not a final decision.
+app = "justiceos"
 primary_region = "iad"
 
 [build]
@@ -37,14 +43,14 @@ primary_region = "iad"
   # own.
   INSURANCE_AGENT_ACP_URL = "ws://insurance-audit-agent.internal:3001/acp"
 
-  # Deliberately NOT set here: PADAWAN_ALLOWED_ORIGINS. Its correct
+  # Deliberately NOT set here: JUSTICEOS_ALLOWED_ORIGINS. Its correct
   # value is the exact HTTPS origin this app ends up served from, which
   # depends on the app name above -- setting a placeholder domain here
   # risks it being deployed unchanged. Set it as a real env var (not a
   # secret, but see docs/fly-deployment.md) once the app name is final.
 
-# No secret ever belongs in this file. PADAWAN_GATEWAY_PASSWORD_HASH,
-# PADAWAN_SESSION_SECRET, ACP_GATEWAY_SERVICE_KEY, ACP_ALLOWED_USER_ID,
+# No secret ever belongs in this file. JUSTICEOS_GATEWAY_PASSWORD_HASH,
+# JUSTICEOS_SESSION_SECRET, ACP_GATEWAY_SERVICE_KEY, ACP_ALLOWED_USER_ID,
 # and ACP_ALLOWED_REALM_ID are set with `fly secrets set` (see
 # docs/fly-deployment.md) -- they never appear in this repo in any
 # form, placeholder or real.

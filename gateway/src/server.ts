@@ -73,9 +73,9 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   }
 
   if (!sessionSecret) {
-    logError('PADAWAN_SESSION_SECRET is not set -- login/session routes will refuse to work.');
+    logError('JUSTICEOS_SESSION_SECRET is not set -- login/session routes will refuse to work.');
   } else if (!gatewayPassword && !gatewayPasswordHash) {
-    logError('Neither PADAWAN_GATEWAY_PASSWORD nor PADAWAN_GATEWAY_PASSWORD_HASH is set -- login will always fail.');
+    logError('Neither JUSTICEOS_GATEWAY_PASSWORD nor JUSTICEOS_GATEWAY_PASSWORD_HASH is set -- login will always fail.');
   }
 
   const app = express();
@@ -136,7 +136,7 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       return new Promise((resolve) => {
         server.listen(port, '0.0.0.0', () => {
           const boundPort = (server.address() as { port: number }).port;
-          logInfo(`PadawanOS gateway listening on port ${boundPort}`);
+          logInfo(`JusticeOS gateway listening on port ${boundPort}`);
           resolve({ port: boundPort });
         });
       });

@@ -1,11 +1,11 @@
 /**
- * Signs and verifies the opaque value carried inside the pg_session
- * cookie. Same shape as the Insurance Agent's own admin-session
- * token (HMAC-SHA256 over `expiresAt.nonce`) -- a proven, simple
- * pattern, deliberately re-derived here rather than shared as code
- * across the two repositories, and signed with its own distinct
- * secret (PADAWAN_SESSION_SECRET) so revoking it never touches
- * anything on the Insurance Agent side.
+ * Signs and verifies the opaque value carried inside the
+ * justiceos_session cookie. Same shape as the Insurance Agent's own
+ * admin-session token (HMAC-SHA256 over `expiresAt.nonce`) -- a
+ * proven, simple pattern, deliberately re-derived here rather than
+ * shared as code across the two repositories, and signed with its own
+ * distinct secret (JUSTICEOS_SESSION_SECRET) so revoking it never
+ * touches anything on the Insurance Agent side.
  */
 import crypto from 'node:crypto';
 import { SESSION_MAX_AGE_MS } from './cookies.js';

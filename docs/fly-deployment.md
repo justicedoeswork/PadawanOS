@@ -1,14 +1,18 @@
-# Deploying the PadawanOS gateway to Fly.io
+# Deploying the JusticeOS gateway to Fly.io
 
 **Status: preparation only.** Nothing in this document, `Dockerfile`,
 or `fly.toml` has been deployed. No Fly app, DNS record, or secret
 exists yet. This is the reviewed starting point for the person who
 does that (Austin), not a completed deployment.
 
+> **JusticeOS is currently an internal Justice Exteriors application
+> name. Perform formal name clearance and rebranding review before
+> public or App Store distribution.**
+
 ## What this Fly service is
 
 One Fly app running the container built from the repo-root
-`Dockerfile`: the PadawanOS gateway (`gateway/`), serving the
+`Dockerfile`: the JusticeOS gateway (`gateway/`), serving the
 gateway-mode Vite build (`pnpm build:gateway`'s `dist/`) and
 terminating the authenticated `/acp/insurance` WebSocket proxy to the
 Insurance Agent's private ACP listener
@@ -32,28 +36,28 @@ each one needs.
 | Variable | Secret? | Required shape | Set via |
 |---|---|---|---|
 | `NODE_ENV` | no | exactly `production` | `fly.toml` `[env]` (already set) |
-| `PADAWAN_GATEWAY_PASSWORD_HASH` | **yes** | `scrypt` output, `<salt-hex>:<derived-key-hex>` (see `gateway/src/password.ts`'s header comment for the exact `node -e` command to generate one) | `fly secrets set` |
-| `PADAWAN_SESSION_SECRET` | **yes** | random string, at least 32 characters (`node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` gives 64) | `fly secrets set` |
+| `JUSTICEOS_GATEWAY_PASSWORD_HASH` | **yes** | `scrypt` output, `<salt-hex>:<derived-key-hex>` (see `gateway/src/password.ts`'s header comment for the exact `node -e` command to generate one) | `fly secrets set` |
+| `JUSTICEOS_SESSION_SECRET` | **yes** | random string, at least 32 characters (`node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` gives 64) | `fly secrets set` |
 | `ACP_GATEWAY_SERVICE_KEY` | **yes** | random string, at least 32 characters; must be the *same* value configured as the Insurance Agent's `ACP_GATEWAY_SERVICE_KEY` -- a shared secret between exactly these two services, never reused from the Insurance Agent's own `AUDIT_AGENT_API_KEY` | `fly secrets set` |
-| `PADAWAN_ALLOWED_ORIGINS` | no (but sensitive to get right) | comma-separated, exact HTTPS origin(s) this app is actually served from (e.g. `https://<final-app-name>.fly.dev`) -- production refuses to boot without at least one exact HTTPS origin | `fly.toml` `[env]`, once the app name below is final, or `fly secrets set` if you'd rather not commit it |
+| `JUSTICEOS_ALLOWED_ORIGINS` | no (but sensitive to get right) | comma-separated, exact HTTPS origin(s) this app is actually served from (e.g. `https://<final-app-name>.fly.dev`) -- production refuses to boot without at least one exact HTTPS origin | `fly.toml` `[env]`, once the app name below is final, or `fly secrets set` if you'd rather not commit it |
 | `INSURANCE_AGENT_ACP_URL` | no | `ws://insurance-audit-agent.internal:3001/acp` -- already set in `fly.toml` | `fly.toml` `[env]` (already set) |
 | user id | **yes** | the one allowed ACP user id (matches the Insurance Agent's own allowlist, e.g. `austin`) | `fly secrets set` |
 | realm id | **yes** | the one allowed QuickBooks realm id (the same value already used throughout the Insurance Agent's own config/tests) | `fly secrets set` |
 
-**Naming note:** the task that produced this document listed the last
-two as `PADAWAN_USER_ID` / `PADAWAN_REALM_ID`. The gateway's actual
-code (`gateway/src/config.ts`) reads `ACP_ALLOWED_USER_ID` /
-`ACP_ALLOWED_REALM_ID` -- that's what's documented above and what
-`fly secrets set` must actually use, since those are the names that
-work. Say the word if you'd rather the code itself were renamed to
-`PADAWAN_USER_ID`/`PADAWAN_REALM_ID` instead; that would be a small,
-separate change to `config.ts` and everywhere it's read, not something
-this preparation pass did on its own.
+**Naming note:** the last two are documented here without a
+`JUSTICEOS_`-prefixed name because the gateway's actual code
+(`gateway/src/config.ts`) reads `ACP_ALLOWED_USER_ID` /
+`ACP_ALLOWED_REALM_ID` -- these were not in this rename's requested
+list of variables to rename, and are shared naming with the ACP
+connection itself rather than JusticeOS-specific branding, so they
+were left as-is. Say the word if you'd rather these were renamed too;
+that would be a small, separate change to `config.ts` and everywhere
+they're read.
 
-`PADAWAN_GATEWAY_PASSWORD` (plaintext) is deliberately **not** in this
-table: it exists only for local development, and production refuses
-to start if it's set at all (`configValidation.ts`) -- use the hash
-form above.
+`JUSTICEOS_GATEWAY_PASSWORD` (plaintext) is deliberately **not** in
+this table: it exists only for local development, and production
+refuses to start if it's set at all (`configValidation.ts`) -- use the
+hash form above.
 
 ## Confirmed: production refuses to boot on every unsafe input
 
@@ -63,48 +67,49 @@ unit tests -- each of these crashes the process immediately with an
 explicit, itemized error rather than starting half-configured:
 
 - every secret above missing entirely
-- `PADAWAN_GATEWAY_PASSWORD_HASH` / `PADAWAN_SESSION_SECRET` /
+- `JUSTICEOS_GATEWAY_PASSWORD_HASH` / `JUSTICEOS_SESSION_SECRET` /
   `ACP_GATEWAY_SERVICE_KEY` left as the literal example text from
   `gateway/.env.example` (e.g. `replace-me...`) -- a copy-paste of the
   example file is caught even when it happens to be long enough to
   pass the plain length check
-- `PADAWAN_GATEWAY_PASSWORD` (plaintext) set instead of the hash
+- `JUSTICEOS_GATEWAY_PASSWORD` (plaintext) set instead of the hash
 - `INSURANCE_AGENT_ACP_URL` pointed at a public host (e.g. the
   Insurance Agent's own `insurance-audit-agent.fly.dev`) instead of a
   `.internal`/private address
-- `PADAWAN_ALLOWED_ORIGINS` with no exact HTTPS entry
+- `JUSTICEOS_ALLOWED_ORIGINS` with no exact HTTPS entry
 
-## Proposed Fly app names (pick one, or suggest your own)
+## Proposed Fly app name
 
 Fly app names are globally unique and become part of the default
 `<name>.fly.dev` hostname, which then has to match
-`PADAWAN_ALLOWED_ORIGINS` exactly. None of these are reserved or
+`JUSTICEOS_ALLOWED_ORIGINS` exactly. Neither of these is reserved or
 checked for availability yet.
 
-- `padawanos-gateway` -- matches this repo's own name most directly
-- `padawanos` -- shortest, if available
-- `justice-exteriors-padawanos` -- matches the Insurance Agent's own
+- `justiceos` -- primary choice
+- `justice-exteriors-justiceos` -- fallback, if `justiceos` is
+  unavailable; also matches the Insurance Agent's own
   `justice-exteriors-*` naming, if you want the two to read as a pair
 
-Whichever is chosen, replace `fly.toml`'s `app =` placeholder with it
-before running anything.
+Whichever is used, replace `fly.toml`'s `app =` value with it (it
+currently reads `"justiceos"` as a proposed candidate, not a
+confirmed/reserved name) before running anything.
 
 ## Exact required setup sequence (none of this has been run)
 
-1. Pick the app name (above) and confirm it's available:
-   `fly apps create <chosen-name>` (or let `fly launch` create it in
-   step 3 -- either way, this is the first real infrastructure this
-   process creates, and it's a deliberate, separate step from
-   everything in this repo).
-2. Replace `fly.toml`'s `app = "REPLACE-ME-PADAWANOS-APP-NAME"` with
-   the chosen name, and set `PADAWAN_ALLOWED_ORIGINS` in `[env]` to
+1. Confirm the app name (above) is actually available:
+   `fly apps create justiceos` (or `justice-exteriors-justiceos` if
+   not, or let `fly launch` create it in step 3 -- either way, this is
+   the first real infrastructure this process creates, and it's a
+   deliberate, separate step from everything in this repo).
+2. Update `fly.toml`'s `app =` value if the fallback name was needed,
+   and set `JUSTICEOS_ALLOWED_ORIGINS` in `[env]` to
    `https://<chosen-name>.fly.dev` (or a custom domain, once that
    domain is actually attached).
 3. Generate and set every secret from the table above:
    ```
    fly secrets set \
-     PADAWAN_GATEWAY_PASSWORD_HASH='<generated hash>' \
-     PADAWAN_SESSION_SECRET='<generated random string>' \
+     JUSTICEOS_GATEWAY_PASSWORD_HASH='<generated hash>' \
+     JUSTICEOS_SESSION_SECRET='<generated random string>' \
      ACP_GATEWAY_SERVICE_KEY='<the same value set on the Insurance Agent side>' \
      ACP_ALLOWED_USER_ID='<the real user id>' \
      ACP_ALLOWED_REALM_ID='<the real realm id>' \
@@ -160,3 +165,6 @@ obviously can't be performed until they are.
   scope for "minimum production deployment files"), but a smaller,
   slightly faster-starting image is possible later by adding a real
   `tsc` build step and running compiled JS with plain `node` instead.
+- **Naming/branding is internal-only.** "JusticeOS" has not been
+  through trademark/name clearance and is not cleared for any public
+  or App Store listing -- see the notice at the top of this document.

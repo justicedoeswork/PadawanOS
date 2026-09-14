@@ -1,7 +1,7 @@
 {
   "name": "panda-gateway",
   "version": "0.1.0",
-  "description": "PadawanOS production gateway: serves the built React app and provides its authenticated ACP connection to the Insurance Agent (and, later, other agents) -- this is the only piece that ever holds the login password, session-signing secret, or ACP service credential; none of it reaches the browser bundle.",
+  "description": "JusticeOS production gateway: serves the built React app and provides its authenticated ACP connection to the Insurance Agent (and, later, other agents) -- this is the only piece that ever holds the login password, session-signing secret, or ACP service credential; none of it reaches the browser bundle.",
   "license": "Apache-2.0",
   "type": "module",
   "private": true,

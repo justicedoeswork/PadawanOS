@@ -29,7 +29,7 @@ export function parseCookies(header: string | undefined): Record<string, string>
   return result;
 }
 
-export const SESSION_COOKIE_NAME = 'pg_session';
+export const SESSION_COOKIE_NAME = 'justiceos_session';
 export const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
 export function sessionCookieHeader(token: string, { secure }: { secure: boolean }): string {
