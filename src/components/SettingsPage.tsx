@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Activity, ArrowLeft, Bot, Check, Copy, MessagesSquare, Minus, Pencil, Play, Plug, PlugZap, Plus, SlidersHorizontal, Trash2, WandSparkles } from 'lucide-react';
+import { Activity, ArrowLeft, Bot, Check, Copy, LogOut, MessagesSquare, Minus, Pencil, Play, Plug, PlugZap, Plus, SlidersHorizontal, Trash2, WandSparkles } from 'lucide-react';
 import { Button } from '@astryxdesign/core/Button';
 import { useImperativeAlertDialog } from '@astryxdesign/core/AlertDialog';
 import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
@@ -36,6 +36,8 @@ import { t } from '../i18n';
 import { useI18n } from '../i18n/context';
 import { notifyUser } from '../userNotice';
 import { copyDiagnosticsReport } from './ErrorBoundary';
+import { isGatewayBuild } from '../gateway/buildMode';
+import { useGatewayAuth } from '../gateway/gatewayAuthStore';
 import './SettingsPage.css';
 
 /** The settings page's sections (#117) — the single source shared by the
@@ -154,19 +156,46 @@ function SettingsRow({ title, description, children }: {
 function GeneralSection() {
   const { t } = useI18n();
   return (
+    <>
+      <section className="settings-card">
+        <h2 className="settings-group-title">{t('settings.appearanceGroup')}</h2>
+        <SettingsRow title={t('settings.themeRow')} description={t('settings.themeRowDesc')}>
+          <ThemeSwatches />
+        </SettingsRow>
+        <SettingsRow title={t('settings.language')} description={t('settings.languageRowDesc')}>
+          <LanguageChips />
+        </SettingsRow>
+        <SettingsRow title={t('settings.uiFontRow')} description={t('settings.uiFontRowDesc')}>
+          <FontSizeStepper knob="ui" />
+        </SettingsRow>
+        <SettingsRow title={t('settings.codeFontRow')} description={t('settings.codeFontRowDesc')}>
+          <FontSizeStepper knob="code" />
+        </SettingsRow>
+      </section>
+      {isGatewayBuild() && <GatewayAccountSection />}
+    </>
+  );
+}
+
+/** Gateway sign-out (Phase 3, requirement #12) -- rendered only in the
+ * production gateway build (isGatewayBuild()); the GitHub Pages demo build
+ * has no gateway session to sign out of, so this section never renders
+ * there at all. */
+function GatewayAccountSection() {
+  const { t } = useI18n();
+  const busy = useGatewayAuth((s) => s.busy);
+  return (
     <section className="settings-card">
-      <h2 className="settings-group-title">{t('settings.appearanceGroup')}</h2>
-      <SettingsRow title={t('settings.themeRow')} description={t('settings.themeRowDesc')}>
-        <ThemeSwatches />
-      </SettingsRow>
-      <SettingsRow title={t('settings.language')} description={t('settings.languageRowDesc')}>
-        <LanguageChips />
-      </SettingsRow>
-      <SettingsRow title={t('settings.uiFontRow')} description={t('settings.uiFontRowDesc')}>
-        <FontSizeStepper knob="ui" />
-      </SettingsRow>
-      <SettingsRow title={t('settings.codeFontRow')} description={t('settings.codeFontRowDesc')}>
-        <FontSizeStepper knob="code" />
+      <h2 className="settings-group-title">{t('gateway.title')}</h2>
+      <SettingsRow title={t('gateway.logout')} description={t('gateway.tagline')}>
+        <Button
+          variant="secondary"
+          size="sm"
+          label={busy ? t('gateway.loggingOut') : t('gateway.logout')}
+          icon={<LogOut size={12} />}
+          isDisabled={busy}
+          clickAction={() => void useGatewayAuth.getState().logout()}
+        />
       </SettingsRow>
     </section>
   );

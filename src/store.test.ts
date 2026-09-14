@@ -8,6 +8,7 @@ import {
   type SessionEntry,
 } from './store';
 import { connectionLifecycle } from './projector/connectionLifecycle';
+import { MANAGED_INSURANCE_PROFILE_ID } from './gateway/managedAgentId';
 
 /** Fresh store per test — connection slots are global singletons otherwise. */
 beforeEach(() => {
@@ -729,6 +730,33 @@ describe('multi-connection foreground (issue #21)', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('orderedConnectionIds: the managed Insurance Agent always sorts first (Phase 3, requirement #9)', () => {
+    vi.useFakeTimers();
+    try {
+      usePanda.getState().ensureConnection('recent-dev-agent');
+      usePanda.getState().ensureConnection(MANAGED_INSURANCE_PROFILE_ID);
+      usePanda.getState().ensureConnection(DEMO_CONNECTION_ID);
+      // The dev agent is the more RECENTLY active slot -- pure recency would
+      // sort it first. The managed agent still wins.
+      connectionStorePort(MANAGED_INSURANCE_PROFILE_ID).adoptSession('s', '/');
+      vi.advanceTimersByTime(1000);
+      connectionStorePort('recent-dev-agent').adoptSession('s', '/x');
+
+      expect(orderedConnectionIds(usePanda.getState())).toEqual([
+        MANAGED_INSURANCE_PROFILE_ID,
+        'recent-dev-agent',
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('orderedConnectionIds: ordinary recency ordering is unaffected when the managed agent is absent', () => {
+    usePanda.getState().ensureConnection('a');
+    usePanda.getState().ensureConnection('b');
+    expect(orderedConnectionIds(usePanda.getState())).not.toContain(MANAGED_INSURANCE_PROFILE_ID);
   });
 
   it('indicator derivations: running and pending permissions light attention', () => {

@@ -7,7 +7,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:gateway": "PANDA_BUILD_MODE=gateway vite",
     "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "build:gateway": "tsc --noEmit -p tsconfig.json && PANDA_BUILD_MODE=gateway vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsc --noEmit -p tsconfig.json && vitest run",
     "preview": "vite preview",

@@ -13,6 +13,7 @@ import {
   effectiveCapabilities,
   type AgentCapabilityDeclarations,
 } from './capabilities';
+import { MANAGED_INSURANCE_PROFILE_ID } from './gateway/managedAgentId';
 
 /**
  * Store keyed by (connectionId, sessionId) — ADR 0002's prerequisite for
@@ -872,8 +873,9 @@ export const useActiveSwitching = () => usePanda((s) => activeConnectionState(s)
 export function orderedConnectionIds(s: {
   connections: Record<string, ConnectionState>;
 }): string[] {
-  return Object.keys(s.connections)
-    .filter((id) => id !== DEMO_CONNECTION_ID)
+  const ids = Object.keys(s.connections).filter((id) => id !== DEMO_CONNECTION_ID);
+  const rest = ids
+    .filter((id) => id !== MANAGED_INSURANCE_PROFILE_ID)
     .sort((a, b) => {
       const at = s.connections[a]?.lastActivityAt ?? null;
       const bt = s.connections[b]?.lastActivityAt ?? null;
@@ -882,6 +884,12 @@ export function orderedConnectionIds(s: {
       if (at !== null && bt !== null && at !== bt) return bt - at;
       return a.localeCompare(b);
     });
+  // The gateway build's managed Insurance Agent always sorts first
+  // (Phase 3, requirement #9: "appear automatically as the first managed
+  // agent") -- pinned ahead of activity-based ordering rather than folded
+  // into it, since Austin's own dev agents can easily be more recently
+  // active than a connection that just quietly sits there working.
+  return ids.includes(MANAGED_INSURANCE_PROFILE_ID) ? [MANAGED_INSURANCE_PROFILE_ID, ...rest] : rest;
 }
 
 /**

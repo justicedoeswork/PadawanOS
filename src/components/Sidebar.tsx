@@ -30,6 +30,7 @@ import type { SessionDocument } from '../protocol/types';
 import { useConnectionLifecycle } from '../projector/hooks';
 import { isLinkUp, type AttentionReason, type ConnectionPhase } from '../projector/connectionLifecycle';
 import { isDirectConnectionId, reconcileProfileSlots } from '../liveConnections';
+import { MANAGED_INSURANCE_PROFILE_ID } from '../gateway/managedAgentId';
 import { effectiveCapability, PANDA_HOST_CAPABILITIES } from '../capabilities';
 import { useI18n } from '../i18n/context';
 import { formatRelativeTime } from '../relativeTime';
@@ -381,6 +382,11 @@ function ConnectionGroupRow({ connectionId, profile, isActiveConnection, live, o
           {isDirectConnectionId(connectionId) && (
             <span className="sidebar-temp-badge" title={t('side.tempTooltip')}>
               {t('side.temp')}
+            </span>
+          )}
+          {connectionId === MANAGED_INSURANCE_PROFILE_ID && (
+            <span className="sidebar-managed-badge" title={t('side.managedTooltip')}>
+              {t('side.managed')}
             </span>
           )}
           {slot.connection.agentName && (

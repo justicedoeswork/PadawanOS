@@ -288,6 +288,11 @@ export const messages = {
     en: 'Temporary direct connection — not saved as a profile; it ends when disconnected',
     zh: '临时直连:未存为配置,断开即结束',
   },
+  'side.managed': { en: 'Managed', zh: '托管' },
+  'side.managedTooltip': {
+    en: 'Managed by PadawanOS — connects automatically, no endpoint to configure',
+    zh: '由 PadawanOS 托管:自动连接,无需配置端点',
+  },
   'side.needsAttention': { en: 'Needs attention', zh: '需要关注' },
   'side.attentionTooltip': { en: 'Needs attention: {reasons}', zh: '需要关注:{reasons}' },
   'side.saveProfile': { en: 'Save as profile', zh: '存为配置' },
@@ -678,6 +683,32 @@ export const messages = {
 
   // ---- wire ----
   'wire.unnamedTool': { en: 'Unnamed action', zh: '未命名操作' },
+
+  // ---- Gateway login gate (Phase 3): production-gateway-build only, never
+  // shown in the GitHub Pages demo build. ----
+  'gateway.checkingSession': { en: 'Checking your session…', zh: '正在检查登录状态…' },
+  'gateway.title': { en: 'PadawanOS', zh: 'PadawanOS' },
+  'gateway.tagline': { en: 'Sign in to reach your Insurance Agent', zh: '登录以连接你的 Insurance Agent' },
+  'gateway.passwordLabel': { en: 'Password', zh: '密码' },
+  'gateway.passwordPlaceholder': { en: 'Enter password', zh: '输入密码' },
+  'gateway.signIn': { en: 'Sign in', zh: '登录' },
+  'gateway.signingIn': { en: 'Signing in…', zh: '登录中…' },
+  'gateway.invalidCredentials': { en: 'Incorrect password. Try again.', zh: '密码不正确,请重试。' },
+  'gateway.throttled': {
+    en: 'Too many attempts. Wait a few minutes and try again.',
+    zh: '尝试次数过多,请等待几分钟后重试。',
+  },
+  'gateway.unavailable': {
+    en: 'PadawanOS is temporarily unavailable. Try again shortly.',
+    zh: 'PadawanOS 暂时不可用,请稍后重试。',
+  },
+  'gateway.sessionExpired': {
+    en: 'Your session expired. Sign in again to continue.',
+    zh: '登录已过期,请重新登录。',
+  },
+  'gateway.loggedOut': { en: 'Signed out.', zh: '已退出登录。' },
+  'gateway.logout': { en: 'Sign out', zh: '退出登录' },
+  'gateway.loggingOut': { en: 'Signing out…', zh: '正在退出…' },
 } as const;
 
 export type MessageKey = keyof typeof messages;

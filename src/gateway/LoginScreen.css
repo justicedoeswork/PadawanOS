@@ -1,0 +1,147 @@
+/* PadawanOS login screen (Phase 3, requirement #5: iPhone-friendly).
+ *
+ * - min-height (not height) + overflow-y: auto, rather than a rigid
+ *   height:100dvh + justify-content:center: when iOS Safari's on-screen
+ *   keyboard opens, the visual viewport shrinks and 100dvh shrinks with it
+ *   (iOS 15.4+) — a FIXED-height centered layout can then leave the submit
+ *   button below the fold with no way to reach it. min-height lets the page
+ *   grow instead of clip, and overflow-y:auto means it's scrollable on any
+ *   older engine where dvh doesn't track the keyboard at all.
+ * - env(safe-area-inset-*): clears the notch/home-indicator on an iPhone in
+ *   any orientation. max() with a flat fallback so non-Safari browsers (no
+ *   safe-area-inset support: env() resolves to nothing, max() then just
+ *   sees one argument) still get sane padding.
+ * - The password input is pinned at 16px regardless of Panda's user-
+ *   adjustable UI font-size knob (--panda-size-content, see fontSize.ts) --
+ *   iOS Safari zooms the page on focusing any input under 16px, and this
+ *   screen must never do that even if Austin has turned the app's font
+ *   size down in a PREVIOUS session (the setting survives login/logout).
+ * - Every tappable control is at least 44px tall (Apple HIG minimum).
+ */
+
+.gw-login-screen {
+  display: flex;
+  min-height: 100dvh;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  background: var(--color-bg);
+  padding-top: max(24px, env(safe-area-inset-top));
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+}
+
+.gw-login-card {
+  display: flex;
+  width: 100%;
+  max-width: 360px;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-xl, var(--panda-radius-lg));
+  background: var(--color-raised);
+  padding: 28px 24px;
+}
+
+.gw-login-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.gw-login-badge {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 4px;
+  border-radius: var(--panda-radius-lg);
+}
+
+.gw-login-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.gw-login-tagline {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+.gw-login-notice {
+  margin: 0;
+  border-radius: var(--panda-radius-md);
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.gw-login-notice--error {
+  border: 1px solid color-mix(in oklab, var(--color-danger, #d33) 45%, var(--color-border));
+  background: color-mix(in oklab, var(--color-danger, #d33) 12%, transparent);
+  color: var(--color-fg);
+}
+
+.gw-login-notice--info {
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+  color: var(--color-fg);
+}
+
+.gw-login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gw-login-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-fg);
+}
+
+/* 16px is load-bearing (see file header) -- never tie this to the
+ * user-adjustable font-size knob. 44px min-height is the touch-target
+ * floor; on desktop pointers it just reads as a comfortably large field. */
+.gw-login-input {
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-md);
+  background: var(--color-bg);
+  padding: 10px 12px;
+  font-size: 16px;
+  color: var(--color-fg);
+}
+
+.gw-login-input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.gw-login-input:disabled {
+  opacity: 0.6;
+}
+
+.gw-login-submit {
+  min-height: 44px;
+  border: none;
+  border-radius: var(--panda-radius-md);
+  background: var(--color-accent);
+  padding: 10px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-accent-fg, #fff);
+  transition: var(--panda-colors-transition);
+}
+
+.gw-login-submit:disabled {
+  opacity: 0.5;
+}
+
+.gw-login-submit:not(:disabled):hover {
+  filter: brightness(1.05);
+}

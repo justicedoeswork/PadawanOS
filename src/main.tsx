@@ -11,6 +11,7 @@ import { loadThemeId, resolveTheme, subscribeTheme } from './theme';
 import { applyFontSize, loadFontSizePair } from './fontSize';
 import { I18nProvider } from './i18n/context';
 import { parseDevPage } from './routes';
+import { GatewayGate } from './gateway/GatewayGate';
 
 // Earliest possible (#105): the ring must catch startup errors too.
 installConsoleTap();
@@ -42,7 +43,9 @@ function ThemeRoot() {
   return (
     <Theme theme={choice.theme} mode={choice.darkOnly ? 'dark' : 'system'}>
       <I18nProvider>
-        <App />
+        <GatewayGate>
+          <App />
+        </GatewayGate>
       </I18nProvider>
     </Theme>
   );

@@ -787,6 +787,20 @@ export function removeLiveConnection(connectionId: string): void {
 }
 
 /**
+ * Closes every connection currently known to the store -- live, seeded-
+ * offline, direct, all of it (gateway logout, requirement #12: "close all
+ * active WebSockets"). Unlike a single `removeLiveConnection`, this doesn't
+ * distinguish profile vs. direct slots: logging out of the gateway returns
+ * the whole app to the login screen, so nothing should be left half-open
+ * for the next session to stumble into.
+ */
+export function closeAllLiveConnections(): void {
+  for (const connectionId of Object.keys(usePanda.getState().connections)) {
+    removeLiveConnection(connectionId);
+  }
+}
+
+/**
  * Foregrounds a connection: the UI pointers move to it (and its settled
  * session) and the unread signal clears. Foregrounding a live connection IS
  * leaving demo mode — the user asked to see this connection's content.

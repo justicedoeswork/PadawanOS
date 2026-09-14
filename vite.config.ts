@@ -8,10 +8,18 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
   version: string;
 };
 
+// Non-secret build-mode switch (Phase 3, gateway hardening follow-up): unset
+// (or anything but 'gateway') always compiles to the GitHub Pages demo build
+// -- deploy.yml's plain `vite build` never sets this, so Pages can never
+// accidentally ship the gateway-connected build. `pnpm build:gateway` sets it
+// for the one build that's actually deployed behind the gateway.
+const isGatewayBuild = process.env.PANDA_BUILD_MODE === 'gateway';
+
 export default defineConfig({
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    __GATEWAY_BUILD__: JSON.stringify(isGatewayBuild),
   },
   server: {
     // The Tauri shell's devUrl pins 5173; a busy port must fail loudly

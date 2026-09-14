@@ -283,6 +283,21 @@
   color: var(--color-muted);
 }
 
+/* Managed Insurance Agent marker (Phase 3, requirement #10): distinguishes
+ * the one zero-config, gateway-managed connection from Austin's own saved
+ * dev profiles below it -- same badge shape as .sidebar-temp-badge, an
+ * accent tint instead of neutral since this one is never removable config,
+ * it's the product's own agent. */
+.sidebar-managed-badge {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border: 1px solid color-mix(in oklab, var(--color-accent) 45%, var(--color-border));
+  border-radius: var(--panda-radius-full);
+  font-size: var(--panda-size-micro);
+  line-height: 1.4;
+  color: var(--color-accent);
+}
+
 .sidebar-empty {
   padding: 8px 12px; /* px-3 py-2 */
   font-size: var(--panda-size-chrome);
