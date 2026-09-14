@@ -5,9 +5,9 @@ or `fly.toml` has been deployed. No Fly app, DNS record, or secret
 exists yet. This is the reviewed starting point for the person who
 does that (Austin), not a completed deployment.
 
-> **JusticeOS is currently an internal Justice Exteriors application
-> name. Perform formal name clearance and rebranding review before
-> public or App Store distribution.**
+> **JusticeOS is currently a private internal application name.
+> Perform formal name clearance and rebranding review before public or
+> App Store distribution.**
 
 ## What this Fly service is
 
@@ -82,26 +82,25 @@ explicit, itemized error rather than starting half-configured:
 
 Fly app names are globally unique and become part of the default
 `<name>.fly.dev` hostname, which then has to match
-`JUSTICEOS_ALLOWED_ORIGINS` exactly. Neither of these is reserved or
+`JUSTICEOS_ALLOWED_ORIGINS` exactly. None of these is reserved or
 checked for availability yet.
 
 - `justiceos` -- primary choice
-- `justice-exteriors-justiceos` -- fallback, if `justiceos` is
-  unavailable; also matches the Insurance Agent's own
-  `justice-exteriors-*` naming, if you want the two to read as a pair
+- `justiceos-app` -- fallback, if `justiceos` is unavailable
+- `justiceos-agent-hub` -- second fallback
 
-Whichever is used, replace `fly.toml`'s `app =` value with it (it
-currently reads `"justiceos"` as a proposed candidate, not a
-confirmed/reserved name) before running anything.
+Whichever is chosen, replace `fly.toml`'s `app =`
+(`"REPLACE-ME-JUSTICEOS-APP-NAME"`, an obviously-unfinished
+placeholder, not a real Fly app) with it before running anything.
 
 ## Exact required setup sequence (none of this has been run)
 
-1. Confirm the app name (above) is actually available:
-   `fly apps create justiceos` (or `justice-exteriors-justiceos` if
-   not, or let `fly launch` create it in step 3 -- either way, this is
-   the first real infrastructure this process creates, and it's a
+1. Confirm one of the app names above is actually available:
+   `fly apps create justiceos` (or `justiceos-app` / `justiceos-agent-hub`
+   if not, or let `fly launch` create it in step 3 -- either way, this
+   is the first real infrastructure this process creates, and it's a
    deliberate, separate step from everything in this repo).
-2. Update `fly.toml`'s `app =` value if the fallback name was needed,
+2. Replace `fly.toml`'s `app =` placeholder with the chosen name,
    and set `JUSTICEOS_ALLOWED_ORIGINS` in `[env]` to
    `https://<chosen-name>.fly.dev` (or a custom domain, once that
    domain is actually attached).

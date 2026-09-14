@@ -34,7 +34,7 @@ export { MANAGED_INSURANCE_PROFILE_ID, managedInsuranceAgentUrl };
 export function managedInsuranceAgentProfile(): AgentProfile {
   return {
     id: MANAGED_INSURANCE_PROFILE_ID,
-    name: 'Insurance Agent',
+    name: 'Insurance Audit Agent',
     kind: 'websocket',
     url: managedInsuranceAgentUrl(),
     workspace: { kind: 'none' },

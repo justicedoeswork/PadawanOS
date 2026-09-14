@@ -121,6 +121,12 @@ describe('managedInsuranceAgentProfile', () => {
       expect(profile.url).not.toMatch(/token|password|secret|key=/i);
     }
   });
+
+  it('displays as the neutral "Insurance Audit Agent" name -- carries no company branding', () => {
+    const profile = managedInsuranceAgentProfile();
+    expect(profile.name).toBe('Insurance Audit Agent');
+    expect(profile.name).not.toMatch(/justice[-\s]?exteriors/i);
+  });
 });
 
 describe('ensureManagedInsuranceProfile', () => {

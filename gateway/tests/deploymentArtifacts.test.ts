@@ -48,16 +48,18 @@ function findSuspiciousSecretLikeTokens(text: string): string[] {
 }
 
 describe('fly.toml (production deployment prep)', () => {
-  it('proposes the justiceos app name, documented as unconfirmed/unreserved rather than final', () => {
+  it('marks its app name as an unreplaced placeholder, not a real candidate', () => {
     const toml = readFlyToml();
     const appLine = toml.split('\n').find((line) => /^app\s*=/.test(line.trim()));
-    expect(appLine).toBe('app = "justiceos"');
-    // The name itself is a real candidate (per requirement), not an
-    // obviously-broken string -- so the "not yet decided" signal must
-    // come from the surrounding comments instead: the fallback name
-    // and an explicit "not reserved" statement must both be present.
-    expect(toml).toMatch(/justice-exteriors-justiceos/);
-    expect(toml).toMatch(/not (?:yet )?(?:confirmed|reserved)/i);
+    expect(appLine).toBe('app = "REPLACE-ME-JUSTICEOS-APP-NAME"');
+    // Must not already be a plausible real app name -- it should read
+    // as obviously unfinished so nobody deploys it by accident.
+    expect(appLine).toMatch(/replace/i);
+  });
+
+  it('never proposes or mentions Justice Exteriors branding -- JusticeOS is a standalone app name', () => {
+    const toml = readFlyToml();
+    expect(toml).not.toMatch(/justice[-\s]?exteriors/i);
   });
 
   it('sets the correct internal port, matching gateway/src/config.ts default', () => {

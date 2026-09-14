@@ -1,8 +1,8 @@
 # PRODUCTION FLY CONFIGURATION -- PREPARATION ONLY.
 #
-# JusticeOS is currently an internal Justice Exteriors application
-# name. Perform formal name clearance and rebranding review before
-# public or App Store distribution.
+# JusticeOS is currently a private internal application name. Perform
+# formal name clearance and rebranding review before public or App
+# Store distribution.
 #
 # This file does not create a Fly app, does not deploy anything, and
 # does not connect to the Insurance Agent by itself. It is committed
@@ -12,12 +12,11 @@
 # (choosing the app name, generating/setting every secret, and only
 # then deploying) before this is ever used for real.
 #
-# app: PROPOSED, not yet confirmed or reserved. "justiceos" is the
-# primary choice; if unavailable, use "justice-exteriors-justiceos"
-# instead (see docs/fly-deployment.md). Confirm availability before
-# `fly launch`/`fly deploy` is ever run against this file -- this
-# value is a candidate, not a final decision.
-app = "justiceos"
+# app: PLACEHOLDER -- no name has been chosen or reserved yet. This is
+# NOT a real Fly app and must be replaced (see docs/fly-deployment.md
+# for candidate names) before `fly launch` is ever run against this
+# file.
+app = "REPLACE-ME-JUSTICEOS-APP-NAME"
 primary_region = "iad"
 
 [build]

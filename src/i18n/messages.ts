@@ -688,7 +688,7 @@ export const messages = {
   // shown in the GitHub Pages demo build. ----
   'gateway.checkingSession': { en: 'Checking your session…', zh: '正在检查登录状态…' },
   'gateway.title': { en: 'JusticeOS', zh: 'JusticeOS' },
-  'gateway.tagline': { en: 'Sign in to reach your Insurance Agent', zh: '登录以连接你的 Insurance Agent' },
+  'gateway.tagline': { en: 'Sign in to reach your Insurance Audit Agent', zh: '登录以连接你的 Insurance Audit Agent' },
   'gateway.passwordLabel': { en: 'Password', zh: '密码' },
   'gateway.passwordPlaceholder': { en: 'Enter password', zh: '输入密码' },
   'gateway.signIn': { en: 'Sign in', zh: '登录' },
