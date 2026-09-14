@@ -3,6 +3,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { config } from './config.js';
 import { createAuthRouter } from './auth.js';
+import { createHealthRouter } from './health.js';
 import { createAcpApiFallbackRouter } from './acpApiFallback.js';
 import { createStaticSiteRouter } from './staticSite.js';
 import { attachAcpProxy, type AcpProxyHandle } from './acpProxy.js';
@@ -80,6 +81,12 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json());
+
+  // Ahead of everything else: a health check must answer even when
+  // session/ACP config is entirely missing (e.g. before secrets are
+  // set on a freshly-provisioned machine), and must never depend on
+  // config it isn't allowed to reveal.
+  app.use(createHealthRouter());
 
   app.use(
     createAuthRouter({

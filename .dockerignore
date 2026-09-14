@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+dist
+gateway/.env
+gateway/.env.*
+test-agent/.env
+test-agent/.state*/
+test-agent/sandbox*/
+.git
+.github
+.playwright-mcp/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+public/material-icons/
+*.local
+.DS_Store

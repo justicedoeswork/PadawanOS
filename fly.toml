@@ -1,0 +1,82 @@
+# PRODUCTION FLY CONFIGURATION -- PREPARATION ONLY.
+#
+# This file does not create a Fly app, does not deploy anything, and
+# does not connect to the Insurance Agent by itself. It is committed
+# so Austin's actual `fly launch`/`fly deploy` has a reviewed starting
+# point instead of accepting flyctl's own generated defaults blind.
+# See docs/fly-deployment.md for the full required setup sequence
+# (choosing the app name, generating/setting every secret, and only
+# then deploying) before this is ever used for real.
+#
+# app: PLACEHOLDER -- Austin has not chosen a name yet. This is NOT a
+# real Fly app and must be replaced (see docs/fly-deployment.md for
+# name options) before `fly launch` is ever run against this file.
+app = "REPLACE-ME-PADAWANOS-APP-NAME"
+primary_region = "iad"
+
+[build]
+
+[env]
+  # Non-secret. Matches gateway/src/config.ts's own default and this
+  # file's [http_service].internal_port below -- kept in sync by hand,
+  # since neither file reads the other.
+  PORT = "4600"
+  NODE_ENV = "production"
+  # Fly's private-networking hostname for the Insurance Agent's Phase 1
+  # ACP listener -- resolvable only inside this Fly org's 6PN network,
+  # never from the public internet, and never the public
+  # insurance-audit-agent.fly.dev host (see
+  # gateway/src/configValidation.ts's isApprovedPrivateAcpUrl, which
+  # refuses to start production with anything else). Safe to commit:
+  # it is a routing address, not a credential, and setting it here
+  # does not by itself create any connection -- gateway/src/server.ts
+  # only attempts the upstream dial once a real ACP_GATEWAY_SERVICE_KEY,
+  # ACP_ALLOWED_USER_ID, and ACP_ALLOWED_REALM_ID are ALSO set (as
+  # secrets, never here), and even then only per incoming authenticated
+  # browser connection -- there is no connection to keep alive on its
+  # own.
+  INSURANCE_AGENT_ACP_URL = "ws://insurance-audit-agent.internal:3001/acp"
+
+  # Deliberately NOT set here: PADAWAN_ALLOWED_ORIGINS. Its correct
+  # value is the exact HTTPS origin this app ends up served from, which
+  # depends on the app name above -- setting a placeholder domain here
+  # risks it being deployed unchanged. Set it as a real env var (not a
+  # secret, but see docs/fly-deployment.md) once the app name is final.
+
+# No secret ever belongs in this file. PADAWAN_GATEWAY_PASSWORD_HASH,
+# PADAWAN_SESSION_SECRET, ACP_GATEWAY_SERVICE_KEY, ACP_ALLOWED_USER_ID,
+# and ACP_ALLOWED_REALM_ID are set with `fly secrets set` (see
+# docs/fly-deployment.md) -- they never appear in this repo in any
+# form, placeholder or real.
+
+[http_service]
+  # Only the gateway's own HTTP(S)/WebSocket port is exposed -- there
+  # is no other [[services]] block, and nothing else in this app binds
+  # a public port. The /acp/insurance WebSocket upgrade rides this same
+  # port (see gateway/src/acpProxy.ts); it is not a separate service.
+  internal_port = 4600
+  force_https = true
+  # Cost-safe defaults for a single-owner tool with intermittent use --
+  # the same pattern already reviewed and running for the Insurance
+  # Agent's own Fly service. Trade-off, stated plainly: a fully scaled-
+  # to-zero machine adds cold-start latency to the first request after
+  # idle, and would drop an open /acp/insurance WebSocket if Fly stops
+  # the machine out from under it -- acceptable for how this tool is
+  # actually used, but reconsider min_machines_running if long-lived
+  # idle connections turn out to matter in practice.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

@@ -92,6 +92,54 @@ describe('findProductionConfigProblems', () => {
       findProductionConfigProblems({ ...validInput, allowedRealmId: null }).some((p) => p.includes('ACP_ALLOWED_REALM_ID'))
     ).toBe(true);
   });
+
+  // Production deployment prep: gateway/.env.example's own placeholder
+  // text ("replace-me-with-a-random-64-char-hex-string") is deliberately
+  // long enough that it would otherwise pass MIN_SECRET_LENGTH -- these
+  // confirm a copy-pasted example value is still refused.
+  describe('placeholder detection', () => {
+    it('rejects a session secret copied verbatim from .env.example', () => {
+      const problems = findProductionConfigProblems({
+        ...validInput,
+        sessionSecret: 'replace-me-with-a-random-64-char-hex-string-padding-to-length'
+      });
+      expect(problems.some((p) => p.includes('PADAWAN_SESSION_SECRET') && p.includes('placeholder'))).toBe(true);
+    });
+
+    it('rejects a service key or password hash that still looks like an example value', () => {
+      const longPlaceholder = 'example-value-not-a-real-secret-padding-out-to-length';
+      expect(
+        findProductionConfigProblems({ ...validInput, acpGatewayServiceKey: longPlaceholder }).some((p) =>
+          p.includes('ACP_GATEWAY_SERVICE_KEY') && p.includes('placeholder')
+        )
+      ).toBe(true);
+      expect(
+        findProductionConfigProblems({ ...validInput, gatewayPasswordHash: `salt:${longPlaceholder}` }).some((p) =>
+          p.includes('PADAWAN_GATEWAY_PASSWORD_HASH') && p.includes('placeholder')
+        )
+      ).toBe(true);
+    });
+
+    it('rejects a user or realm id left as "replace-me"/"changeme"', () => {
+      expect(
+        findProductionConfigProblems({ ...validInput, allowedUserId: 'replace-me' }).some((p) =>
+          p.includes('ACP_ALLOWED_USER_ID') && p.includes('placeholder')
+        )
+      ).toBe(true);
+      expect(
+        findProductionConfigProblems({ ...validInput, allowedRealmId: 'CHANGEME' }).some((p) =>
+          p.includes('ACP_ALLOWED_REALM_ID') && p.includes('placeholder')
+        )
+      ).toBe(true);
+    });
+
+    it('does not flag a real-looking random secret as a placeholder', () => {
+      // Sanity check against false positives: hex/base64-shaped random
+      // output must never trip the heuristic.
+      const randomLooking = '3f9a2b7c4d1e8f6a0b5c9d2e7f1a4b8c6d3e9f0a1b2c5d8e7f4a3b6c9d0e1f2a';
+      expect(findProductionConfigProblems({ ...validInput, sessionSecret: randomLooking })).toEqual([]);
+    });
+  });
 });
 
 describe('assertProductionConfigIsValid', () => {

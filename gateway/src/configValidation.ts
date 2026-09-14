@@ -33,6 +33,22 @@ export interface ProductionConfigInput {
   allowedRealmId: string | null;
 }
 
+/**
+ * Catches an obvious copy-pasted example value rather than a real
+ * secret -- gateway/.env.example's own PADAWAN_SESSION_SECRET
+ * placeholder ("replace-me-with-a-random-64-char-hex-string") is
+ * deliberately long and descriptive for a human reading the file, but
+ * that same length would otherwise sail past the MIN_SECRET_LENGTH
+ * check below if someone deployed the example file verbatim. A real
+ * random hex/base64 secret has no meaningful chance of containing any
+ * of these words, so this heuristic has no real false-positive risk.
+ */
+const PLACEHOLDER_PATTERN = /replace[-_]?me|change[-_]?me|your[-_]?(password|secret|key)|example|placeholder|xxxxxxxx/i;
+
+function looksLikePlaceholder(value: string): boolean {
+  return PLACEHOLDER_PATTERN.test(value);
+}
+
 function isHttpsOrigin(origin: string): boolean {
   try {
     return new URL(origin).protocol === 'https:';
@@ -88,14 +104,22 @@ export function findProductionConfigProblems(input: ProductionConfigInput): stri
 
   if (!input.gatewayPasswordHash) {
     problems.push('PADAWAN_GATEWAY_PASSWORD_HASH is required in production.');
+  } else if (looksLikePlaceholder(input.gatewayPasswordHash)) {
+    problems.push('PADAWAN_GATEWAY_PASSWORD_HASH looks like an example/placeholder value, not a real generated hash.');
   }
 
   if (!input.sessionSecret || input.sessionSecret.length < MIN_SECRET_LENGTH) {
     problems.push(`PADAWAN_SESSION_SECRET must be at least ${MIN_SECRET_LENGTH} characters in production.`);
+  } else if (looksLikePlaceholder(input.sessionSecret)) {
+    problems.push(
+      'PADAWAN_SESSION_SECRET looks like an example/placeholder value (e.g. copied from .env.example) rather than a real generated secret.'
+    );
   }
 
   if (!input.acpGatewayServiceKey || input.acpGatewayServiceKey.length < MIN_SECRET_LENGTH) {
     problems.push(`ACP_GATEWAY_SERVICE_KEY must be at least ${MIN_SECRET_LENGTH} characters in production.`);
+  } else if (looksLikePlaceholder(input.acpGatewayServiceKey)) {
+    problems.push('ACP_GATEWAY_SERVICE_KEY looks like an example/placeholder value, not a real generated secret.');
   }
 
   if (!input.allowedOrigins.some(isHttpsOrigin)) {
@@ -112,10 +136,14 @@ export function findProductionConfigProblems(input: ProductionConfigInput): stri
 
   if (!input.allowedUserId) {
     problems.push('ACP_ALLOWED_USER_ID is required in production.');
+  } else if (looksLikePlaceholder(input.allowedUserId)) {
+    problems.push('ACP_ALLOWED_USER_ID looks like an example/placeholder value, not a real user id.');
   }
 
   if (!input.allowedRealmId) {
     problems.push('ACP_ALLOWED_REALM_ID is required in production.');
+  } else if (looksLikePlaceholder(input.allowedRealmId)) {
+    problems.push('ACP_ALLOWED_REALM_ID looks like an example/placeholder value, not a real realm id.');
   }
 
   return problems;
