@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { startTestGateway, TEST_PASSWORD } from './helpers/testGateway.js';
+import { startTestGateway, TEST_PASSWORD, TEST_PRODUCTION_OVERRIDES } from './helpers/testGateway.js';
 
 let cleanup: (() => Promise<void>) | null = null;
 
@@ -52,7 +52,7 @@ describe('POST /acp/session (login)', () => {
   });
 
   it('sets Secure in production mode', async () => {
-    const { port, close } = await startTestGateway({ isProduction: true });
+    const { port, close } = await startTestGateway(TEST_PRODUCTION_OVERRIDES);
     cleanup = close;
 
     const res = await fetch(`http://127.0.0.1:${port}/acp/session`, {

@@ -1,5 +1,6 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { WebSocket } from 'ws';
+import net from 'node:net';
 import {
   startTestGateway,
   TEST_SERVICE_KEY,
@@ -10,6 +11,26 @@ import {
 } from './helpers/testGateway.js';
 import { startMockAcpAgent, type MockAcpAgent } from './helpers/mockAcpAgent.js';
 import { createSessionToken } from '../src/session.js';
+
+/**
+ * A TCP server that accepts the connection but never writes an HTTP
+ * response -- stands in for an Insurance Agent whose upstream
+ * WebSocket handshake never completes, so tests can exercise the
+ * pre-upstream buffer limits and the handshake timeout without a real
+ * hung agent.
+ */
+function startHangingUpstream(): Promise<{ port: number; close: () => void }> {
+  return new Promise((resolve) => {
+    const server = net.createServer((socket) => {
+      socket.on('error', () => {});
+    });
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      resolve({ port, close: () => server.close() });
+    });
+  });
+}
 
 let cleanupGateway: (() => Promise<void>) | null = null;
 let mockAgent: MockAcpAgent | null = null;
@@ -28,7 +49,7 @@ async function setup() {
     expectedRealmId: TEST_REALM_ID
   });
 
-  const { port, close } = await startTestGateway({
+  const { port, close, instance } = await startTestGateway({
     insuranceAgentAcpUrl: `ws://127.0.0.1:${mockAgent.port}/acp`,
     acpGatewayServiceKey: TEST_SERVICE_KEY,
     allowedUserId: TEST_USER_ID,
@@ -38,19 +59,39 @@ async function setup() {
 
   const validCookie = `pg_session=${createSessionToken(TEST_SESSION_SECRET)}`;
 
-  return { gatewayPort: port, agent: mockAgent, validCookie };
+  return { gatewayPort: port, agent: mockAgent, validCookie, instance };
+}
+
+/** Same gateway setup, but pointed at an upstream that never completes its WebSocket handshake. */
+async function setupWithHangingUpstream() {
+  const hanging = await startHangingUpstream();
+
+  const { port, close, instance } = await startTestGateway({
+    insuranceAgentAcpUrl: `ws://127.0.0.1:${hanging.port}/acp`,
+    acpGatewayServiceKey: TEST_SERVICE_KEY,
+    allowedUserId: TEST_USER_ID,
+    allowedRealmId: TEST_REALM_ID
+  });
+  cleanupGateway = async () => {
+    hanging.close();
+    await close();
+  };
+
+  const validCookie = `pg_session=${createSessionToken(TEST_SESSION_SECRET)}`;
+
+  return { gatewayPort: port, validCookie, instance };
 }
 
 function connectRaw(
   port: number,
-  { origin, cookie }: { origin?: string; cookie?: string }
+  { origin, cookie, path = '/acp/insurance' }: { origin?: string; cookie?: string; path?: string }
 ): Promise<{ outcome: 'open' | 'rejected' | 'error'; statusCode?: number; ws?: WebSocket }> {
   return new Promise((resolve) => {
     const headers: Record<string, string> = {};
     if (origin !== undefined) headers['Origin'] = origin;
     if (cookie !== undefined) headers['Cookie'] = cookie;
 
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/acp/insurance`, { headers });
+    const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`, { headers });
     let settled = false;
 
     ws.on('open', () => {
@@ -108,6 +149,30 @@ describe('/acp/insurance upgrade auth', () => {
     const result = await connectRaw(gatewayPort, { origin: TEST_ORIGIN, cookie: validCookie });
     expect(result.outcome).toBe('open');
     result.ws?.close();
+  });
+
+  it('rejects an upgrade to an unrecognized path promptly, rather than hanging', async () => {
+    const { gatewayPort, validCookie } = await setup();
+
+    const start = Date.now();
+    const result = await connectRaw(gatewayPort, {
+      origin: TEST_ORIGIN,
+      cookie: validCookie,
+      path: '/acp/not-a-real-agent'
+    });
+    const elapsedMs = Date.now() - start;
+
+    expect(result.outcome).not.toBe('open');
+    // "promptly" means well under connectRaw's own 3s give-up timeout --
+    // an unknown path is rejected synchronously in the upgrade handler.
+    expect(elapsedMs).toBeLessThan(1000);
+  });
+
+  it('rejects an upgrade to an unrecognized top-level path promptly, rather than hanging', async () => {
+    const { gatewayPort } = await setup();
+
+    const result = await connectRaw(gatewayPort, { origin: TEST_ORIGIN, path: '/socket' });
+    expect(result.outcome).not.toBe('open');
   });
 });
 
@@ -224,4 +289,114 @@ describe('/acp/insurance upstream relay', () => {
 
     await downstreamClosed;
   });
+
+  it('cleans up exactly once and returns the active connection count to zero, even though both sides close', async () => {
+    const { gatewayPort, agent, validCookie, instance } = await setup();
+    const result = await connectRaw(gatewayPort, { origin: TEST_ORIGIN, cookie: validCookie });
+    expect(result.outcome).toBe('open');
+    const ws = result.ws!;
+
+    await new Promise((r) => setTimeout(r, 150));
+    expect(instance.acpProxy?.activeConnectionCount()).toBe(1);
+    expect(agent.connections).toHaveLength(1);
+
+    // Closing the browser side triggers upstream.close() (see downstream's
+    // 'close' handler), whose own close event ALSO fires and calls the
+    // same cleanup() -- both paths run for one ordinary disconnect.
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const downstreamClosed = new Promise<void>((resolve) => ws.once('close', () => resolve()));
+    ws.close(1000, 'done');
+    await downstreamClosed;
+    await new Promise((r) => setTimeout(r, 150));
+
+    expect(instance.acpProxy?.activeConnectionCount()).toBe(0);
+
+    const closedLogLines = logSpy.mock.calls.filter(
+      (args) => typeof args[0] === 'string' && args[0].includes('acp connection closed')
+    );
+    expect(closedLogLines).toHaveLength(1);
+
+    logSpy.mockRestore();
+  });
+});
+
+describe('/acp/insurance pre-upstream buffer limits', () => {
+  it('closes the connection pair once the cumulative buffered byte limit is exceeded', async () => {
+    const { gatewayPort, validCookie } = await setupWithHangingUpstream();
+    const result = await connectRaw(gatewayPort, { origin: TEST_ORIGIN, cookie: validCookie });
+    expect(result.outcome).toBe('open');
+    const ws = result.ws!;
+
+    const closed = new Promise<number>((resolve) => ws.once('close', (code) => resolve(code)));
+
+    // 6 frames of 200KB (each under the 256KB per-frame limit) total
+    // 1.2MB, over the 1MB cumulative pre-upstream buffer limit -- the
+    // upstream here never opens, so every frame stays buffered.
+    const frame = 'x'.repeat(200 * 1024);
+    for (let i = 0; i < 6 && ws.readyState === WebSocket.OPEN; i++) {
+      ws.send(frame);
+    }
+
+    const closeCode = await closed;
+    expect(closeCode).not.toBe(1000); // not a normal close
+  });
+
+  it('closes the connection pair once the buffered frame-count ceiling is exceeded', async () => {
+    const { gatewayPort, validCookie } = await setupWithHangingUpstream();
+    const result = await connectRaw(gatewayPort, { origin: TEST_ORIGIN, cookie: validCookie });
+    expect(result.outcome).toBe('open');
+    const ws = result.ws!;
+
+    const closed = new Promise<number>((resolve) => ws.once('close', (code) => resolve(code)));
+
+    // 105 tiny frames trip the 100-frame ceiling long before the 1MB
+    // byte ceiling could ever be reached.
+    for (let i = 0; i < 105 && ws.readyState === WebSocket.OPEN; i++) {
+      ws.send('ping');
+    }
+
+    const closeCode = await closed;
+    expect(closeCode).not.toBe(1000);
+  });
+
+  it('never grows the buffer without bound while the upstream stays hung', async () => {
+    const { gatewayPort, validCookie, instance } = await setupWithHangingUpstream();
+    const result = await connectRaw(gatewayPort, { origin: TEST_ORIGIN, cookie: validCookie });
+    expect(result.outcome).toBe('open');
+    const ws = result.ws!;
+
+    const closed = new Promise<void>((resolve) => ws.once('close', () => resolve()));
+
+    // Far more data than either limit allows, sent continuously --
+    // proves the pair is torn down (and the slot freed) rather than
+    // the buffer accumulating this indefinitely.
+    const frame = 'x'.repeat(200 * 1024);
+    for (let i = 0; i < 50 && ws.readyState === WebSocket.OPEN; i++) {
+      ws.send(frame);
+    }
+
+    await closed;
+    await new Promise((r) => setTimeout(r, 100));
+    expect(instance.acpProxy?.activeConnectionCount()).toBe(0);
+  });
+});
+
+describe('/acp/insurance upstream handshake timeout', () => {
+  it('closes the browser connection with a generic error if the upstream never completes its handshake', async () => {
+    const { gatewayPort, validCookie, instance } = await setupWithHangingUpstream();
+    const result = await connectRaw(gatewayPort, { origin: TEST_ORIGIN, cookie: validCookie });
+    expect(result.outcome).toBe('open');
+    const ws = result.ws!;
+
+    const closed = new Promise<{ code: number; reason: string }>((resolve) =>
+      ws.once('close', (code, reason) => resolve({ code, reason: reason.toString('utf8') }))
+    );
+
+    const { code, reason } = await closed;
+    expect(code).not.toBe(1000);
+    // Never the raw upstream/network failure detail -- a generic reason only.
+    expect(reason.toLowerCase()).not.toMatch(/econnrefused|dns|enotfound|127\.0\.0\.1/);
+
+    expect(instance.acpProxy?.activeConnectionCount()).toBe(0);
+  }, 15_000);
 });

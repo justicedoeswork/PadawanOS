@@ -10,16 +10,13 @@ import {
 import { verifyPassword } from './password.js';
 import { isThrottled, recordFailedAttempt, recordSuccessfulLogin } from './loginThrottle.js';
 import { logInfo, logWarn } from './log.js';
+import { resolveClientIp } from './clientIp.js';
 
 export interface AuthRouterOptions {
   sessionSecret: string | null;
   gatewayPassword: string | null;
   gatewayPasswordHash: string | null;
   isProduction: boolean;
-}
-
-function clientIp(req: Request): string {
-  return req.ip || req.socket.remoteAddress || 'unknown';
 }
 
 export function createAuthRouter(options: AuthRouterOptions): Router {
@@ -38,7 +35,7 @@ export function createAuthRouter(options: AuthRouterOptions): Router {
     const secret = requireSessionSecret(res);
     if (!secret) return;
 
-    const ip = clientIp(req);
+    const ip = resolveClientIp(req);
 
     if (isThrottled(ip)) {
       logWarn('login throttled', { ip });

@@ -3,8 +3,10 @@ import http from 'node:http';
 import path from 'node:path';
 import { config } from './config.js';
 import { createAuthRouter } from './auth.js';
+import { createAcpApiFallbackRouter } from './acpApiFallback.js';
 import { createStaticSiteRouter } from './staticSite.js';
 import { attachAcpProxy, type AcpProxyHandle } from './acpProxy.js';
+import { assertProductionConfigIsValid } from './configValidation.js';
 import { logError, logInfo } from './log.js';
 
 export interface GatewayOverrides {
@@ -51,6 +53,24 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   const userId = overrides.allowedUserId ?? config.allowedUserId;
   const realmId = overrides.allowedRealmId ?? config.allowedRealmId;
 
+  // Production-only startup gate: refuses to start rather than merely
+  // logging when required config is missing or too weak. Skipped
+  // entirely outside production, so the throwaway secrets and
+  // ws://127.0.0.1 upstream URL every test and `pnpm dev` run relies
+  // on are unaffected -- see configValidation.ts.
+  if (isProduction) {
+    assertProductionConfigIsValid({
+      gatewayPassword,
+      gatewayPasswordHash,
+      sessionSecret,
+      acpGatewayServiceKey: serviceKey,
+      allowedOrigins,
+      insuranceAgentAcpUrl: acpUpstreamUrl,
+      allowedUserId: userId,
+      allowedRealmId: realmId
+    });
+  }
+
   if (!sessionSecret) {
     logError('PADAWAN_SESSION_SECRET is not set -- login/session routes will refuse to work.');
   } else if (!gatewayPassword && !gatewayPasswordHash) {
@@ -89,6 +109,12 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       'ACP proxy is not configured (missing session secret, upstream URL, service key, or allowed user/realm) -- /acp/insurance will not be available.'
     );
   }
+
+  // After the real /acp/* routes but before the SPA fallback: anything
+  // under /acp/ that isn't a WebSocket upgrade or a route the auth
+  // router handled (wrong method, unknown path) gets an API-shaped
+  // 404/405 here instead of falling through to index.html.
+  app.use(createAcpApiFallbackRouter());
 
   // Static site last -- its GET '*' fallback must never shadow the API/ACP routes above.
   app.use(createStaticSiteRouter(distDir));

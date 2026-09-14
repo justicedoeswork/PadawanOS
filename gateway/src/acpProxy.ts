@@ -18,6 +18,20 @@ const MAX_CONCURRENT_CONNECTIONS = 5;
 /** Above this much unsent, buffered data on either socket, the relay gives up on that connection rather than let memory grow unbounded. */
 const BACKPRESSURE_LIMIT_BYTES = 1024 * 1024;
 
+/**
+ * A browser message arriving before the upstream handshake completes
+ * is buffered (see wireConnectionPair) rather than dropped -- but a
+ * slow or wedged upstream must not let that buffer grow without
+ * bound. Both a total-byte and a frame-count ceiling are enforced
+ * independently, since either a few huge frames or many tiny ones
+ * could otherwise exhaust memory on their own.
+ */
+const MAX_PRE_UPSTREAM_BUFFER_BYTES = 1024 * 1024; // 1 MB
+const MAX_PRE_UPSTREAM_BUFFER_FRAMES = 100;
+
+/** How long the upstream (Insurance Agent) handshake may take before this connection pair is torn down as unavailable. */
+const UPSTREAM_HANDSHAKE_TIMEOUT_MS = 10_000;
+
 export interface AcpProxyOptions {
   sessionSecret: string;
   allowedOrigins: string[];
@@ -114,11 +128,6 @@ function wireConnectionPair(downstream: WebSocket, upstream: WebSocket, onClosed
     downstream.ping();
   }, PING_INTERVAL_MS);
 
-  const cleanup = (): void => {
-    clearInterval(pingInterval);
-    onClosed();
-  };
-
   /*
    * The browser can send a message the instant its own WebSocket is
    * open, which is BEFORE this gateway's own upstream dial to the
@@ -127,16 +136,79 @@ function wireConnectionPair(downstream: WebSocket, upstream: WebSocket, onClosed
    * buffered here (never combined into one frame, replayed as the
    * same individual sends once `upstream` opens) rather than
    * dropped, which is what happens if this listener is only attached
-   * inside `upstream.on('open')`.
+   * inside `upstream.on('open')`. Bounded on both bytes and frame
+   * count (see MAX_PRE_UPSTREAM_BUFFER_*) so a browser that never
+   * stops sending while upstream never opens can't grow this without
+   * limit.
    */
   let upstreamReady = false;
+  let bufferedBytes = 0;
   const bufferedFromDownstream: Array<Buffer | string> = [];
+
+  // downstream/upstream close events both call cleanup() -- one when
+  // the browser hangs up, the other when the Insurance Agent side
+  // does, and each close also closes the other side, so both fire on
+  // an ordinary disconnect. The guard makes running it twice a no-op
+  // instead of double-clearing timers, double-deleting from
+  // activePairs, and double-logging.
+  let cleanedUp = false;
+  const cleanup = (): void => {
+    if (cleanedUp) return;
+    cleanedUp = true;
+    clearInterval(pingInterval);
+    clearTimeout(handshakeTimeout);
+    bufferedFromDownstream.length = 0;
+    bufferedBytes = 0;
+    onClosed();
+  };
+
+  function closeConnectionPair(code: number, reason: string): void {
+    if (downstream.readyState === WebSocket.OPEN || downstream.readyState === WebSocket.CONNECTING) {
+      downstream.close(code, reason);
+    }
+    if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) {
+      upstream.close(code, reason);
+    }
+  }
+
+  // Finding #2: if the Insurance Agent never completes the upstream
+  // handshake, this pair must not hang forever holding a growing
+  // buffer and an open browser socket.
+  const handshakeTimeout = setTimeout(() => {
+    logWarn('acp upstream handshake timed out, closing connection pair', {
+      timeoutMs: UPSTREAM_HANDSHAKE_TIMEOUT_MS
+    });
+    bufferedFromDownstream.length = 0;
+    bufferedBytes = 0;
+    upstream.terminate();
+    // Generic close reason only -- never expose upstream/network detail to the browser.
+    if (downstream.readyState === WebSocket.OPEN || downstream.readyState === WebSocket.CONNECTING) {
+      downstream.close(1011, 'upstream unavailable');
+    }
+  }, UPSTREAM_HANDSHAKE_TIMEOUT_MS);
 
   downstream.on('message', (data, isBinary) => {
     if (isBinary) return; // ACP is text-frame JSON-RPC only.
 
     if (!upstreamReady) {
-      bufferedFromDownstream.push(data as Buffer);
+      const frame = data as Buffer;
+
+      if (
+        bufferedFromDownstream.length >= MAX_PRE_UPSTREAM_BUFFER_FRAMES ||
+        bufferedBytes + frame.length > MAX_PRE_UPSTREAM_BUFFER_BYTES
+      ) {
+        logWarn('acp pre-upstream buffer limit exceeded, closing connection pair', {
+          bufferedFrames: bufferedFromDownstream.length,
+          bufferedBytes
+        });
+        bufferedFromDownstream.length = 0;
+        bufferedBytes = 0;
+        closeConnectionPair(1011, 'buffer limit exceeded');
+        return;
+      }
+
+      bufferedFromDownstream.push(frame);
+      bufferedBytes += frame.length;
       return;
     }
 
@@ -159,6 +231,7 @@ function wireConnectionPair(downstream: WebSocket, upstream: WebSocket, onClosed
   });
 
   upstream.on('open', () => {
+    clearTimeout(handshakeTimeout);
     upstreamReady = true;
 
     for (const frame of bufferedFromDownstream) {
@@ -166,6 +239,7 @@ function wireConnectionPair(downstream: WebSocket, upstream: WebSocket, onClosed
       upstream.send(frame, { binary: false });
     }
     bufferedFromDownstream.length = 0;
+    bufferedBytes = 0;
 
     relay(upstream, downstream, 'upstream->downstream');
   });
@@ -215,7 +289,13 @@ export function attachAcpProxy(httpServer: HttpServer, options: AcpProxyOptions)
     const path = (req.url || '').split('?')[0];
 
     if (path !== ACP_PATH) {
-      // Not ours -- another upgrade handler (if any) may still claim it.
+      // This process registers no other upgrade handler, so an
+      // unrecognized path has nowhere else to go -- rejecting and
+      // destroying it explicitly (rather than a bare `return`, which
+      // leaves the socket half-open and the client hanging) is what
+      // makes every non-ACP upgrade attempt fail promptly.
+      logWarn('upgrade rejected: unknown path');
+      rejectUpgrade(socket, '404 Not Found');
       return;
     }
 
