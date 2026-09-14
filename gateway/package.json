@@ -1,0 +1,30 @@
+{
+  "name": "panda-gateway",
+  "version": "0.1.0",
+  "description": "PadawanOS production gateway: serves the built React app and provides its authenticated ACP connection to the Insurance Agent (and, later, other agents) -- this is the only piece that ever holds the login password, session-signing secret, or ACP service credential; none of it reaches the browser bundle.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node --import tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^26.4.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

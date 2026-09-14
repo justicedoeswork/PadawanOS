@@ -6,6 +6,7 @@ dist
 scripts/.mock-sessions.json
 test-agent/.env
 test-agent/.state*/
+gateway/.env
 
 test-agent/sandbox*/
 .playwright-mcp/

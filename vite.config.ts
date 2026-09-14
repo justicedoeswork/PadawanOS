@@ -21,5 +21,19 @@ export default defineConfig({
     // WKWebView's localhost lookup goes IPv4 — an IPv6-only listener leaves
     // the shell window blank. 127.0.0.1 keeps shell and browser on one host.
     host: '127.0.0.1',
+    // Proxies the gateway's own routes through Vite's dev server so a
+    // locally-run frontend talks to the gateway same-origin, exactly
+    // like production -- the browser only ever sees 127.0.0.1:5173.
+    // Without this, the gateway's SameSite=Strict session cookie and
+    // its exact-Origin WebSocket check would both need a second,
+    // dev-only allowance instead of just working. Run the gateway
+    // itself (`pnpm --filter panda-gateway dev`) on PANDA_GATEWAY_DEV_PORT
+    // (default 4600) alongside this.
+    proxy: {
+      '/acp': {
+        target: `http://127.0.0.1:${process.env.PANDA_GATEWAY_DEV_PORT || 4600}`,
+        ws: true,
+      },
+    },
   },
 });
