@@ -48,13 +48,16 @@ function findSuspiciousSecretLikeTokens(text: string): string[] {
 }
 
 describe('fly.toml (production deployment prep)', () => {
-  it('marks its app name as an unreplaced placeholder, not a real candidate', () => {
+  it('targets the selected and reserved Fly app "justiceos"', () => {
     const toml = readFlyToml();
     const appLine = toml.split('\n').find((line) => /^app\s*=/.test(line.trim()));
-    expect(appLine).toBe('app = "REPLACE-ME-JUSTICEOS-APP-NAME"');
-    // Must not already be a plausible real app name -- it should read
-    // as obviously unfinished so nobody deploys it by accident.
-    expect(appLine).toMatch(/replace/i);
+    expect(appLine).toBe('app = "justiceos"');
+  });
+
+  it('sets the exact HTTPS allowed origin for the reserved app', () => {
+    const toml = readFlyToml();
+    const originLine = toml.split('\n').find((line) => /^\s*JUSTICEOS_ALLOWED_ORIGINS\s*=/.test(line));
+    expect(originLine).toBe('  JUSTICEOS_ALLOWED_ORIGINS = "https://justiceos.fly.dev"');
   });
 
   it('never proposes or mentions Justice Exteriors branding -- JusticeOS is a standalone app name', () => {

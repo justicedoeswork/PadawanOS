@@ -4,19 +4,19 @@
 # formal name clearance and rebranding review before public or App
 # Store distribution.
 #
-# This file does not create a Fly app, does not deploy anything, and
-# does not connect to the Insurance Agent by itself. It is committed
-# so Austin's actual `fly launch`/`fly deploy` has a reviewed starting
-# point instead of accepting flyctl's own generated defaults blind.
-# See docs/fly-deployment.md for the full required setup sequence
-# (choosing the app name, generating/setting every secret, and only
-# then deploying) before this is ever used for real.
+# This file does not deploy anything and does not connect to the
+# Insurance Agent by itself. The Fly app itself has been created
+# (see below), but that's the only infrastructure step taken so far --
+# no secret has been set and no deploy has been run. See
+# docs/fly-deployment.md for the full remaining setup sequence
+# (generating/setting every secret, then deploying) before this is
+# ever used for real.
 #
-# app: PLACEHOLDER -- no name has been chosen or reserved yet. This is
-# NOT a real Fly app and must be replaced (see docs/fly-deployment.md
-# for candidate names) before `fly launch` is ever run against this
-# file.
-app = "REPLACE-ME-JUSTICEOS-APP-NAME"
+# app: selected and reserved. The Fly app "justiceos" has been created
+# (personal organization) -- see docs/fly-deployment.md. No deployment
+# has been made against it and no secrets have been set yet; creating
+# the app is a separate, already-completed step from either of those.
+app = "justiceos"
 primary_region = "iad"
 
 [build]
@@ -42,11 +42,11 @@ primary_region = "iad"
   # own.
   INSURANCE_AGENT_ACP_URL = "ws://insurance-audit-agent.internal:3001/acp"
 
-  # Deliberately NOT set here: JUSTICEOS_ALLOWED_ORIGINS. Its correct
-  # value is the exact HTTPS origin this app ends up served from, which
-  # depends on the app name above -- setting a placeholder domain here
-  # risks it being deployed unchanged. Set it as a real env var (not a
-  # secret, but see docs/fly-deployment.md) once the app name is final.
+  # Non-secret. The app name is now final ("justiceos"), so this is the
+  # real production origin -- Fly's default <app-name>.fly.dev hostname
+  # for this app. gateway/src/configValidation.ts refuses to start
+  # production without at least one exact HTTPS entry here; this is it.
+  JUSTICEOS_ALLOWED_ORIGINS = "https://justiceos.fly.dev"
 
 # No secret ever belongs in this file. JUSTICEOS_GATEWAY_PASSWORD_HASH,
 # JUSTICEOS_SESSION_SECRET, ACP_GATEWAY_SERVICE_KEY, ACP_ALLOWED_USER_ID,

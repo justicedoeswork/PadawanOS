@@ -1,9 +1,18 @@
 # Deploying the JusticeOS gateway to Fly.io
 
-**Status: preparation only.** Nothing in this document, `Dockerfile`,
-or `fly.toml` has been deployed. No Fly app, DNS record, or secret
-exists yet. This is the reviewed starting point for the person who
-does that (Austin), not a completed deployment.
+**Status: preparation only.** The Fly app **`justiceos`** has been
+created (personal organization) -- that is the only real
+infrastructure step taken so far. Nothing in this document,
+`Dockerfile`, or `fly.toml` has been deployed: no build has been
+pushed to it, no DNS beyond Fly's own default `justiceos.fly.dev`
+exists, and no secret has been set. This is the reviewed starting
+point for the person who finishes that (Austin), not a completed
+deployment.
+
+- **App:** `justiceos`
+- **Organization:** personal
+- **Production origin:** `https://justiceos.fly.dev`
+- **Deployed:** no. **Secrets set:** no.
 
 > **JusticeOS is currently a private internal application name.
 > Perform formal name clearance and rebranding review before public or
@@ -39,7 +48,7 @@ each one needs.
 | `JUSTICEOS_GATEWAY_PASSWORD_HASH` | **yes** | `scrypt` output, `<salt-hex>:<derived-key-hex>` (see `gateway/src/password.ts`'s header comment for the exact `node -e` command to generate one) | `fly secrets set` |
 | `JUSTICEOS_SESSION_SECRET` | **yes** | random string, at least 32 characters (`node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` gives 64) | `fly secrets set` |
 | `ACP_GATEWAY_SERVICE_KEY` | **yes** | random string, at least 32 characters; must be the *same* value configured as the Insurance Agent's `ACP_GATEWAY_SERVICE_KEY` -- a shared secret between exactly these two services, never reused from the Insurance Agent's own `AUDIT_AGENT_API_KEY` | `fly secrets set` |
-| `JUSTICEOS_ALLOWED_ORIGINS` | no (but sensitive to get right) | comma-separated, exact HTTPS origin(s) this app is actually served from (e.g. `https://<final-app-name>.fly.dev`) -- production refuses to boot without at least one exact HTTPS origin | `fly.toml` `[env]`, once the app name below is final, or `fly secrets set` if you'd rather not commit it |
+| `JUSTICEOS_ALLOWED_ORIGINS` | no | `https://justiceos.fly.dev` -- already set in `fly.toml`; production refuses to boot without at least one exact HTTPS origin | `fly.toml` `[env]` (already set) |
 | `INSURANCE_AGENT_ACP_URL` | no | `ws://insurance-audit-agent.internal:3001/acp` -- already set in `fly.toml` | `fly.toml` `[env]` (already set) |
 | user id | **yes** | the one allowed ACP user id (matches the Insurance Agent's own allowlist, e.g. `austin`) | `fly secrets set` |
 | realm id | **yes** | the one allowed QuickBooks realm id (the same value already used throughout the Insurance Agent's own config/tests) | `fly secrets set` |
@@ -78,32 +87,26 @@ explicit, itemized error rather than starting half-configured:
   `.internal`/private address
 - `JUSTICEOS_ALLOWED_ORIGINS` with no exact HTTPS entry
 
-## Proposed Fly app name
+## Fly app: selected and reserved
 
 Fly app names are globally unique and become part of the default
-`<name>.fly.dev` hostname, which then has to match
-`JUSTICEOS_ALLOWED_ORIGINS` exactly. None of these is reserved or
-checked for availability yet.
+`<name>.fly.dev` hostname. **`justiceos`** is that name: the app has
+been created in the personal Fly organization, and `fly.toml`'s
+`app =` and `JUSTICEOS_ALLOWED_ORIGINS` both already reflect it
+(`https://justiceos.fly.dev`). Fallback names (previously
+`justiceos-app` / `justiceos-agent-hub`, in case `justiceos` was
+unavailable) are no longer needed -- the primary choice was available
+and is now reserved.
 
-- `justiceos` -- primary choice
-- `justiceos-app` -- fallback, if `justiceos` is unavailable
-- `justiceos-agent-hub` -- second fallback
+Creating the app is the only infrastructure step taken: it has no
+deployment and no secrets yet (below).
 
-Whichever is chosen, replace `fly.toml`'s `app =`
-(`"REPLACE-ME-JUSTICEOS-APP-NAME"`, an obviously-unfinished
-placeholder, not a real Fly app) with it before running anything.
+## Exact required setup sequence (steps 1-2 done; 3-6 not yet)
 
-## Exact required setup sequence (none of this has been run)
-
-1. Confirm one of the app names above is actually available:
-   `fly apps create justiceos` (or `justiceos-app` / `justiceos-agent-hub`
-   if not, or let `fly launch` create it in step 3 -- either way, this
-   is the first real infrastructure this process creates, and it's a
-   deliberate, separate step from everything in this repo).
-2. Replace `fly.toml`'s `app =` placeholder with the chosen name,
-   and set `JUSTICEOS_ALLOWED_ORIGINS` in `[env]` to
-   `https://<chosen-name>.fly.dev` (or a custom domain, once that
-   domain is actually attached).
+1. ~~Create the Fly app.~~ **Done** -- `justiceos` exists in the
+   personal organization.
+2. ~~Set `app =` and `JUSTICEOS_ALLOWED_ORIGINS` in `fly.toml`.~~
+   **Done** -- both already reflect `justiceos` / `https://justiceos.fly.dev`.
 3. Generate and set every secret from the table above:
    ```
    fly secrets set \
@@ -112,7 +115,7 @@ placeholder, not a real Fly app) with it before running anything.
      ACP_GATEWAY_SERVICE_KEY='<the same value set on the Insurance Agent side>' \
      ACP_ALLOWED_USER_ID='<the real user id>' \
      ACP_ALLOWED_REALM_ID='<the real realm id>' \
-     --app <chosen-name>
+     --app justiceos
    ```
 4. Confirm the Insurance Agent side already has its matching
    `ACP_GATEWAY_SERVICE_KEY` set and its private ACP listener enabled
@@ -121,16 +124,16 @@ placeholder, not a real Fly app) with it before running anything.
 5. Confirm both apps are in the same Fly organization (private `.internal`
    networking is org-scoped) so `insurance-audit-agent.internal` actually
    resolves from this gateway's app.
-6. Only then: `fly deploy`.
+6. Only then: `fly deploy --app justiceos`.
 7. After deploying, verify from *outside* Fly's network that
    `/acp/insurance` still rejects an unauthenticated/wrong-Origin
    connection (curl or a browser dev console against the real
-   `https://<chosen-name>.fly.dev`), the same way the automated tests
+   `https://justiceos.fly.dev`), the same way the automated tests
    already prove locally -- a production environment is the one place
    those tests can't run themselves.
 
-None of steps 1-6 were performed as part of this preparation; step 7
-obviously can't be performed until they are.
+Steps 3-6 were not performed as part of this update; step 7 obviously
+can't be performed until they are.
 
 ## Remaining risks / things this preparation could not verify here
 
