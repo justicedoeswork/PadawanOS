@@ -89,4 +89,31 @@ describe('JusticeOsShell (gateway build): JusticeOS dashboard + rail', () => {
     expect(visibleText).not.toMatch(/\bpanda\b/i);
     expect(markup).not.toMatch(/add agent/i);
   });
+
+  it('renders a mobile "Open agents" trigger, and the sidebar starts neither collapsed nor open (Node/SSR has no localStorage, so the desktop preference reads its false default; the mobile drawer is never persisted and always starts closed)', () => {
+    __setBuildMode('gateway');
+    const markup = renderToStaticMarkup(
+      <I18nProvider>
+        <JusticeOsShell>
+          <div>the real app</div>
+        </JusticeOsShell>
+      </I18nProvider>,
+    );
+    expect(markup).toMatch(/aria-label="Open agents"/);
+    expect(markup).not.toContain('gw-rail--collapsed');
+    expect(markup).not.toContain('gw-rail--open');
+    expect(markup).not.toContain('gw-rail-backdrop');
+  });
+
+  it('never renders the old shield icon for the agent anywhere in the shell', () => {
+    __setBuildMode('gateway');
+    const markup = renderToStaticMarkup(
+      <I18nProvider>
+        <JusticeOsShell>
+          <div>the real app</div>
+        </JusticeOsShell>
+      </I18nProvider>,
+    );
+    expect(markup).not.toContain('M20 13c0 5');
+  });
 });

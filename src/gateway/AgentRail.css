@@ -1,16 +1,27 @@
-/* JusticeOS agent rail (LAYOUT #1): narrow, always-visible left rail --
- * no hamburger, no drawer, no "Add agent" control. Sized 64-76 CSS px per
- * the iPhone-first spec; safe-area padding clears the notch/home-indicator
- * in any orientation (same env()/max() pattern as gw-login-screen). */
+/* JusticeOS collapsible agent sidebar (LAYOUT #1). Every agent lives here
+ * and only here -- the dashboard content column never shows a launch
+ * control of its own.
+ *
+ * Two independent responsive behaviors, split at 768px (below: phones and
+ * small tablets in portrait; at/above: room for an always-visible rail
+ * beside the content column):
+ *
+ * - Below 768px: an off-canvas drawer (`.gw-rail`, fixed + translateX),
+ *   closed by default, slid in with `.gw-rail--open`. Row layout (icon +
+ *   visible label) throughout -- a narrow icon-only strip would be poor
+ *   touch UX for a temporary overlay, so `.gw-rail--collapsed` (the
+ *   DESKTOP preference) is intentionally NOT read here.
+ * - At/above 768px: an in-flow, always-visible rail. `.gw-rail--collapsed`
+ *   narrows it to a 68-76px icon-only strip (same visual language as the
+ *   original always-narrow rail); the default is the wider labeled state.
+ *
+ * Safe-area padding clears the notch/home-indicator in any orientation
+ * (same env()/max() pattern as gw-login-screen). */
 
 .gw-rail {
   display: flex;
-  width: 68px;
-  flex-shrink: 0;
   flex-direction: column;
-  align-items: center;
   gap: 4px;
-  height: 100dvh;
   overflow-y: auto;
   border-right: 1px solid var(--color-border);
   background: var(--color-raised);
@@ -18,21 +29,118 @@
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   padding-left: env(safe-area-inset-left);
 }
-@media (min-width: 640px) {
-  .gw-rail { width: 76px; }
+
+@media (max-width: 767.98px) {
+  .gw-rail {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: min(280px, 84vw);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 0 0 24px color-mix(in oklab, black 45%, transparent);
+  }
+  .gw-rail--open {
+    transform: translateX(0);
+  }
 }
 
+@media (min-width: 768px) {
+  .gw-rail {
+    position: relative;
+    flex-shrink: 0;
+    height: 100dvh;
+    width: 220px;
+    transform: none;
+    transition: width 0.15s ease;
+  }
+  .gw-rail--collapsed {
+    width: 68px;
+    align-items: center;
+  }
+}
+@media (min-width: 1024px) {
+  .gw-rail:not(.gw-rail--collapsed) {
+    width: 240px;
+  }
+  .gw-rail--collapsed {
+    width: 76px;
+  }
+}
+
+/* Backdrop: mobile-only (the drawer is in-flow, not an overlay, at
+ * desktop widths) -- click-to-close, and its full-viewport hit area is
+ * also what stops the dashboard/chat column behind it from receiving
+ * scroll/touch input while the drawer is open. */
+.gw-rail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: color-mix(in oklab, black 55%, transparent);
+}
+@media (min-width: 768px) {
+  .gw-rail-backdrop {
+    display: none;
+  }
+}
+
+.gw-rail-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-inline: 12px;
+  margin-bottom: 8px;
+}
+@media (min-width: 768px) {
+  .gw-rail--collapsed .gw-rail-top {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+
+/* Standalone brand mark: fixed square, never stretched -- height:auto
+ * keyed off width preserves its own aspect ratio regardless of container. */
+.gw-rail-brand-mark {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.gw-rail-mobile-close {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-muted);
+}
+.gw-rail-mobile-close:hover {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+@media (min-width: 768px) {
+  .gw-rail-mobile-close {
+    display: none;
+  }
+}
+
+/* Row layout (icon + visible label) is the default -- both the mobile
+ * drawer and the desktop-expanded rail use it. Desktop-collapsed narrows
+ * it back to the original icon-only column layout, below. */
 .gw-rail-btn {
   display: flex;
   min-width: 44px;
   min-height: 44px;
-  width: 48px;
+  width: 100%;
   flex-shrink: 0;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
+  justify-content: flex-start;
+  gap: 12px;
   border-radius: var(--panda-radius-md);
+  padding-inline: 12px;
   color: var(--color-muted);
   transition: var(--panda-colors-transition);
 }
@@ -48,26 +156,20 @@
   color: var(--color-accent);
 }
 
-/* Standalone brand mark (justiceos-mark-color.svg): fixed square, never
- * stretched -- height:auto keyed off width preserves its own aspect
- * ratio regardless of container. */
-.gw-rail-brand-mark {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  margin-top: 2px;
+.gw-rail-btn-label {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gw-rail-home {
-  margin-top: 12px;
+  margin-top: 4px;
 }
 
 .gw-rail-agent {
-  height: auto;
   min-height: 56px;
-  width: 56px;
-  margin-top: 8px;
-  padding-block: 6px;
 }
 
 .gw-rail-agent-icon {
@@ -110,13 +212,54 @@
 }
 
 .gw-rail-agent-caption {
-  max-width: 58px;
-  font-size: 10px;
-  line-height: 1.2;
-  text-align: center;
+  overflow: hidden;
+  font-size: 14px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gw-rail-spacer {
   flex: 1;
   min-height: 8px;
+}
+
+.gw-rail-collapse-toggle {
+  display: none;
+}
+@media (min-width: 768px) {
+  .gw-rail-collapse-toggle {
+    display: flex;
+  }
+}
+
+/* Desktop-collapsed: narrow the rail back to the original icon-only
+ * column layout. Scoped so the mobile drawer never reads this modifier --
+ * see the file header. */
+@media (min-width: 768px) {
+  .gw-rail--collapsed .gw-rail-btn {
+    flex-direction: column;
+    justify-content: center;
+    width: 48px;
+    gap: 2px;
+    padding-inline: 0;
+  }
+  .gw-rail--collapsed .gw-rail-btn-label {
+    display: none;
+  }
+  .gw-rail--collapsed .gw-rail-home {
+    margin-top: 8px;
+  }
+  .gw-rail--collapsed .gw-rail-agent {
+    height: auto;
+    width: 56px;
+    padding-block: 6px;
+  }
+  .gw-rail--collapsed .gw-rail-agent-caption {
+    max-width: 58px;
+    font-size: 10px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: normal;
+  }
 }

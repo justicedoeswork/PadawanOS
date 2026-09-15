@@ -735,6 +735,11 @@ export const messages = {
   'rail.settings': { en: 'Settings', zh: '设置' },
   'rail.settingsTooltip': { en: 'Settings', zh: '设置' },
   'rail.signOut': { en: 'Sign out', zh: '退出登录' },
+  // ---- Collapsible sidebar (desktop collapse/expand + mobile drawer). ----
+  'rail.openAgents': { en: 'Open agents', zh: '打开 agent 列表' },
+  'rail.closeAgents': { en: 'Close agents', zh: '关闭 agent 列表' },
+  'rail.collapse': { en: 'Collapse sidebar', zh: '收起侧栏' },
+  'rail.expand': { en: 'Expand sidebar', zh: '展开侧栏' },
 
   // ---- Dashboard home screen (JusticeOS, gateway build only). ----
   'dashboard.heading': { en: 'JusticeOS', zh: 'JusticeOS' },
@@ -746,15 +751,25 @@ export const messages = {
     en: 'Your briefing will appear here once your Justice Manager is available.',
     zh: '当 Justice Manager 可用后,你的简报会显示在这里。',
   },
+  // 'dashboard.agentCard.title' doubles as the managed connection's fallback
+  // display name (AgentRail's aria-label etc.) even though the dashboard no
+  // longer shows an agent card of its own -- agent navigation lives only in
+  // the sidebar now (brand brief: "The dashboard must not become another
+  // agent picker").
   'dashboard.agentCard.title': { en: 'Insurance Audit Agent', zh: 'Insurance Audit Agent' },
-  'dashboard.agentCard.open': { en: 'Open chat', zh: '打开对话' },
   'dashboard.card.attention': { en: 'Needs your attention', zh: '需要你关注' },
   'dashboard.card.inProgress': { en: 'In progress', zh: '进行中' },
-  'dashboard.card.workQueue': { en: 'Work queue', zh: '工作队列' },
-  'dashboard.card.upcoming': { en: 'Upcoming', zh: '即将到来' },
+  'dashboard.card.completed': { en: 'Recently completed', zh: '最近完成' },
+  'dashboard.card.failedBlocked': { en: 'Failed or blocked', zh: '失败或受阻' },
+  'dashboard.card.findings': { en: 'Audit & compliance findings', zh: '审计与合规发现' },
+  'dashboard.card.documents': { en: 'Recent documents & reports', zh: '最近的文档与报告' },
+  'dashboard.card.upcoming': { en: 'Upcoming deadlines & follow-ups', zh: '即将到来的截止日期与跟进' },
   'dashboard.empty.attention': { en: 'Nothing needs your attention right now.', zh: '目前没有需要关注的事项。' },
   'dashboard.empty.inProgress': { en: 'Nothing is in progress right now.', zh: '目前没有进行中的事项。' },
-  'dashboard.empty.workQueue': { en: 'Your work queue is empty.', zh: '工作队列为空。' },
+  'dashboard.empty.completed': { en: 'No completed work has been reported yet.', zh: '尚无已完成工作的记录。' },
+  'dashboard.empty.failedBlocked': { en: 'Nothing has failed or is blocked right now.', zh: '目前没有失败或受阻的事项。' },
+  'dashboard.empty.findings': { en: 'No findings have been reported yet.', zh: '尚无发现报告。' },
+  'dashboard.empty.documents': { en: 'No documents or reports have been produced yet.', zh: '尚未生成任何文档或报告。' },
   'dashboard.empty.upcoming': { en: 'Nothing scheduled yet.', zh: '暂无安排。' },
   'dashboard.attention.pendingPermission': {
     en: 'The Insurance Audit Agent is waiting on your approval.',

@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Menu } from 'lucide-react';
 import { isGatewayBuild } from './buildMode';
 import { usePanda } from '../store';
 import { connectionLifecycle } from '../projector/connectionLifecycle';
@@ -7,6 +8,7 @@ import { AgentRail, type RailView } from './AgentRail';
 import { Dashboard } from './Dashboard';
 import { ManagerChat } from './ManagerChat';
 import { useGatewayAuth } from './gatewayAuthStore';
+import { loadSidebarCollapsed, saveSidebarCollapsed } from './sidebarPreference';
 import { navigate } from '../routes';
 import { useI18n } from '../i18n/context';
 import './JusticeOsShell.css';
@@ -20,14 +22,19 @@ import './JusticeOsShell.css';
  * is byte-for-byte unaffected.
  *
  * In the gateway build this owns the JusticeOS dashboard-vs-chat toggle
- * (LAYOUT): the always-visible AgentRail plus either the Dashboard home
- * screen or `children` (the real, untouched App -- same component,
- * same store, same connection; nothing about the chat itself changes).
- * `children` unmounting while the dashboard shows does NOT touch the
- * connection: the managed agent's WebSocket lives in liveConnections.ts
- * module state and managedAgent.ts's supervisor (a zustand subscription),
- * neither owned by App's own component lifecycle -- switching views here
- * never disconnects, reconnects, or loses the session.
+ * (LAYOUT) plus the collapsible agent sidebar's state: the always-present
+ * AgentRail (collapsed/expanded on desktop, an off-canvas drawer on
+ * mobile) beside either the Dashboard home screen or `children` (the
+ * real, untouched App -- same component, same store, same connection;
+ * nothing about the chat itself changes). `children` unmounting while the
+ * dashboard shows, or the sidebar opening/closing/collapsing, does NOT
+ * touch the connection: the managed agent's WebSocket lives in
+ * liveConnections.ts module state and managedAgent.ts's supervisor (a
+ * zustand subscription), neither owned by App's or AgentRail's own
+ * component lifecycle -- switching views or toggling the sidebar here
+ * never disconnects, reconnects, signs out, or loses the session (the
+ * state added below is local UI state and a localStorage preference read/
+ * write only).
  */
 export function JusticeOsShell({ children }: { children: ReactNode }) {
   if (!isGatewayBuild()) return <>{children}</>;
@@ -37,10 +44,54 @@ export function JusticeOsShell({ children }: { children: ReactNode }) {
 function GatewayDashboardShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [view, setView] = useState<RailView>('dashboard');
+  const [sidebarCollapsed, setSidebarCollapsedState] = useState(() => loadSidebarCollapsed());
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const railNavRef = useRef<HTMLElement>(null);
+  const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+
   const slot = usePanda((s) => s.connections[MANAGED_INSURANCE_PROFILE_ID]);
   const lifecycle = slot ? connectionLifecycle(slot) : null;
   const agentName = slot?.connection.agentName || t('dashboard.agentCard.title');
   const signOutBusy = useGatewayAuth((s) => s.busy);
+
+  const closeMobileNav = () => setMobileNavOpen(false);
+
+  // Mobile drawer a11y: move focus into it on open, return focus to the
+  // trigger on close, close on Escape, and lock body scroll so the column
+  // behind the drawer/backdrop can't be scrolled while it's open. This is
+  // local UI state/DOM plumbing only -- it never calls onSignOut or
+  // touches the connection store.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    railNavRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeMobileNav();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKeyDown);
+      mobileTriggerRef.current?.focus();
+    };
+  }, [mobileNavOpen]);
+
+  function toggleSidebarCollapsed() {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsedState(next);
+    saveSidebarCollapsed(next);
+  }
+
+  function goHome() {
+    setView('dashboard');
+    closeMobileNav();
+  }
+
+  function openAgent() {
+    setView('agent');
+    closeMobileNav();
+  }
 
   return (
     <div className="gw-shell">
@@ -48,17 +99,37 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
         activeView={view}
         agentName={agentName}
         connectionPhase={lifecycle?.phase ?? 'disconnected'}
-        onHome={() => setView('dashboard')}
-        onOpenAgent={() => setView('agent')}
+        collapsed={sidebarCollapsed}
+        mobileOpen={mobileNavOpen}
+        onHome={goHome}
+        onOpenAgent={openAgent}
         onSettings={() => {
           navigate('settings');
-          setView('agent');
+          openAgent();
         }}
         onSignOut={() => void useGatewayAuth.getState().logout()}
+        onToggleCollapsed={toggleSidebarCollapsed}
+        onCloseMobile={closeMobileNav}
         signOutBusy={signOutBusy}
+        navRef={railNavRef}
       />
       <div className="gw-shell-main">
-        {view === 'dashboard' ? <Dashboard onOpenAgent={() => setView('agent')} /> : children}
+        <div className="gw-mobile-topbar">
+          <button
+            ref={mobileTriggerRef}
+            type="button"
+            className="gw-mobile-topbar-trigger"
+            aria-label={t('rail.openAgents')}
+            aria-expanded={mobileNavOpen}
+            aria-controls="gw-rail-nav"
+            aria-hidden={mobileNavOpen}
+            tabIndex={mobileNavOpen ? -1 : 0}
+            onClick={() => setMobileNavOpen(true)}
+          >
+            <Menu size={20} />
+          </button>
+        </div>
+        {view === 'dashboard' ? <Dashboard /> : children}
       </div>
       {view === 'dashboard' && <ManagerChat />}
     </div>

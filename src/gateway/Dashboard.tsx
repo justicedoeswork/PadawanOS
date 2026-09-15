@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
-import justiceOsLogo from '../assets/brand/justiceos-logo-primary.svg';
+import justiceOsLogo from '../assets/brand/gateway-presentation/justiceos-logo-primary.svg';
 import { useI18n } from '../i18n/context';
 import { usePanda } from '../store';
 import { connectionLifecycle, isLinkUp, type ConnectionLifecycle } from '../projector/connectionLifecycle';
@@ -55,14 +54,21 @@ export function dashboardInProgressKeys(lifecycle: ConnectionLifecycle | null): 
 }
 
 /**
- * JusticeOS dashboard home screen (LAYOUT #2). Every figure here comes
- * from the managed connection's own real state (connectionLifecycle,
- * same projection Sidebar/StatusBar already use) -- never invented. Work
- * queue and Upcoming have no backing data source in this frontend yet, so
- * they render their honest empty state unconditionally rather than a
- * fabricated count.
+ * JusticeOS dashboard home screen (LAYOUT #2): an operational overview of
+ * what the agents have produced, what they're doing, and what they need
+ * from Austin -- never another agent picker (agent navigation lives
+ * exclusively in the collapsible sidebar, AgentRail; this screen has no
+ * agent card, avatar, or launch control of its own).
+ *
+ * Every figure here comes from the managed connection's own real state
+ * (connectionLifecycle, same projection Sidebar/StatusBar already use) --
+ * never invented. Completed work, failed/blocked work, audit findings, and
+ * documents/reports have no backing data source in this frontend yet, so
+ * they render an honest "nothing reported yet" empty state unconditionally
+ * rather than a fabricated count -- each card stays structured so a real
+ * data source can be wired in later without changing this shape.
  */
-export function Dashboard({ onOpenAgent }: { onOpenAgent(): void }) {
+export function Dashboard() {
   const { t } = useI18n();
   // Computed once per mount, not on every render (a dashboard left open
   // past a period boundary keeps its opening greeting rather than
@@ -71,9 +77,6 @@ export function Dashboard({ onOpenAgent }: { onOpenAgent(): void }) {
 
   const slot = usePanda((s) => s.connections[MANAGED_INSURANCE_PROFILE_ID]);
   const lifecycle = useMemo(() => (slot ? connectionLifecycle(slot) : null), [slot]);
-  const agentName = slot?.connection.agentName || t('dashboard.agentCard.title');
-  const connected = lifecycle ? isLinkUp(lifecycle.phase) : false;
-  const statusLabel = t(dashboardAgentStatusKey(lifecycle));
   const attentionItems = dashboardAttentionKeys(lifecycle).map((key) => t(key));
   const inProgressItems = dashboardInProgressKeys(lifecycle).map((key) => t(key));
 
@@ -91,23 +94,13 @@ export function Dashboard({ onOpenAgent }: { onOpenAgent(): void }) {
         <p className="gw-dashboard-briefing-body">{t('dashboard.briefing.placeholder')}</p>
       </section>
 
-      <button type="button" className="gw-dashboard-agent-card" onClick={onOpenAgent}>
-        <span className="gw-dashboard-agent-icon" aria-hidden="true">
-          <ShieldCheck size={22} />
-        </span>
-        <span className="gw-dashboard-agent-info">
-          <span className="gw-dashboard-agent-name truncate">{agentName}</span>
-          <span className={`gw-dashboard-agent-status ${connected ? 'gw-dashboard-agent-status--connected' : ''}`}>
-            {statusLabel}
-          </span>
-        </span>
-        <span className="gw-dashboard-agent-cta">{t('dashboard.agentCard.open')}</span>
-      </button>
-
       <div className="gw-dashboard-grid">
         <DashboardCard title={t('dashboard.card.attention')} items={attentionItems} emptyText={t('dashboard.empty.attention')} />
         <DashboardCard title={t('dashboard.card.inProgress')} items={inProgressItems} emptyText={t('dashboard.empty.inProgress')} />
-        <DashboardCard title={t('dashboard.card.workQueue')} items={[]} emptyText={t('dashboard.empty.workQueue')} />
+        <DashboardCard title={t('dashboard.card.completed')} items={[]} emptyText={t('dashboard.empty.completed')} />
+        <DashboardCard title={t('dashboard.card.failedBlocked')} items={[]} emptyText={t('dashboard.empty.failedBlocked')} />
+        <DashboardCard title={t('dashboard.card.findings')} items={[]} emptyText={t('dashboard.empty.findings')} />
+        <DashboardCard title={t('dashboard.card.documents')} items={[]} emptyText={t('dashboard.empty.documents')} />
         <DashboardCard title={t('dashboard.card.upcoming')} items={[]} emptyText={t('dashboard.empty.upcoming')} />
       </div>
     </div>

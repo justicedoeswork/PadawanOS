@@ -183,21 +183,29 @@
  * (JusticeOS-Brand-Assets.zip's README):
  *   Graphite #11151D, Ink #171B24, Ultraviolet #6C43F3, Aqua #4FDCF7,
  *   Moonlight #FFF9ED.
- * Never reaches the demo build: gothic isn't in the demo build's
- * EXPOSED_THEME_IDS (src/theme.ts) and [data-justiceos-theme] is only ever
- * stamped by the gateway-only HTML transform -- the demo build's chocolate
- * theme is untouched either way. Same out-specify technique as the
- * neutral override immediately above (dual anchor: :root[...] for the
- * html anchor, bare [...] for the <Theme> div anchor) -- see that block's
- * comment for why both are needed.
+ * Scoped by the gothic theme id alone (dual anchor: :root[...] for the
+ * <html> anchor, bare [...] for the <Theme> component's own inner div
+ * anchor -- both carry data-astryx-theme, and BOTH need overriding: an
+ * earlier version of this rule additionally gated on [data-justiceos-theme],
+ * which the gateway-only HTML transform only ever stamps on <html> -- the
+ * inner <Theme> div never got it, so gothic's OWN --color-accent (a pale
+ * near-white, #e8f1f6) kept winning for every element inside that div
+ * (i.e. everything -- confirmed by inspecting a live button's computed
+ * --color-accent, which read the un-overridden value despite <html>'s own
+ * computed value being correctly overridden). Dropping that gate fixes it
+ * without reopening the demo build: gothic is not reachable there at all --
+ * loadThemeId() (src/theme.ts) hard-falls-back to DEFAULT_THEME_ID for any
+ * id outside EXPOSED_THEME_IDS (= ['chocolate']), so a bare gothic selector
+ * can only ever match the gateway build, which forces gothic unconditionally
+ * (main.tsx). Same technique as the neutral override immediately above.
  *
  * Aqua is deliberately NOT a broad token here (the brand brief calls for
  * it "sparingly, for highlights and connection indicators") -- it is used
  * directly, in exactly one spot (AgentRail's "connecting" status dot;
  * see AgentRail.css), rather than becoming a second competing accent.
  */
-:root[data-astryx-theme='gothic'][data-justiceos-theme],
-[data-astryx-theme='gothic'][data-justiceos-theme] {
+:root[data-astryx-theme='gothic'],
+[data-astryx-theme='gothic'] {
   /* Backgrounds: graphite for the page/base surface, ink one step up for
    * cards, panels, inputs, nav, and other elevated surfaces. */
   --color-background-body: #11151D;

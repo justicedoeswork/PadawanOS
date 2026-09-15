@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import justiceOsMark from '../assets/brand/justiceos-mark-color.svg';
+import justiceOsMark from '../assets/brand/gateway-presentation/justiceos-mark-color.svg';
 import { useI18n } from '../i18n/context';
 import './ManagerChat.css';
 

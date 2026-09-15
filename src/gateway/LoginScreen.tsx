@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from 'react';
-import justiceOsLogo from '../assets/brand/justiceos-logo-primary.svg';
+import justiceOsLogo from '../assets/brand/gateway-presentation/justiceos-logo-primary.svg';
 import { useI18n } from '../i18n/context';
 import './LoginScreen.css';
 
