@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
+import justiceOsLogo from '../assets/brand/justiceos-logo-primary.svg';
 import { useI18n } from '../i18n/context';
 import { usePanda } from '../store';
 import { connectionLifecycle, isLinkUp, type ConnectionLifecycle } from '../projector/connectionLifecycle';
@@ -79,7 +80,9 @@ export function Dashboard({ onOpenAgent }: { onOpenAgent(): void }) {
   return (
     <div className="gw-dashboard">
       <header className="gw-dashboard-header">
-        <h1 className="gw-dashboard-heading">{t('dashboard.heading')}</h1>
+        <h1 className="gw-dashboard-heading">
+          <img src={justiceOsLogo} alt={t('dashboard.heading')} className="gw-dashboard-logo" />
+        </h1>
         <p className="gw-dashboard-greeting">{t(GREETING_KEYS[greetingPeriod])}</p>
       </header>
 

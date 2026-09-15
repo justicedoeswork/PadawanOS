@@ -171,6 +171,91 @@
   --color-background-body: light-dark(#f8f8f7, #1b1b1b);
 }
 
+/*
+ * JusticeOS gateway build dark-mode brand override -- gateway build only.
+ * main.tsx forces the gothic theme for that build (never the demo build);
+ * vite.config.ts's applyJusticeOsHtmlBranding stamps [data-justiceos-theme]
+ * onto <html> from the very first byte of HTML (no flash of gothic's own
+ * off-white accent before this block loads). Gothic supplies the
+ * structurally correct dark-mode base (contrast-safe defaults, correct
+ * disabled/hover/focus behavior in every Astryx component); this block
+ * only replaces its specific hue values with the JusticeOS brand palette
+ * (JusticeOS-Brand-Assets.zip's README):
+ *   Graphite #11151D, Ink #171B24, Ultraviolet #6C43F3, Aqua #4FDCF7,
+ *   Moonlight #FFF9ED.
+ * Never reaches the demo build: gothic isn't in the demo build's
+ * EXPOSED_THEME_IDS (src/theme.ts) and [data-justiceos-theme] is only ever
+ * stamped by the gateway-only HTML transform -- the demo build's chocolate
+ * theme is untouched either way. Same out-specify technique as the
+ * neutral override immediately above (dual anchor: :root[...] for the
+ * html anchor, bare [...] for the <Theme> div anchor) -- see that block's
+ * comment for why both are needed.
+ *
+ * Aqua is deliberately NOT a broad token here (the brand brief calls for
+ * it "sparingly, for highlights and connection indicators") -- it is used
+ * directly, in exactly one spot (AgentRail's "connecting" status dot;
+ * see AgentRail.css), rather than becoming a second competing accent.
+ */
+:root[data-astryx-theme='gothic'][data-justiceos-theme],
+[data-astryx-theme='gothic'][data-justiceos-theme] {
+  /* Backgrounds: graphite for the page/base surface, ink one step up for
+   * cards, panels, inputs, nav, and other elevated surfaces. */
+  --color-background-body: #11151D;
+  --color-background-surface: #11151D;
+  --color-background-muted: #171B24;
+  --color-background-card: #171B24;
+  --color-background-popover: #1D2230;
+  --color-background-inverted: #FFF9ED;
+  --color-overlay: #11151DCC;
+  --color-overlay-hover: #FFF9ED0D;
+  --color-overlay-pressed: #FFF9ED1A;
+
+  /* Text/icons: moonlight primary, muted cool gray secondary, a dimmer
+   * version of the same gray for disabled -- no brown/tan tint anywhere
+   * in the ladder. */
+  --color-text-primary: #FFF9ED;
+  --color-text-secondary: #9AA4B2;
+  --color-text-disabled: #5B6472;
+  --color-text-accent: #6C43F3;
+  --color-icon-primary: #FFF9ED;
+  --color-icon-secondary: #9AA4B2;
+  --color-icon-disabled: #5B6472;
+
+  /* Interactive accent: the logo's ultraviolet, everywhere generically
+   * "accent" resolves (buttons, links, focus rings, the active-session
+   * pulse dot) -- on-accent text is moonlight for contrast against the
+   * saturated violet. */
+  --color-accent: #6C43F3;
+  --color-accent-muted: #6C43F333;
+  --color-icon-accent: #6C43F3;
+  --color-neutral: #FFF9ED1A;
+  --color-on-accent: #FFF9ED;
+  --color-on-dark: #FFF9ED;
+  --color-on-light: #11151D;
+
+  /* Borders/dividers: a subtle light-on-dark line, same translucency
+   * pattern gothic itself uses, tinted moonlight instead of its own
+   * off-white. */
+  --color-border: #FFF9ED1F;
+  --color-border-emphasized: #5B6472;
+  --color-skeleton: #5B6472;
+  --color-shadow: #00000066;
+
+  /* Status: green only for success/connected, amber only for warnings,
+   * red only for errors/destructive -- never gothic's own muted khaki
+   * (warning) or dusty-rose (error), which read closer to brown than to
+   * a clear status color. */
+  --color-success: #34D399;
+  --color-success-muted: #1F5C46;
+  --color-on-success: #052E1E;
+  --color-warning: #FBBF24;
+  --color-warning-muted: #6B4E12;
+  --color-on-warning: #2A1D02;
+  --color-error: #F87171;
+  --color-error-muted: #6B2323;
+  --color-on-error: #2A0A0A;
+}
+
 :root {
   /* Panda geometry stayed on a 4px step when Tailwind left (#32 Phase 1
    * pinned --spacing for the same reason: matcha's --spacing-1 is 6px and

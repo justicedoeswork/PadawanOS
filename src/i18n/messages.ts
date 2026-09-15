@@ -584,6 +584,7 @@ export const messages = {
     zh: '等待你的批准 — 在消息流中处理',
   },
   'lifecycle.working': { en: 'Panda is working…', zh: 'Panda 正在工作…' },
+  'lifecycle.workingGateway': { en: 'Working…', zh: '处理中…' },
   'lifecycle.connecting': { en: 'Connecting…', zh: '连接中…' },
   'lifecycle.connectFailed': {
     en: 'Connection failed — reconnect & resume from the sidebar, or connect again',

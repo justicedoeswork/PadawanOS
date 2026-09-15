@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import pandaBadge from '../assets/brand/panda-badge.png';
+import justiceOsMark from '../assets/brand/justiceos-mark-color.svg';
 import { useI18n } from '../i18n/context';
 import './ManagerChat.css';
 
@@ -8,9 +8,9 @@ import './ManagerChat.css';
  * Floating Justice Manager chat button + placeholder panel (LAYOUT #3).
  * Phase 1 only: there is no manager backend yet, so this never claims to
  * be operational and never sends anything anywhere -- opening it just
- * shows a clearly-labeled placeholder. The ordinary panda image is kept
- * here specifically (not elsewhere in the gateway build) as the Justice
- * Manager's avatar per the branding brief; nothing here calls it "Panda".
+ * shows a clearly-labeled placeholder. The standalone JusticeOS mark
+ * (justiceos-mark-color.svg) is the Justice Manager's avatar here, per
+ * the finalized branding -- the earlier placeholder panda image is gone.
  */
 export function ManagerChat() {
   const { t } = useI18n();
@@ -27,7 +27,7 @@ export function ManagerChat() {
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        <img src={pandaBadge} alt="" className="gw-manager-fab-icon" />
+        <img src={justiceOsMark} alt="" className="gw-manager-fab-icon" />
       </button>
 
       {open && (

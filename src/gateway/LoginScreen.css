@@ -52,18 +52,18 @@
   text-align: center;
 }
 
-.gw-login-badge {
-  width: 56px;
-  height: 56px;
+/* Full wordmark (justiceos-logo-primary.svg, 1600x512 -- ~3.125:1). Sized
+ * by width with height:auto so the aspect ratio is never distorted;
+ * max-width keeps it from overflowing the 360px card on any phone. */
+.gw-login-logo {
+  width: min(220px, 100%);
+  height: auto;
   margin-bottom: 4px;
-  border-radius: var(--panda-radius-lg);
 }
 
 .gw-login-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--color-fg);
+  line-height: 0;
 }
 
 .gw-login-tagline {
@@ -134,7 +134,7 @@
   padding: 10px 16px;
   font-size: 16px;
   font-weight: 600;
-  color: var(--color-accent-fg, #fff);
+  color: var(--color-on-accent, #fff);
   transition: var(--panda-colors-transition);
 }
 

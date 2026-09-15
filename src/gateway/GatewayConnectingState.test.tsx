@@ -16,4 +16,14 @@ describe('GatewayConnectingState (replaces EmptyState onboarding in the gateway 
     expect(markup).not.toMatch(/quickstart/i);
     expect(markup).not.toMatch(/github\.com/i);
   });
+
+  it('shows the real, unmodified JusticeOS mark in this loading state', () => {
+    const markup = renderToStaticMarkup(
+      <I18nProvider>
+        <GatewayConnectingState />
+      </I18nProvider>,
+    );
+    expect(markup).toContain('gw-connecting-mark');
+    expect(markup).toMatch(/JusticeOS%20wizard%20mark/);
+  });
 });

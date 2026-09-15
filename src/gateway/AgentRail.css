@@ -48,8 +48,18 @@
   color: var(--color-accent);
 }
 
+/* Standalone brand mark (justiceos-mark-color.svg): fixed square, never
+ * stretched -- height:auto keyed off width preserves its own aspect
+ * ratio regardless of container. */
+.gw-rail-brand-mark {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
 .gw-rail-home {
-  margin-top: 4px;
+  margin-top: 12px;
 }
 
 .gw-rail-agent {
@@ -85,8 +95,12 @@
 .gw-rail-status-dot--connected {
   background: var(--color-success);
 }
+/* Aqua, used sparingly (brand brief): exactly this one connection-in-
+ * progress indicator, never a general accent -- see index.css's dark-mode
+ * override comment. Hardcoded rather than a new global token since this
+ * is its only use. */
 .gw-rail-status-dot--connecting {
-  background: var(--color-accent);
+  background: #4FDCF7;
 }
 .gw-rail-status-dot--error {
   background: var(--color-danger);

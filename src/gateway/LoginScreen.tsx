@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from 'react';
-import pandaBadge from '../assets/brand/panda-badge.png';
+import justiceOsLogo from '../assets/brand/justiceos-logo-primary.svg';
 import { useI18n } from '../i18n/context';
 import './LoginScreen.css';
 
@@ -43,8 +43,13 @@ export function LoginScreen({
     <div className="gw-login-screen">
       <form className="gw-login-card" onSubmit={handleSubmit} aria-describedby={notice ? noticeId : undefined}>
         <div className="gw-login-brand">
-          <img src={pandaBadge} alt="" className="gw-login-badge" />
-          <h1 className="gw-login-title">{t('gateway.title')}</h1>
+          {/* Full wordmark (justiceos-logo-primary.svg) -- horizontal space
+              permits it here. The <h1> wraps the image so the page keeps a
+              real accessible heading instead of a redundant visible text
+              label duplicating what the logo already spells out. */}
+          <h1 className="gw-login-title">
+            <img src={justiceOsLogo} alt={t('gateway.title')} className="gw-login-logo" />
+          </h1>
           <p className="gw-login-tagline">{t('gateway.tagline')}</p>
         </div>
 

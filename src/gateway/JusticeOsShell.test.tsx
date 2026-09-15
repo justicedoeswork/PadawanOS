@@ -81,8 +81,10 @@ describe('JusticeOsShell (gateway build): JusticeOS dashboard + rail', () => {
         </JusticeOsShell>
       </I18nProvider>,
     );
-    // The Justice Manager avatar's asset filename (panda-badge.png) is
-    // expected and out of scope here -- only visible text is checked.
+    // Strip src/href/alt attribute values before checking -- this scan is
+    // about visible TEXT, not asset URLs (defensive: no asset path should
+    // trip it either way now that the Justice Manager avatar is the
+    // JusticeOS mark, not the old panda-badge.png).
     const visibleText = markup.replace(/\s(src|href|alt)="[^"]*"/gi, '');
     expect(visibleText).not.toMatch(/\bpanda\b/i);
     expect(markup).not.toMatch(/add agent/i);

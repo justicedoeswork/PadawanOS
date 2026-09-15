@@ -51,11 +51,69 @@ describe('applyJusticeOsHtmlBranding (gateway build HTML)', () => {
     expect(gatewayHtml.match(/<title>/g)).toHaveLength(1);
     expect(gatewayHtml).toMatch(/<div id="root">/);
   });
+
+  it('stamps [data-justiceos-theme] on <html> -- the dark-mode override’s scoping hook (index.css)', () => {
+    expect(gatewayHtml).toMatch(/<html lang="en" data-justiceos-theme="true">/);
+  });
+
+  it('installs the supplied favicon, apple-touch-icon, and manifest from /justiceos/, not the demo build’s own icons', () => {
+    expect(gatewayHtml).toMatch(/<link rel="icon" href="\/justiceos\/favicon\.ico" sizes="any" \/>/);
+    expect(gatewayHtml).toMatch(/<link rel="icon" type="image\/png" sizes="32x32" href="\/justiceos\/favicon-32\.png" \/>/);
+    expect(gatewayHtml).toMatch(/<link rel="apple-touch-icon" href="\/justiceos\/apple-touch-icon\.png" \/>/);
+    expect(gatewayHtml).toMatch(/<link rel="manifest" href="\/justiceos\/manifest\.webmanifest" \/>/);
+    expect(gatewayHtml).not.toMatch(/href="\/favicon\.png"/);
+    expect(gatewayHtml).not.toMatch(/href="\/apple-touch-icon\.png"/);
+  });
+
+  it('sets theme-color to the brand’s graphite background', () => {
+    expect(gatewayHtml).toMatch(/<meta name="theme-color" content="#11151D" \/>/);
+  });
 });
 
 describe('applyJusticeOsHtmlBranding leaves the demo build alone', () => {
   it('the source index.html itself (what the demo build ships unmodified) still says Panda -- proving this function is opt-in, not a global rewrite', () => {
     expect(sourceHtml).toMatch(/<title>Panda — ACP Client<\/title>/);
+  });
+
+  it('the source index.html keeps its own favicon/apple-touch-icon and carries no [data-justiceos-theme] or JusticeOS icon paths', () => {
+    expect(sourceHtml).toMatch(/<link rel="icon" type="image\/png" href="\/favicon\.png" \/>/);
+    expect(sourceHtml).toMatch(/<link rel="apple-touch-icon" href="\/apple-touch-icon\.png" \/>/);
+    expect(sourceHtml).not.toMatch(/data-justiceos-theme/);
+    expect(sourceHtml).not.toMatch(/\/justiceos\//);
+  });
+});
+
+describe('the gateway PWA manifest (public/justiceos/manifest.webmanifest)', () => {
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(REPO_ROOT, 'public/justiceos/manifest.webmanifest'), 'utf8'),
+  ) as {
+    name: string;
+    short_name: string;
+    background_color: string;
+    theme_color: string;
+    icons: Array<{ src: string; sizes: string; purpose?: string }>;
+  };
+
+  it('identifies the installed app as JusticeOS', () => {
+    expect(manifest.name).toBe('JusticeOS');
+    expect(manifest.short_name).toBe('JusticeOS');
+  });
+
+  it('uses the brand’s graphite for both background and theme color', () => {
+    expect(manifest.background_color).toBe('#11151D');
+    expect(manifest.theme_color).toBe('#11151D');
+  });
+
+  it('references the supplied 192/512/maskable icons, and every referenced file actually exists', () => {
+    const srcs = manifest.icons.map((icon) => icon.src);
+    expect(srcs).toContain('/justiceos/icon-192.png');
+    expect(srcs).toContain('/justiceos/icon-512.png');
+    expect(srcs).toContain('/justiceos/icon-maskable-512.png');
+    expect(manifest.icons.some((icon) => icon.purpose === 'maskable')).toBe(true);
+    for (const icon of manifest.icons) {
+      const onDisk = path.join(REPO_ROOT, 'public', icon.src.replace(/^\//, ''));
+      expect(fs.existsSync(onDisk), `expected ${icon.src} to exist on disk`).toBe(true);
+    }
   });
 });
 

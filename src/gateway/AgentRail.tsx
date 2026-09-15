@@ -1,4 +1,5 @@
 import { Home, LogOut, ShieldCheck, Settings as SettingsIcon } from 'lucide-react';
+import justiceOsMark from '../assets/brand/justiceos-mark-color.svg';
 import { useI18n } from '../i18n/context';
 import type { ConnectionPhase } from '../projector/connectionLifecycle';
 import { isLinkUp } from '../projector/connectionLifecycle';
@@ -42,6 +43,11 @@ export function AgentRail({
 
   return (
     <nav className="gw-rail" aria-label={t('gateway.title')}>
+      {/* Standalone mark (justiceos-mark-color.svg): brand identity, not a
+          navigation control -- purely decorative (the Home button below is
+          the actual "go to dashboard" affordance), so it's aria-hidden. */}
+      <img src={justiceOsMark} alt="" className="gw-rail-brand-mark" aria-hidden="true" />
+
       <button
         type="button"
         className={`gw-rail-btn gw-rail-home ${activeView === 'dashboard' ? 'gw-rail-btn--active' : ''}`}

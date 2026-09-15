@@ -89,6 +89,12 @@ describe('Dashboard (JusticeOS home screen, LAYOUT #2)', () => {
     expect(markup).toMatch(/Good (morning|afternoon|evening)/);
   });
 
+  it('uses the real, unmodified JusticeOS wordmark for the heading, not plain text', () => {
+    const markup = renderDashboard();
+    expect(markup).toContain('gw-dashboard-logo');
+    expect(markup).toMatch(/justiceos-logo-primary/);
+  });
+
   it('renders a Justice Manager briefing card that never claims to have real content', () => {
     const markup = renderDashboard();
     expect(markup).toContain('Justice Manager briefing');

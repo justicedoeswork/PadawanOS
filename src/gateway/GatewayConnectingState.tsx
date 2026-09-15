@@ -1,3 +1,4 @@
+import justiceOsMark from '../assets/brand/justiceos-mark-color.svg';
 import { useI18n } from '../i18n/context';
 import './GatewayConnectingState.css';
 
@@ -13,6 +14,7 @@ export function GatewayConnectingState() {
   const { t } = useI18n();
   return (
     <div className="gw-connecting" role="status" aria-live="polite">
+      <img src={justiceOsMark} alt="" className="gw-connecting-mark" aria-hidden="true" />
       <p className="gw-connecting-title">{t('gateway.connectingTitle')}</p>
       <p className="gw-connecting-body">{t('gateway.connectingBody')}</p>
     </div>

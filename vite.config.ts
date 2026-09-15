@@ -35,7 +35,20 @@ const isGatewayBuild = process.env.JUSTICEOS_BUILD_MODE === 'gateway';
  */
 export function applyJusticeOsHtmlBranding(html: string): string {
   const replacements: Array<[string, string]> = [
+    // Marks this document as the gateway build for the dark-mode token
+    // override in index.css ([data-justiceos-theme]) -- present from the
+    // very first byte of HTML, so there is no flash of the demo build's
+    // (chocolate) theme before JS runs.
+    ['<html lang="en">', '<html lang="en" data-justiceos-theme="true">'],
     ['<title>Panda — ACP Client</title>', '<title>JusticeOS</title>'],
+    [
+      '    <link rel="icon" type="image/png" href="/favicon.png" />\n    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />',
+      '    <link rel="icon" href="/justiceos/favicon.ico" sizes="any" />\n' +
+        '    <link rel="icon" type="image/png" sizes="32x32" href="/justiceos/favicon-32.png" />\n' +
+        '    <link rel="apple-touch-icon" href="/justiceos/apple-touch-icon.png" />\n' +
+        '    <link rel="manifest" href="/justiceos/manifest.webmanifest" />\n' +
+        '    <meta name="theme-color" content="#11151D" />',
+    ],
     [
       '    <meta\n      name="description"\n      content="A ready-made client for agent developers: your agent speaks ACP, Panda is its UI. Streaming conversations, tool-call cards, inline permissions and polished diffs — no accounts, no telemetry, no backend."\n    />',
       '    <meta\n      name="description"\n      content="JusticeOS: sign in to reach your Insurance Audit Agent — streaming conversations, tool-call cards, inline permissions and polished diffs."\n    />\n    <meta name="application-name" content="JusticeOS" />\n    <meta name="apple-mobile-web-app-title" content="JusticeOS" />',

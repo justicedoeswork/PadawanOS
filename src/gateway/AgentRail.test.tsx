@@ -33,6 +33,15 @@ describe('AgentRail (JusticeOS gateway build, LAYOUT #1)', () => {
     expect(markup).not.toMatch(/panda/i);
   });
 
+  it('renders the real, unmodified standalone JusticeOS mark at the top of the rail', () => {
+    const markup = renderRail();
+    expect(markup).toContain('gw-rail-brand-mark');
+    // justiceos-mark-color.svg is small enough to be inlined as a data URI
+    // by Vite -- its own <title> text is the real, load-bearing proof that
+    // the actual supplied artwork (not a redrawn stand-in) is embedded.
+    expect(markup).toMatch(/JusticeOS%20wizard%20mark/);
+  });
+
   it('renders no hamburger/menu control -- the rail itself is the only navigation', () => {
     const markup = renderRail();
     expect(markup).not.toMatch(/open navigation|close navigation/i);
