@@ -1,0 +1,20 @@
+/* JusticeOS gateway shell (gateway build only): rail + main content side
+ * by side, main content fitting BESIDE the rail rather than underneath it
+ * (iPhone requirement). 100dvh here, not 100vh, for the same reason as
+ * every other full-height surface in this app (iOS Safari's collapsing
+ * URL bar). */
+
+.gw-shell {
+  display: flex;
+  height: 100dvh;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.gw-shell-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}

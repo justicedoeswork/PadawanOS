@@ -12,6 +12,7 @@ import { applyFontSize, loadFontSizePair } from './fontSize';
 import { I18nProvider } from './i18n/context';
 import { parseDevPage } from './routes';
 import { GatewayGate } from './gateway/GatewayGate';
+import { JusticeOsShell } from './gateway/JusticeOsShell';
 
 // Earliest possible (#105): the ring must catch startup errors too.
 installConsoleTap();
@@ -44,7 +45,9 @@ function ThemeRoot() {
     <Theme theme={choice.theme} mode={choice.darkOnly ? 'dark' : 'system'}>
       <I18nProvider>
         <GatewayGate>
-          <App />
+          <JusticeOsShell>
+            <App />
+          </JusticeOsShell>
         </GatewayGate>
       </I18nProvider>
     </Theme>
