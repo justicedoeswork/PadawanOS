@@ -52,9 +52,10 @@
   text-align: center;
 }
 
-/* Full wordmark (justiceos-logo-primary.svg, 1600x512 -- ~3.125:1). Sized
- * by width with height:auto so the aspect ratio is never distorted;
- * max-width keeps it from overflowing the 360px card on any phone.
+/* Full wordmark (justiceos-logo.png, 1543x619 -- ~2.49:1; a raster crop of
+ * the approved brand master, not a vector). Sized by width with
+ * height:auto so the aspect ratio is never distorted; max-width keeps it
+ * from overflowing the 360px card on any phone.
  *
  * margin-inline:auto is load-bearing, not decorative: <img> is a block
  * element (a global reset sets `display: block` on every image), so

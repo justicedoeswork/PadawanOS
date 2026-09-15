@@ -1,6 +1,6 @@
 import type { Ref } from 'react';
 import { ChevronLeft, ChevronRight, Home, LogOut, Settings as SettingsIcon, X } from 'lucide-react';
-import justiceOsMark from '../assets/brand/gateway-presentation/justiceos-mark-color.svg';
+import justiceOsMark from '../assets/brand/justiceos-mark.png';
 import { AgentAvatar } from './AgentAvatar';
 import { useI18n } from '../i18n/context';
 import type { ConnectionPhase } from '../projector/connectionLifecycle';

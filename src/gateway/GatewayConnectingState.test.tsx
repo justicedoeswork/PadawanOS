@@ -24,6 +24,8 @@ describe('GatewayConnectingState (replaces EmptyState onboarding in the gateway 
       </I18nProvider>,
     );
     expect(markup).toContain('gw-connecting-mark');
-    expect(markup).toMatch(/JusticeOS%20wizard%20mark/);
+    // justiceos-mark.png is above Vite's inline threshold, so its own
+    // filename survives in the resolved asset path.
+    expect(markup).toMatch(/justiceos-mark[.\w-]*\.png/);
   });
 });

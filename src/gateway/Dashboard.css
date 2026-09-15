@@ -37,11 +37,12 @@
   line-height: 0;
 }
 
-/* Full wordmark (justiceos-logo-primary.svg, 1600x512 -- ~3.125:1) --
- * horizontal space permits it here on every width this dashboard
- * supports (390px phones included: 240px wide keeps it well clear of
- * the ~322px content column beside the rail). Sized by width with
- * height:auto so the aspect ratio is never distorted. */
+/* Full wordmark (justiceos-logo.png, 1543x619 -- ~2.49:1; a raster crop of
+ * the approved brand master, not a vector) -- horizontal space permits it
+ * here on every width this dashboard supports (390px phones included:
+ * 240px wide keeps it well clear of the ~322px content column beside the
+ * rail). Sized by width with height:auto so the aspect ratio is never
+ * distorted. */
 .gw-dashboard-logo {
   width: 200px;
   height: auto;

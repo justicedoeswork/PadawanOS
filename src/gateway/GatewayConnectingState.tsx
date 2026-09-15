@@ -1,4 +1,4 @@
-import justiceOsMark from '../assets/brand/gateway-presentation/justiceos-mark-color.svg';
+import justiceOsMark from '../assets/brand/justiceos-mark.png';
 import { useI18n } from '../i18n/context';
 import './GatewayConnectingState.css';
 

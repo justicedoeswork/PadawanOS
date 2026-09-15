@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import justiceOsLogo from '../assets/brand/gateway-presentation/justiceos-logo-primary.svg';
+import justiceOsLogo from '../assets/brand/justiceos-logo.png';
 import { useI18n } from '../i18n/context';
 import { usePanda } from '../store';
 import { connectionLifecycle, isLinkUp, type ConnectionLifecycle } from '../projector/connectionLifecycle';

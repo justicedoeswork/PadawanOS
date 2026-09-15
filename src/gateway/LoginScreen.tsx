@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from 'react';
-import justiceOsLogo from '../assets/brand/gateway-presentation/justiceos-logo-primary.svg';
+import justiceOsLogo from '../assets/brand/justiceos-logo.png';
 import { useI18n } from '../i18n/context';
 import './LoginScreen.css';
 
@@ -43,7 +43,8 @@ export function LoginScreen({
     <div className="gw-login-screen">
       <form className="gw-login-card" onSubmit={handleSubmit} aria-describedby={notice ? noticeId : undefined}>
         <div className="gw-login-brand">
-          {/* Full wordmark (justiceos-logo-primary.svg) -- horizontal space
+          {/* Full wordmark (justiceos-logo.png -- a raster crop of the
+              approved brand master, not a vector) -- horizontal space
               permits it here. The <h1> wraps the image so the page keeps a
               real accessible heading instead of a redundant visible text
               label duplicating what the logo already spells out. */}

@@ -40,10 +40,12 @@ describe('AgentRail (JusticeOS gateway build, LAYOUT #1)', () => {
   it('renders the real, unmodified standalone JusticeOS mark at the top of the rail', () => {
     const markup = renderRail();
     expect(markup).toContain('gw-rail-brand-mark');
-    // justiceos-mark-color.svg is small enough to be inlined as a data URI
-    // by Vite -- its own <title> text is the real, load-bearing proof that
-    // the actual supplied artwork (not a redrawn stand-in) is embedded.
-    expect(markup).toMatch(/JusticeOS%20wizard%20mark/);
+    // justiceos-mark.png (a raster crop of the approved brand master) is
+    // above Vite's inline-as-data-URI threshold, so it resolves to a real
+    // asset path -- its own filename is the load-bearing proof the actual
+    // supplied artwork (not a redrawn stand-in) is embedded, not an inlined
+    // SVG data URI.
+    expect(markup).toMatch(/justiceos-mark[.\w-]*\.png/);
   });
 
   it('marks the active view with aria-current', () => {

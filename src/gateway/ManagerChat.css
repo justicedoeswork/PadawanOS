@@ -4,7 +4,7 @@
  * under the iPhone home-indicator gesture zone. */
 
 /* Background is the "Ink" elevated surface, not the violet accent: the
- * mark itself (justiceos-mark-color.svg) is violet+aqua+moonlight on a
+ * mark itself (justiceos-mark.png) is violet+aqua+moonlight on a
  * transparent background, so a violet button behind it would wash the
  * icon out. Matches how the brand's own app-icon renders the mark (dark
  * neutral background, colorful mark on top). */
@@ -32,7 +32,7 @@
   width: 34px;
   height: 34px;
   /* No object-fit:cover / forced aspect crop -- the mark is a full-bleed
-     square SVG already; contain preserves it exactly as supplied. */
+     square raster crop already; contain preserves it exactly as supplied. */
   object-fit: contain;
 }
 

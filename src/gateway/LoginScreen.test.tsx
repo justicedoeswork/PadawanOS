@@ -14,11 +14,14 @@ function render() {
 describe('LoginScreen (JusticeOS gateway build)', () => {
   it('renders the real, unmodified JusticeOS wordmark, not the old panda badge', () => {
     const markup = render();
-    // justiceos-logo-primary.svg is above Vite's inline-as-data-URI
-    // threshold, so it resolves to a real asset path/URL rather than an
-    // inlined data URI -- either way, its own filename survives.
-    expect(markup).toMatch(/justiceos-logo-primary/);
+    // justiceos-logo.png (a raster crop of the approved brand master) is
+    // above Vite's inline-as-data-URI threshold, so it resolves to a real
+    // asset path/URL rather than an inlined data URI -- its own filename
+    // survives, and is the load-bearing proof this is the real asset, not
+    // a placeholder.
+    expect(markup).toMatch(/justiceos-logo[.\w-]*\.png/);
     expect(markup).not.toMatch(/panda-badge/);
+    expect(markup).not.toMatch(/\.svg/);
   });
 
   it('never renders the word "Panda"', () => {

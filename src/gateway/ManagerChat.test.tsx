@@ -30,12 +30,13 @@ describe('ManagerChat (floating Justice Manager button, LAYOUT #3)', () => {
     expect(visibleText).not.toMatch(/\bpanda\b/i);
   });
 
-  it('uses the real, unmodified JusticeOS mark SVG as the avatar, not the old panda mascot image', () => {
+  it('uses the real, unmodified JusticeOS mark as the avatar, not the old panda mascot image', () => {
     const markup = render();
-    // Vite inlines small SVGs as a data URI rather than a file path, so
-    // this asserts on the SVG's own <title> text (proof the real supplied
-    // artwork -- not a redrawn/regenerated stand-in -- is what's embedded).
-    expect(markup).toMatch(/JusticeOS%20wizard%20mark/);
+    // justiceos-mark.png (a raster crop of the approved brand master) is
+    // above Vite's inline-as-data-URI threshold, so its own filename
+    // survives in the resolved asset path -- proof the real supplied
+    // artwork, not a redrawn/regenerated stand-in, is what's embedded.
+    expect(markup).toMatch(/justiceos-mark[.\w-]*\.png/);
     expect(markup).not.toMatch(/panda-badge/);
   });
 });
