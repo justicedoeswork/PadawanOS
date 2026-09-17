@@ -8,12 +8,16 @@ describe('parseHash', () => {
     ['#/', 'main'],
     ['#//', 'main'],
     ['#/settings', 'settings'],
+    ['#/marketing', 'marketing'],
+    ['#marketing', 'marketing'],
+    ['#/marketing/', 'marketing'],
     ['#settings', 'settings'],
     ['#/settings/', 'settings'],
     ['#/settings//', 'settings'],
     // Unknown or stale links fall back to main — never a blank app.
     ['#/nope', 'main'],
     ['#/settings/extra', 'main'],
+    ['#/marketing/extra', 'main'],
   ])('parses %j as %s', (hash, route) => {
     expect(parseHash(hash)).toBe(route);
   });
@@ -46,8 +50,10 @@ describe('routeHash / navigate round-trip', () => {
     expect(routeHash('main')).toBe('#/');
     expect(routeHash('settings')).toBe('#/settings');
     expect(routeHash('demo')).toBe('#/demo');
+    expect(routeHash('marketing')).toBe('#/marketing');
     expect(parseHash(routeHash('main'))).toBe('main');
     expect(parseHash(routeHash('settings'))).toBe('settings');
     expect(parseHash(routeHash('demo'))).toBe('demo');
+    expect(parseHash(routeHash('marketing'))).toBe('marketing');
   });
 });

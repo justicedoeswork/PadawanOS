@@ -367,6 +367,36 @@
   background: var(--color-raised);
 }
 
+/* The Marketing workspace entry: the same quiet chrome row as "add agent",
+   directly above the footer, so the connection/session UI above it is
+   untouched. */
+.sidebar-workspace-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 20px;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: var(--panda-size-chrome);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: var(--panda-colors-transition);
+}
+
+.sidebar-workspace-link:hover {
+  color: var(--color-fg);
+  background: var(--color-raised);
+}
+
+.sidebar-workspace-link--active {
+  color: var(--color-fg);
+  background: var(--color-raised);
+}
+
 .sidebar-footer {
   display: flex;
   align-items: center;

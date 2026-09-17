@@ -1,0 +1,671 @@
+/**
+ * Marketing workspace styling. Semantic tokens only (DESIGN.md): every
+ * color comes from the `--color-*` alias layer in index.css, every gap from
+ * the 4px `--space-*` scale, every radius from `--panda-radius-*` — so the
+ * workspace follows the chocolate theme (and any future theme) with no
+ * changes here, in both light and dark.
+ */
+
+.mkt-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-3) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: var(--panda-size-chrome);
+}
+
+@media (min-width: 640px) {
+  .mkt-page {
+    padding: var(--space-4) var(--space-5) var(--space-5);
+  }
+}
+
+.mkt-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.mkt-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.mkt-muted {
+  color: var(--color-muted);
+}
+
+.mkt-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  justify-content: center;
+}
+
+/* ---- queue ---- */
+
+.mkt-queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.mkt-queue-summary {
+  color: var(--color-muted);
+}
+
+.mkt-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  font-size: var(--panda-size-chrome);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.mkt-section-title--ready_for_approval {
+  color: var(--color-add);
+}
+
+.mkt-section-title--blocked {
+  color: var(--color-danger);
+}
+
+.mkt-section-title--changes_requested {
+  color: var(--color-warn);
+}
+
+.mkt-section-count {
+  border-radius: var(--panda-radius-full);
+  background: var(--color-raised);
+  color: var(--color-muted);
+  padding: 0 var(--space-1);
+  font-size: var(--panda-size-micro);
+}
+
+.mkt-card-grid {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .mkt-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
+.mkt-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  text-align: left;
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-border);
+  border-radius: var(--panda-radius-lg);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  transition: var(--panda-colors-transition);
+}
+
+.mkt-card:hover {
+  background: var(--color-raised);
+}
+
+.mkt-card--ready_for_approval {
+  border-left-color: var(--color-add);
+}
+
+.mkt-card--blocked {
+  border-left-color: var(--color-danger);
+}
+
+.mkt-card--changes_requested {
+  border-left-color: var(--color-warn);
+}
+
+.mkt-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+
+.mkt-card-revision,
+.mkt-card-status {
+  color: var(--color-muted);
+  font-size: var(--panda-size-micro);
+}
+
+.mkt-card-title {
+  margin: 0;
+  font-size: var(--panda-size-content);
+  font-weight: 600;
+}
+
+.mkt-card-facts,
+.mkt-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+}
+
+.mkt-fact dt,
+.mkt-overview-item dt {
+  color: var(--color-faint);
+  font-size: var(--panda-size-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mkt-fact dd,
+.mkt-overview-item dd {
+  margin: 0;
+}
+
+.mkt-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  color: var(--color-muted);
+  font-size: var(--panda-size-micro);
+}
+
+.mkt-card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mkt-card-meta--warn {
+  color: var(--color-danger);
+}
+
+.mkt-card-meta--time {
+  margin-left: auto;
+}
+
+/* ---- chips and badges ---- */
+
+.mkt-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.mkt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--space-1);
+  border-radius: var(--panda-radius-full);
+  background: var(--color-raised);
+  color: var(--color-muted);
+  font-size: var(--panda-size-micro);
+}
+
+.mkt-chip--current,
+.mkt-chip--ok,
+.mkt-chip--verified {
+  color: var(--color-add);
+  background: color-mix(in oklab, var(--color-add) 12%, transparent);
+}
+
+.mkt-chip--warn,
+.mkt-chip--pending {
+  color: var(--color-warn);
+  background: color-mix(in oklab, var(--color-warn) 14%, transparent);
+}
+
+.mkt-chip--locked,
+.mkt-chip--historical {
+  color: var(--color-faint);
+  border: 1px dashed var(--color-border);
+  background: transparent;
+}
+
+.mkt-chip--cta {
+  color: var(--color-accent);
+  background: color-mix(in oklab, var(--color-accent) 12%, transparent);
+}
+
+.mkt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--panda-size-micro);
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.mkt-badge--ready_for_approval {
+  color: var(--color-add);
+}
+
+.mkt-badge--blocked {
+  color: var(--color-danger);
+}
+
+.mkt-badge--changes_requested {
+  color: var(--color-warn);
+}
+
+/* ---- review ---- */
+
+.mkt-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.mkt-review--historical {
+  /* A superseded revision reads as an archive page, not a workspace. */
+  opacity: 0.94;
+}
+
+.mkt-review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.mkt-review-head-lead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.mkt-review-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.mkt-review-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.mkt-review-actions,
+.mkt-preview-actions,
+.mkt-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.mkt-dialog-actions {
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+.mkt-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-lg);
+  background: var(--color-surface);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mkt-panel h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  font-size: var(--panda-size-chrome);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-muted);
+}
+
+.mkt-panel h4 {
+  margin: 0;
+  font-size: var(--panda-size-chrome);
+  font-weight: 600;
+}
+
+/* Blockers must be impossible to miss without turning the page into an
+   error console: one accent border, not a wall of red. */
+.mkt-panel--blockers {
+  border-color: var(--color-danger);
+  background: color-mix(in oklab, var(--color-danger) 6%, var(--color-surface));
+}
+
+.mkt-panel--blockers h3 {
+  color: var(--color-danger);
+}
+
+.mkt-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--panda-radius-md);
+  background: var(--color-raised);
+  color: var(--color-fg);
+}
+
+.mkt-notice--success {
+  background: color-mix(in oklab, var(--color-add) 12%, var(--color-surface));
+  border: 1px solid color-mix(in oklab, var(--color-add) 40%, transparent);
+}
+
+.mkt-notice--warn {
+  background: color-mix(in oklab, var(--color-warn) 12%, var(--color-surface));
+  border: 1px solid color-mix(in oklab, var(--color-warn) 40%, transparent);
+}
+
+.mkt-notice--historical {
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  color: var(--color-muted);
+}
+
+.mkt-notice-main {
+  margin: 0;
+  font-weight: 600;
+}
+
+.mkt-notice-sub {
+  margin: 2px 0 0;
+  color: var(--color-muted);
+}
+
+.mkt-kv {
+  margin: 0;
+}
+
+.mkt-kv-label {
+  display: block;
+  color: var(--color-faint);
+  font-size: var(--panda-size-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mkt-list {
+  margin: 0;
+  padding-left: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mkt-list--muted {
+  color: var(--color-muted);
+}
+
+.mkt-details summary {
+  cursor: pointer;
+  color: var(--color-muted);
+}
+
+.mkt-details[open] summary {
+  margin-bottom: var(--space-1);
+}
+
+/* ---- facts ---- */
+
+.mkt-fact-groups {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .mkt-fact-groups {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.mkt-fact-group {
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-md);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.mkt-fact-group--authorized {
+  border-color: color-mix(in oklab, var(--color-add) 45%, var(--color-border));
+}
+
+.mkt-fact-group dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mkt-fact-group dt {
+  color: var(--color-faint);
+  font-size: var(--panda-size-micro);
+}
+
+.mkt-fact-group dd {
+  margin: 0;
+}
+
+/* ---- media ---- */
+
+.mkt-media-grid {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.mkt-media {
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-md);
+  overflow: hidden;
+}
+
+.mkt-media-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-2);
+  text-align: center;
+  color: var(--color-faint);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-raised),
+    var(--color-raised) 8px,
+    var(--color-surface) 8px,
+    var(--color-surface) 16px
+  );
+  font-size: var(--panda-size-micro);
+}
+
+.mkt-media-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  font-size: var(--panda-size-micro);
+}
+
+.mkt-media-name {
+  color: var(--color-fg);
+}
+
+/* ---- channel previews ---- */
+
+.mkt-preview-grid {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .mkt-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.mkt-preview {
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-md);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--color-bg);
+}
+
+.mkt-preview-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+
+.mkt-preview-fields {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.mkt-preview-field dt {
+  color: var(--color-faint);
+  font-size: var(--panda-size-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mkt-preview-field dd {
+  margin: 0;
+}
+
+.mkt-preview-field--prose dd {
+  font-size: var(--panda-size-content);
+  line-height: 1.6;
+}
+
+.mkt-preview-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.mkt-claim-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mkt-claim-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ---- timeline ---- */
+
+.mkt-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mkt-timeline-button {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--panda-radius-md);
+  color: var(--color-fg);
+  transition: var(--panda-colors-transition);
+  text-align: left;
+}
+
+.mkt-timeline-button:hover {
+  background: var(--color-raised);
+}
+
+.mkt-timeline-entry--viewing .mkt-timeline-button {
+  background: var(--color-raised);
+}
+
+.mkt-timeline-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: var(--panda-radius-full);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: var(--panda-size-micro);
+}
+
+/* ---- misc ---- */
+
+.mkt-empty,
+.mkt-integration-down {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-5) var(--space-3);
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.mkt-empty-title,
+.mkt-integration-title {
+  margin: 0;
+  color: var(--color-fg);
+  font-weight: 600;
+}
+
+.mkt-empty-hint {
+  margin: 0;
+}
+
+.mkt-edit-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mkt-form-error {
+  margin: 0;
+  color: var(--color-danger);
+}

@@ -19,6 +19,7 @@ import { useForegroundLifecycle, useMainView, useSessionModes } from './projecto
 import { navigate, useHashRoute } from './routes';
 import { composerDraftKey, DEMO_DRAFT_KEY } from './composerDrafts';
 import { SettingsPage, SETTINGS_SECTIONS, type SettingsSectionId } from './components/SettingsPage';
+import { MarketingPage } from './marketing/MarketingPage';
 import { useReplaySession } from './useReplaySession';
 import { useLiveSession } from './useLiveSession';
 import { UserNoticeToasts } from './components/UserNoticeToasts';
@@ -27,8 +28,9 @@ import './App.css';
 import { useI18n } from './i18n/context';
 
 /** Route-level shell: `#/` is the session screen, `#/settings` the settings
- * screen. MainScreen owns the shell (sidebar + header); the settings route
- * swaps only the main column's content (#111) so the app chrome — sidebar,
+ * screen, `#/marketing` the Marketing Agent review workspace. MainScreen
+ * owns the shell (sidebar + header); the settings and marketing routes swap
+ * only the main column's content (#111) so the app chrome — sidebar,
  * header, mobile drawer — never unmounts across routes. */
 export default function App() {
   const route = useHashRoute();
@@ -46,6 +48,9 @@ export default function App() {
 function MainScreen() {
   const route = useHashRoute();
   const onSettings = route === 'settings';
+  // The marketing workspace replaces the content column only: the sidebar,
+  // its connections and every ACP session keep running untouched behind it.
+  const onMarketing = route === 'marketing';
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   // Which settings section is showing (#117) — MainScreen-level so it
   // survives settings ⇄ main route flips (returning lands where you left).
@@ -98,12 +103,16 @@ function MainScreen() {
   // the top bar is where "which settings page am I on" answers itself. The
   // back arrow stays — it is one of the settings route's three exits.
   const settingsSectionMeta = SETTINGS_SECTIONS.find((entry) => entry.id === settingsSection);
-  const headerTitle = onSettings
+  const headerTitle = onMarketing
+    ? t('mkt.title')
+    : onSettings
     ? t(settingsSectionMeta?.titleKey ?? 'settings.title')
     : !liveActive
       ? t('app.demoHeaderTitle')
       : (activeSession?.title ?? connection.agentName ?? t('app.liveSessionTitle'));
-  const headerMeta = onSettings
+  const headerMeta = onMarketing
+    ? t('mkt.headerMeta')
+    : onSettings
     ? (settingsSectionMeta ? t(settingsSectionMeta.descKey) : null)
     : liveActive
       ? (connection.url ?? 'acp')
@@ -139,7 +148,7 @@ function MainScreen() {
             >
               <Menu size={18} />
             </button>
-            {onSettings && (
+            {(onSettings || onMarketing) && (
               <IconButton
                 variant="ghost"
                 icon={<ArrowLeft size={16} />}
@@ -151,12 +160,14 @@ function MainScreen() {
             <span className="truncate app-header-title">{headerTitle}</span>
           </div>
           {headerMeta !== null && (
-            <span className={`app-header-meta ${onSettings ? 'app-header-meta--desc' : ''}`}>
+            <span className={`app-header-meta ${onSettings || onMarketing ? 'app-header-meta--desc' : ''}`}>
               {headerMeta}
             </span>
           )}
         </header>
-        {onSettings ? (
+        {onMarketing ? (
+          <MarketingPage />
+        ) : onSettings ? (
           <SettingsPage section={settingsSection} />
         ) : (
           <>
