@@ -27,8 +27,15 @@ const SECRET_ENV_NAMES = [
   'MARKETING_AGENT_API_KEY'
 ];
 
+/**
+ * Line endings are normalized on read: these assertions compare whole
+ * lines, and a Windows checkout (git's autocrlf) leaves a carriage
+ * return on the end of each one — a checkout-shape difference, not a
+ * deployment-config difference. The file's own content, and every
+ * assertion made about it, is unchanged.
+ */
 function readFlyToml(): string {
-  return fs.readFileSync(FLY_TOML_PATH, 'utf8');
+  return fs.readFileSync(FLY_TOML_PATH, 'utf8').split(String.fromCharCode(13)).join('');
 }
 
 /**
@@ -169,7 +176,7 @@ describe('.dockerignore (production deployment prep)', () => {
  * here.
  */
 function readDeploymentAcpUrl(): string {
-  const toml = fs.readFileSync(FLY_TOML_PATH, 'utf8');
+  const toml = readFlyToml();
   const line = toml.split('\n').find((l) => /^\s*INSURANCE_AGENT_ACP_URL\s*=/.test(l));
   const match = line ? /"([^"]+)"/.exec(line) : null;
   if (!match) throw new Error('could not read INSURANCE_AGENT_ACP_URL out of fly.toml');
