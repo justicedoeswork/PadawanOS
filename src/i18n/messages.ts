@@ -584,6 +584,7 @@ export const messages = {
     zh: '等待你的批准 — 在消息流中处理',
   },
   'lifecycle.working': { en: 'Panda is working…', zh: 'Panda 正在工作…' },
+  'lifecycle.workingGateway': { en: 'Working…', zh: '处理中…' },
   'lifecycle.connecting': { en: 'Connecting…', zh: '连接中…' },
   'lifecycle.connectFailed': {
     en: 'Connection failed — reconnect & resume from the sidebar, or connect again',
@@ -709,6 +710,96 @@ export const messages = {
   'gateway.loggedOut': { en: 'Signed out.', zh: '已退出登录。' },
   'gateway.logout': { en: 'Sign out', zh: '退出登录' },
   'gateway.loggingOut': { en: 'Signing out…', zh: '正在退出…' },
+
+  // ---- Gateway build: JusticeOS composer/crash overrides (production-
+  // gateway-build only -- the demo build keeps composer.placeholder /
+  // diag.crashTitle unchanged). ----
+  'composer.gatewayPlaceholder': { en: 'Message your Insurance Audit Agent…', zh: '给 Insurance Audit Agent 发消息…' },
+  'diag.crashTitleGateway': { en: 'JusticeOS hit an error', zh: 'JusticeOS 遇到了错误' },
+
+  // ---- Gateway build: connecting state (replaces EmptyState's demo/
+  // connect-your-own-agent onboarding, which never applies here -- the
+  // managed connection dials itself). ----
+  'gateway.connectingTitle': { en: 'Connecting…', zh: '正在连接…' },
+  'gateway.connectingBody': {
+    en: 'Reaching your Insurance Audit Agent. This finishes automatically.',
+    zh: '正在连接你的 Insurance Audit Agent,会自动完成。',
+  },
+
+  // ---- Agent rail (JusticeOS dashboard, gateway build only): the narrow
+  // always-visible left rail that replaces the generic multi-agent
+  // Sidebar in this build. ----
+  'rail.home': { en: 'Home', zh: '主页' },
+  'rail.homeTooltip': { en: 'Dashboard home', zh: '仪表盘主页' },
+  'rail.agentTooltip': { en: 'Open {name}', zh: '打开 {name}' },
+  'rail.settings': { en: 'Settings', zh: '设置' },
+  'rail.settingsTooltip': { en: 'Settings', zh: '设置' },
+  'rail.signOut': { en: 'Sign out', zh: '退出登录' },
+  // ---- Collapsible sidebar (desktop collapse/expand + mobile drawer). ----
+  'rail.openAgents': { en: 'Open agents', zh: '打开 agent 列表' },
+  'rail.closeAgents': { en: 'Close agents', zh: '关闭 agent 列表' },
+  'rail.collapse': { en: 'Collapse sidebar', zh: '收起侧栏' },
+  'rail.expand': { en: 'Expand sidebar', zh: '展开侧栏' },
+
+  // ---- Dashboard home screen (JusticeOS, gateway build only). ----
+  'dashboard.heading': { en: 'JusticeOS', zh: 'JusticeOS' },
+  'dashboard.greeting.morning': { en: 'Good morning', zh: '早上好' },
+  'dashboard.greeting.afternoon': { en: 'Good afternoon', zh: '下午好' },
+  'dashboard.greeting.evening': { en: 'Good evening', zh: '晚上好' },
+  'dashboard.briefing.title': { en: 'Justice Manager briefing', zh: 'Justice Manager 简报' },
+  'dashboard.briefing.placeholder': {
+    en: 'Your briefing will appear here once your Justice Manager is available.',
+    zh: '当 Justice Manager 可用后,你的简报会显示在这里。',
+  },
+  // 'dashboard.agentCard.title' doubles as the managed connection's fallback
+  // display name (AgentRail's aria-label etc.) even though the dashboard no
+  // longer shows an agent card of its own -- agent navigation lives only in
+  // the sidebar now (brand brief: "The dashboard must not become another
+  // agent picker").
+  'dashboard.agentCard.title': { en: 'Insurance Audit Agent', zh: 'Insurance Audit Agent' },
+  'dashboard.card.attention': { en: 'Needs your attention', zh: '需要你关注' },
+  'dashboard.card.inProgress': { en: 'In progress', zh: '进行中' },
+  'dashboard.card.completed': { en: 'Recently completed', zh: '最近完成' },
+  'dashboard.card.failedBlocked': { en: 'Failed or blocked', zh: '失败或受阻' },
+  'dashboard.card.findings': { en: 'Audit & compliance findings', zh: '审计与合规发现' },
+  'dashboard.card.documents': { en: 'Recent documents & reports', zh: '最近的文档与报告' },
+  'dashboard.card.upcoming': { en: 'Upcoming deadlines & follow-ups', zh: '即将到来的截止日期与跟进' },
+  'dashboard.empty.attention': { en: 'Nothing needs your attention right now.', zh: '目前没有需要关注的事项。' },
+  'dashboard.empty.inProgress': { en: 'Nothing is in progress right now.', zh: '目前没有进行中的事项。' },
+  'dashboard.empty.completed': { en: 'No completed work has been reported yet.', zh: '尚无已完成工作的记录。' },
+  'dashboard.empty.failedBlocked': { en: 'Nothing has failed or is blocked right now.', zh: '目前没有失败或受阻的事项。' },
+  'dashboard.empty.findings': { en: 'No findings have been reported yet.', zh: '尚无发现报告。' },
+  'dashboard.empty.documents': { en: 'No documents or reports have been produced yet.', zh: '尚未生成任何文档或报告。' },
+  'dashboard.empty.upcoming': { en: 'Nothing scheduled yet.', zh: '暂无安排。' },
+  'dashboard.attention.pendingPermission': {
+    en: 'The Insurance Audit Agent is waiting on your approval.',
+    zh: 'Insurance Audit Agent 正在等待你的批准。',
+  },
+  'dashboard.attention.unreadCompletion': {
+    en: 'The Insurance Audit Agent finished a response you haven’t seen yet.',
+    zh: 'Insurance Audit Agent 完成了一条你还未查看的回复。',
+  },
+  'dashboard.attention.connectionError': {
+    en: 'The Insurance Audit Agent connection needs attention.',
+    zh: 'Insurance Audit Agent 的连接需要处理。',
+  },
+  'dashboard.inProgress.running': {
+    en: 'The Insurance Audit Agent is working on your current conversation.',
+    zh: 'Insurance Audit Agent 正在处理你当前的对话。',
+  },
+
+  // ---- Floating Justice Manager chat button + placeholder panel
+  // (dashboard home, gateway build only). Phase 1: no manager backend
+  // exists yet -- the panel says so plainly rather than pretending to
+  // be operational. ----
+  'manager.openTooltip': { en: 'Chat with your Justice Manager', zh: '与 Justice Manager 对话' },
+  'manager.panelTitle': { en: 'Justice Manager', zh: 'Justice Manager' },
+  'manager.panelClose': { en: 'Close', zh: '关闭' },
+  'manager.placeholderBody': {
+    en: 'Justice Manager chat is not connected yet. This is a placeholder for an upcoming feature -- nothing you type here is sent anywhere.',
+    zh: 'Justice Manager 对话尚未接入,这是即将推出功能的占位界面 —— 你在这里输入的内容不会被发送。',
+  },
+
 // ---- marketing workspace (#/marketing) ----
   'mkt.title': { en: 'Marketing', zh: '营销' },
   'mkt.navLabel': { en: 'Marketing workspace', zh: '营销工作台' },

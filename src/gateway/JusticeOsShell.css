@@ -1,0 +1,54 @@
+/* JusticeOS gateway shell (gateway build only): rail + main content side
+ * by side, main content fitting BESIDE the rail rather than underneath it
+ * (iPhone requirement). 100dvh here, not 100vh, for the same reason as
+ * every other full-height surface in this app (iOS Safari's collapsing
+ * URL bar). */
+
+.gw-shell {
+  display: flex;
+  height: 100dvh;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.gw-shell-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Mobile-only top bar hosting the "Open agents" trigger -- the sidebar
+ * itself is off-canvas below 768px (AgentRail.css), so its opener has to
+ * live outside it, always in the normal document flow (never floating
+ * over the dashboard's own wordmark/heading in the same corner). Hidden
+ * entirely at desktop widths, where the sidebar is already visible. */
+.gw-mobile-topbar {
+  display: none;
+}
+@media (max-width: 767.98px) {
+  .gw-mobile-topbar {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg);
+    padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px
+      max(12px, env(safe-area-inset-left));
+  }
+}
+
+.gw-mobile-topbar-trigger {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--panda-radius-md);
+  color: var(--color-fg);
+  transition: var(--panda-colors-transition);
+}
+.gw-mobile-topbar-trigger:hover {
+  background: var(--color-raised);
+}

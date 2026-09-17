@@ -12,6 +12,8 @@ import { applyFontSize, loadFontSizePair } from './fontSize';
 import { I18nProvider } from './i18n/context';
 import { parseDevPage } from './routes';
 import { GatewayGate } from './gateway/GatewayGate';
+import { JusticeOsShell } from './gateway/JusticeOsShell';
+import { isGatewayBuild } from './gateway/buildMode';
 
 // Earliest possible (#105): the ring must catch startup errors too.
 installConsoleTap();
@@ -35,16 +37,27 @@ const root = createRoot(document.getElementById('root')!);
  * (same contract as profiles.ts) — the sidebar picker saves, this anchor and
  * the picker both re-render off the subscription. Built theme CSS ships in
  * index.css for all seven; <Theme> only anchors data-astryx-theme and the
- * color-scheme mode (gothic has no light tokens — forced dark). */
+ * color-scheme mode (gothic has no light tokens — forced dark).
+ *
+ * JusticeOS gateway build: always gothic, regardless of any stored
+ * preference -- the gateway's dark theme is a fixed brand decision, not a
+ * user setting (SettingsPage hides its theme picker in this build for the
+ * same reason). index.css's [data-justiceos-theme] override then replaces
+ * gothic's own token values with the JusticeOS palette; gothic itself is
+ * only the structural/contrast-correct dark base. The demo build is
+ * unaffected: isGatewayBuild() is false there, so loadThemeId()'s stored
+ * choice (chocolate by default) still drives it exactly as before. */
 function ThemeRoot() {
   const [themeId, setThemeId] = useState(loadThemeId);
   useEffect(() => subscribeTheme(setThemeId), []);
-  const choice = resolveTheme(themeId);
+  const choice = isGatewayBuild() ? resolveTheme('gothic') : resolveTheme(themeId);
   return (
     <Theme theme={choice.theme} mode={choice.darkOnly ? 'dark' : 'system'}>
       <I18nProvider>
         <GatewayGate>
-          <App />
+          <JusticeOsShell>
+            <App />
+          </JusticeOsShell>
         </GatewayGate>
       </I18nProvider>
     </Theme>

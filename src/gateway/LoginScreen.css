@@ -52,18 +52,34 @@
   text-align: center;
 }
 
-.gw-login-badge {
-  width: 56px;
-  height: 56px;
+/* Full wordmark (justiceos-logo.png, 1543x619 -- ~2.49:1; a raster crop of
+ * the approved brand master, not a vector). Sized by width with
+ * height:auto so the aspect ratio is never distorted; max-width keeps it
+ * from overflowing the 360px card on any phone.
+ *
+ * margin-inline:auto is load-bearing, not decorative: <img> is a block
+ * element (a global reset sets `display: block` on every image), so
+ * .gw-login-brand's own `align-items: center` and `text-align: center`
+ * never actually reach it -- flex cross-axis centering only applies to an
+ * item that shrinks to its content size, and text-align only affects
+ * inline content, neither of which a fixed-width block element is. Without
+ * this rule the wordmark renders flush against the left edge of its
+ * container regardless of how centered the surrounding markup looks in
+ * the CSS -- confirmed by inspecting the actual rendered layout, where the
+ * image's own left edge and its container's left edge landed at the exact
+ * same x coordinate. margin-inline:auto centers a block element with a
+ * definite width directly, independent of the ancestor flex/text-align
+ * setup, so it fixes this regardless of why that setup wasn't reaching it. */
+.gw-login-logo {
+  width: min(220px, 100%);
+  height: auto;
   margin-bottom: 4px;
-  border-radius: var(--panda-radius-lg);
+  margin-inline: auto;
 }
 
 .gw-login-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--color-fg);
+  line-height: 0;
 }
 
 .gw-login-tagline {
@@ -126,7 +142,15 @@
   opacity: 0.6;
 }
 
+/* appearance:none is load-bearing: Chromium's UA stylesheet otherwise
+ * repaints a DISABLED <button>'s background/color with its own native
+ * "disabled control" colors (a pale, near-white gray), ignoring every
+ * author style below -- confirmed by inspecting the rendered disabled
+ * button's computed style. Without this reset the intentional dark-mode
+ * disabled treatment below would never actually show up. */
 .gw-login-submit {
+  appearance: none;
+  -webkit-appearance: none;
   min-height: 44px;
   border: none;
   border-radius: var(--panda-radius-md);
@@ -134,14 +158,24 @@
   padding: 10px 16px;
   font-size: 16px;
   font-weight: 600;
-  color: var(--color-accent-fg, #fff);
+  color: var(--color-on-accent, #fff);
   transition: var(--panda-colors-transition);
-}
-
-.gw-login-submit:disabled {
-  opacity: 0.5;
 }
 
 .gw-login-submit:not(:disabled):hover {
   filter: brightness(1.05);
+}
+
+.gw-login-submit:not(:disabled):active {
+  filter: brightness(0.94);
+}
+
+/* Intentional dark-mode disabled state: a muted violet-on-charcoal blend
+ * (never plain gray) so it still reads as "this button" rather than a
+ * generic native control, while staying clearly distinct from the solid
+ * violet enabled state. */
+.gw-login-submit:disabled {
+  background: color-mix(in oklab, var(--color-accent) 30%, var(--color-raised));
+  color: var(--color-faint);
+  cursor: not-allowed;
 }

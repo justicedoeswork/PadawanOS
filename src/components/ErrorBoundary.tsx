@@ -1,6 +1,7 @@
 import { Component, useState, type ReactNode } from 'react';
 import { buildDiagnostics, copyText } from '../diagnostics';
 import { t } from '../i18n';
+import { isGatewayBuild } from '../gateway/buildMode';
 import pandaSleep from '../assets/brand/panda-sleep.png';
 
 /**
@@ -75,7 +76,7 @@ function CrashFallback({ error, componentStack }: { error: Error; componentStack
         alt=""
         style={{ width: 120, height: 120, borderRadius: '50%' }}
       />
-      <h1 style={{ fontSize: 20, margin: 0 }}>{t('diag.crashTitle')}</h1>
+      <h1 style={{ fontSize: 20, margin: 0 }}>{t(isGatewayBuild() ? 'diag.crashTitleGateway' : 'diag.crashTitle')}</h1>
       <p style={{ margin: 0, maxWidth: 480 }}>{t('diag.crashDesc')}</p>
       <pre
         style={{

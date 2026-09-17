@@ -26,6 +26,7 @@ import { ContentColumn } from './ContentColumn';
 import { ModePicker } from './ModePicker';
 import './Composer.css';
 import { useI18n } from '../i18n/context';
+import { isGatewayBuild } from '../gateway/buildMode';
 
 /**
  * True while a keydown belongs to an IME composition (bug hunt #2). Enter
@@ -263,7 +264,7 @@ export function Composer({ onSend, disabled, inputLocked, hint, canAttachImages,
               rows={1}
               value={value}
               disabled={inputLocked}
-              placeholder={hint ?? t('composer.placeholder')}
+              placeholder={hint ?? t(isGatewayBuild() ? 'composer.gatewayPlaceholder' : 'composer.placeholder')}
               onChange={(e) => {
                 setDraft({ value: e.target.value });
                 setCommandIndex(0);

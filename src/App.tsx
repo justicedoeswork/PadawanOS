@@ -4,6 +4,8 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Sidebar } from './components/Sidebar';
 import { MessageStream } from './components/MessageStream';
 import { EmptyState } from './components/EmptyState';
+import { GatewayConnectingState } from './gateway/GatewayConnectingState';
+import { isGatewayBuild } from './gateway/buildMode';
 import { AuthGate } from './components/AuthGate';
 import { StatusBar } from './components/StatusBar';
 import { Composer } from './components/Composer';
@@ -121,33 +123,44 @@ function MainScreen() {
   return (
     <div className="app-shell">
       <UserNoticeToasts />
-      {mobileNavigationOpen && (
-        <button
-          type="button"
-          className="app-nav-overlay"
-          aria-label={t('app.closeNav')}
-          onClick={() => setMobileNavigationOpen(false)}
-        />
+      {/* JusticeOS gateway build: the always-visible AgentRail (rendered
+          by JusticeOsShell, one level up) replaces this whole mobile-
+          drawer Sidebar -- there's exactly one connection in that build,
+          so the multi-agent list / "Add agent" control / hamburger drawer
+          would all be showing a feature this build doesn't have. */}
+      {!isGatewayBuild() && (
+        <>
+          {mobileNavigationOpen && (
+            <button
+              type="button"
+              className="app-nav-overlay"
+              aria-label={t('app.closeNav')}
+              onClick={() => setMobileNavigationOpen(false)}
+            />
+          )}
+          <Sidebar
+            mode={mode}
+            live={live}
+            mobileOpen={mobileNavigationOpen}
+            onMobileClose={() => setMobileNavigationOpen(false)}
+            settingsSection={settingsSection}
+            onSelectSettingsSection={setSettingsSection}
+          />
+        </>
       )}
-      <Sidebar
-        mode={mode}
-        live={live}
-        mobileOpen={mobileNavigationOpen}
-        onMobileClose={() => setMobileNavigationOpen(false)}
-        settingsSection={settingsSection}
-        onSelectSettingsSection={setSettingsSection}
-      />
       <main className="app-main">
         <header className="app-header">
           <div className="app-header-lead">
-            <button
-              type="button"
-              className="app-nav-toggle"
-              aria-label={t('app.openNav')}
-              onClick={() => setMobileNavigationOpen(true)}
-            >
-              <Menu size={18} />
-            </button>
+            {!isGatewayBuild() && (
+              <button
+                type="button"
+                className="app-nav-toggle"
+                aria-label={t('app.openNav')}
+                onClick={() => setMobileNavigationOpen(true)}
+              >
+                <Menu size={18} />
+              </button>
+            )}
             {(onSettings || onMarketing) && (
               <IconButton
                 variant="ghost"
@@ -194,7 +207,12 @@ function MainScreen() {
               // here briefly — the status bar narrates that phase. A clean
               // disconnect does NOT land here (#218): its retained document
               // stays readable, so the pointer is still set.
-              <EmptyState />
+              //
+              // JusticeOS gateway build: none of EmptyState's onboarding
+              // copy applies (no demo, no "connect your own agent" -- the
+              // managed connection dials itself) -- an honest "connecting"
+              // status stands in for it instead.
+              isGatewayBuild() ? <GatewayConnectingState /> : <EmptyState />
             ) : (
               <MessageStream key={foregroundSessionKey} onResolvePermission={controller.resolvePermission} onResolveElicitation={controller.resolveElicitation} onOpenElicitationUrl={controller.openElicitationUrl} />
             )}

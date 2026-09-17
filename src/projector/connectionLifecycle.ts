@@ -11,7 +11,14 @@
 
 import type { SessionStatus } from '../protocol/types';
 import { t } from '../i18n';
+import { isGatewayBuild } from '../gateway/buildMode';
 import type { ConnectionInfo, ConnectionState, ConnectionStatus, SessionMode } from '../store';
+
+/** "Panda is working…" never applies in the gateway build -- there is no
+ * Panda there, just the Insurance Audit Agent. */
+function workingHint(): string {
+  return t(isGatewayBuild() ? 'lifecycle.workingGateway' : 'lifecycle.working');
+}
 
 /** 需要关注 sources (CONTEXT.md): reasons ride along instead of being
  * folded away — the tooltip can say which one fired. `auth-required` keeps
@@ -158,7 +165,7 @@ export function mainView(input: {
 function hintFor(mode: SessionMode, phase: ConnectionPhase, error: string | null, docStatus: SessionStatus): string | undefined {
   if (mode !== 'live') {
     if (docStatus === 'requires_action') return t('lifecycle.awaitingApprovalHint');
-    if (docStatus === 'running') return t('lifecycle.working');
+    if (docStatus === 'running') return workingHint();
     return undefined;
   }
   switch (phase) {
@@ -179,7 +186,7 @@ function hintFor(mode: SessionMode, phase: ConnectionPhase, error: string | null
       // must point at the stream where the permission card waits, in both
       // live and demo — "working" here contradicted the status bar.
       if (docStatus === 'requires_action') return t('lifecycle.awaitingApprovalHint');
-      if (docStatus !== 'idle') return t('lifecycle.working');
+      if (docStatus !== 'idle') return workingHint();
       return undefined;
   }
 }

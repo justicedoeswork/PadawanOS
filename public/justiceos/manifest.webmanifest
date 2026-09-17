@@ -1,0 +1,14 @@
+{
+  "name": "JusticeOS",
+  "short_name": "JusticeOS",
+  "description": "Sign in to reach your Insurance Audit Agent.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#11151D",
+  "theme_color": "#11151D",
+  "icons": [
+    { "src": "/justiceos/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/justiceos/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/justiceos/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

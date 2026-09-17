@@ -159,9 +159,15 @@ function GeneralSection() {
     <>
       <section className="settings-card">
         <h2 className="settings-group-title">{t('settings.appearanceGroup')}</h2>
-        <SettingsRow title={t('settings.themeRow')} description={t('settings.themeRowDesc')}>
-          <ThemeSwatches />
-        </SettingsRow>
+        {/* JusticeOS gateway build: the dark theme is a fixed brand
+            decision (main.tsx forces gothic + index.css's brand override),
+            not a user setting -- showing a "Theme: Chocolate" picker that
+            has no actual effect here would just be confusing. */}
+        {!isGatewayBuild() && (
+          <SettingsRow title={t('settings.themeRow')} description={t('settings.themeRowDesc')}>
+            <ThemeSwatches />
+          </SettingsRow>
+        )}
         <SettingsRow title={t('settings.language')} description={t('settings.languageRowDesc')}>
           <LanguageChips />
         </SettingsRow>
