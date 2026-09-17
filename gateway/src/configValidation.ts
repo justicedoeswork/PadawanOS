@@ -31,6 +31,13 @@ export interface ProductionConfigInput {
   insuranceAgentAcpUrl: string | null;
   allowedUserId: string | null;
   allowedRealmId: string | null;
+  /**
+   * Optional integration: absent means "off", which is a perfectly
+   * valid production deployment. Only a HALF-configured or weak
+   * integration is a problem worth refusing to start over.
+   */
+  marketingAgentBaseUrl?: string | null;
+  marketingAgentApiKey?: string | null;
 }
 
 /**
@@ -146,7 +153,69 @@ export function findProductionConfigProblems(input: ProductionConfigInput): stri
     problems.push('ACP_ALLOWED_REALM_ID looks like an example/placeholder value, not a real realm id.');
   }
 
+  problems.push(...findMarketingAgentProblems(input));
+
   return problems;
+}
+
+/**
+ * The Marketing Agent integration is optional, so "neither variable
+ * set" is silently fine. What is not fine in production: setting one
+ * without the other (a half-configured integration that would fail at
+ * the first operator action), a weak/placeholder key, or a base URL
+ * that isn't an approved private/internal destination -- the same
+ * reasoning as the ACP upstream, since this credential grants campaign
+ * approval rights and must never travel over the public internet.
+ */
+function findMarketingAgentProblems(input: ProductionConfigInput): string[] {
+  const problems: string[] = [];
+  const baseUrl = input.marketingAgentBaseUrl ?? null;
+  const apiKey = input.marketingAgentApiKey ?? null;
+
+  if (!baseUrl && !apiKey) {
+    return problems;
+  }
+
+  if (!baseUrl) {
+    problems.push('MARKETING_AGENT_BASE_URL is required when MARKETING_AGENT_API_KEY is set.');
+  } else if (!isApprovedPrivateHttpUrl(baseUrl)) {
+    problems.push(
+      'MARKETING_AGENT_BASE_URL must be an https:// URL, or an http(s):// URL to an approved private/internal destination (a .internal hostname, 127.0.0.1, or localhost), in production.'
+    );
+  }
+
+  if (!apiKey) {
+    problems.push('MARKETING_AGENT_API_KEY is required when MARKETING_AGENT_BASE_URL is set.');
+  } else if (apiKey.length < MIN_SECRET_LENGTH) {
+    problems.push(`MARKETING_AGENT_API_KEY must be at least ${MIN_SECRET_LENGTH} characters in production.`);
+  } else if (looksLikePlaceholder(apiKey)) {
+    problems.push('MARKETING_AGENT_API_KEY looks like an example/placeholder value, not a real generated secret.');
+  }
+
+  return problems;
+}
+
+/** Same private-destination rule as the ACP upstream, for http(s): plaintext http is only ever acceptable inside the private network. */
+function isApprovedPrivateHttpUrl(rawUrl: string): boolean {
+  let parsed: URL;
+
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol === 'https:') {
+    return true;
+  }
+
+  if (parsed.protocol !== 'http:') {
+    return false;
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+
+  return hostname.endsWith('.internal') || hostname === '127.0.0.1' || hostname === 'localhost';
 }
 
 /** Throws with every problem listed if any is found. Never includes secret values in the message -- only which variable is missing/weak and why. */

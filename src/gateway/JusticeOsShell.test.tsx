@@ -32,6 +32,16 @@ describe('JusticeOsShell (demo build): a complete no-op, same contract as Gatewa
     expect(wrapped).toBe(bare);
   });
 
+  it('offers no Marketing entry at all in the demo build (it has no gateway bridge to call)', () => {
+    __setBuildMode('demo');
+    const markup = renderToStaticMarkup(
+      <JusticeOsShell>
+        <div>the real app</div>
+      </JusticeOsShell>,
+    );
+    expect(markup).not.toMatch(/marketing/i);
+  });
+
   it('never renders the rail or dashboard in the demo build', () => {
     __setBuildMode('demo');
     const markup = renderToStaticMarkup(

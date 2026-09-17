@@ -9,7 +9,7 @@ import { Dashboard } from './Dashboard';
 import { ManagerChat } from './ManagerChat';
 import { useGatewayAuth } from './gatewayAuthStore';
 import { loadSidebarCollapsed, saveSidebarCollapsed } from './sidebarPreference';
-import { navigate } from '../routes';
+import { navigate, useHashRoute } from '../routes';
 import { useI18n } from '../i18n/context';
 import './JusticeOsShell.css';
 
@@ -21,8 +21,8 @@ import './JusticeOsShell.css';
  * the demo build's App (Sidebar, EmptyState onboarding, Panda branding)
  * is byte-for-byte unaffected.
  *
- * In the gateway build this owns the JusticeOS dashboard-vs-chat toggle
- * (LAYOUT) plus the collapsible agent sidebar's state: the always-present
+ * In the gateway build this owns the JusticeOS dashboard-vs-workspace
+ * toggle (LAYOUT) plus the collapsible agent sidebar's state: the always-present
  * AgentRail (collapsed/expanded on desktop, an off-canvas drawer on
  * mobile) beside either the Dashboard home screen or `children` (the
  * real, untouched App -- same component, same store, same connection;
@@ -43,7 +43,16 @@ export function JusticeOsShell({ children }: { children: ReactNode }) {
 
 function GatewayDashboardShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
-  const [view, setView] = useState<RailView>('dashboard');
+  // Which workspace `children` is currently showing comes from the hash
+  // route, not from a second copy of that state here: App renders the
+  // Marketing workspace for #/marketing, so the rail reads the same source
+  // of truth rather than one that could drift from it.
+  const route = useHashRoute();
+  // A hash route that names a workspace (#/marketing, #/settings) has to
+  // survive a reload or a pasted link: opening on the dashboard instead
+  // would silently ignore the URL the person actually asked for. Every
+  // other route starts on the dashboard, as before.
+  const [view, setView] = useState<RailView>(() => (route === 'marketing' || route === 'settings' ? 'agent' : 'dashboard'));
   const [sidebarCollapsed, setSidebarCollapsedState] = useState(() => loadSidebarCollapsed());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const railNavRef = useRef<HTMLElement>(null);
@@ -88,24 +97,44 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
     closeMobileNav();
   }
 
-  function openAgent() {
+  /** Hands the content column back to `children` (App), whatever hash route it is on. */
+  function showWorkspace() {
     setView('agent');
     closeMobileNav();
   }
 
+  function openAgent() {
+    // Leaves whatever hash workspace was showing (e.g. #/marketing) so the
+    // agent button always lands on the chat it names. Settings deliberately
+    // does NOT go through here: it sets its own route, and routing it
+    // through this would immediately navigate away from it again.
+    if (route === 'marketing') navigate('main');
+    showWorkspace();
+  }
+
+  function openMarketing() {
+    navigate('marketing');
+    showWorkspace();
+  }
+
+  // The rail highlights the Marketing specialist whenever the content
+  // column is showing its workspace; 'agent' otherwise.
+  const railView: RailView = view === 'agent' && route === 'marketing' ? 'marketing' : view;
+
   return (
     <div className="gw-shell">
       <AgentRail
-        activeView={view}
+        activeView={railView}
         agentName={agentName}
         connectionPhase={lifecycle?.phase ?? 'disconnected'}
         collapsed={sidebarCollapsed}
         mobileOpen={mobileNavOpen}
         onHome={goHome}
         onOpenAgent={openAgent}
+        onOpenMarketing={openMarketing}
         onSettings={() => {
           navigate('settings');
-          openAgent();
+          showWorkspace();
         }}
         onSignOut={() => void useGatewayAuth.getState().logout()}
         onToggleCollapsed={toggleSidebarCollapsed}

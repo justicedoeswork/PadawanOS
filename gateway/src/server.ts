@@ -1,14 +1,16 @@
 import express from 'express';
 import http from 'node:http';
 import path from 'node:path';
-import { config } from './config.js';
+import { config, marketingAgentActor } from './config.js';
 import { createAuthRouter } from './auth.js';
 import { createHealthRouter } from './health.js';
 import { createAcpApiFallbackRouter } from './acpApiFallback.js';
+import { createMarketingRouter } from './marketingRoutes.js';
 import { createStaticSiteRouter } from './staticSite.js';
 import { attachAcpProxy, type AcpProxyHandle } from './acpProxy.js';
 import { assertProductionConfigIsValid } from './configValidation.js';
 import { logError, logInfo } from './log.js';
+import type { MarketingAgentClient } from './marketingAgentClient.js';
 
 export interface GatewayOverrides {
   port?: number;
@@ -23,6 +25,12 @@ export interface GatewayOverrides {
   allowedRealmId?: string | null;
   isProduction?: boolean;
   maxConnections?: number;
+  marketingAgentBaseUrl?: string | null;
+  marketingAgentApiKey?: string | null;
+  marketingAgentActor?: string | null;
+  marketingAgentTimeoutMs?: number;
+  /** Test seam: an already-built Marketing Agent client, so a test never needs a real upstream or a real key. */
+  marketingAgentClient?: MarketingAgentClient;
 }
 
 export interface GatewayInstance {
@@ -49,6 +57,10 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   const isProduction = overrides.isProduction ?? config.isProduction;
   const distDir = overrides.distDir ?? path.resolve(process.cwd(), '..', config.distDirName);
 
+  const marketingBaseUrl = overrides.marketingAgentBaseUrl ?? config.marketingAgentBaseUrl;
+  const marketingApiKey = overrides.marketingAgentApiKey ?? config.marketingAgentApiKey;
+  const marketingActor = overrides.marketingAgentActor ?? marketingAgentActor();
+
   const acpUpstreamUrl = overrides.insuranceAgentAcpUrl ?? config.insuranceAgentAcpUrl;
   const serviceKey = overrides.acpGatewayServiceKey ?? config.acpGatewayServiceKey;
   const userId = overrides.allowedUserId ?? config.allowedUserId;
@@ -68,7 +80,9 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       allowedOrigins,
       insuranceAgentAcpUrl: acpUpstreamUrl,
       allowedUserId: userId,
-      allowedRealmId: realmId
+      allowedRealmId: realmId,
+      marketingAgentBaseUrl: marketingBaseUrl,
+      marketingAgentApiKey: marketingApiKey
     });
   }
 
@@ -94,6 +108,23 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       gatewayPassword,
       gatewayPasswordHash,
       isProduction
+    })
+  );
+
+  // Before the /acp fallback and the SPA catch-all: JusticeOS's
+  // authenticated bridge to the Marketing Agent. Registering it
+  // unconditionally (even with no upstream configured) is deliberate --
+  // an unconfigured integration must answer a clear JSON error, not
+  // fall through to index.html. A missing/unreachable Marketing Agent
+  // never affects login or ACP chat.
+  app.use(
+    createMarketingRouter({
+      sessionSecret,
+      baseUrl: marketingBaseUrl,
+      apiKey: marketingApiKey,
+      actor: marketingActor,
+      ...(overrides.marketingAgentTimeoutMs !== undefined ? { timeoutMs: overrides.marketingAgentTimeoutMs } : {}),
+      ...(overrides.marketingAgentClient ? { client: overrides.marketingAgentClient } : {})
     })
   );
 

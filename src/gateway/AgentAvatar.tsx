@@ -5,12 +5,10 @@ import type { CSSProperties, ReactElement } from 'react';
  * managed agent gets its own small, distinct glyph from this shared visual
  * vocabulary (an enchanted scroll here; a spellbook, crystal orb, potion
  * vessel, rune, key, or compass are the obvious next entries) instead of a
- * generic shield/coat-of-arms. Only 'insurance-audit' exists today -- the
- * brief is explicit that no other agent is created or displayed yet; adding
- * a role here is how a future agent gets its own icon, nothing else about
- * this component changes.
+ * generic shield/coat-of-arms. Adding a role here is how an agent gets its
+ * own icon; nothing else about this component changes.
  */
-export type AgentRole = 'insurance-audit';
+export type AgentRole = 'insurance-audit' | 'marketing';
 
 type GlyphProps = { size: number; className?: string; style?: CSSProperties };
 
@@ -59,6 +57,41 @@ function InsuranceAuditGlyph({ size, className, style }: GlyphProps): ReactEleme
   );
 }
 
+/**
+ * A scrying orb on a stand: the Marketing Agent's work is looking outward
+ * — reading the market, then deciding what to say about it — so it takes
+ * the crystal orb from the same vocabulary the scroll came from. Flat
+ * geometry only, like the scroll, so it stays legible at 20px beside the
+ * rail's status dot.
+ */
+function MarketingGlyph({ size, className, style }: GlyphProps): ReactElement {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={style}
+      aria-hidden="true"
+    >
+      {/* The orb */}
+      <circle cx="12" cy="9.5" r="5.5" />
+      {/* A single highlight arc, so the circle reads as glass, not a dot */}
+      <path d="M9.4 7.4a3.4 3.4 0 0 1 2.4-1.4" />
+      {/* The stand */}
+      <path d="M7.5 17h9l-1.2 3h-6.6z" />
+      {/* An arcane spark, mirroring the audit scroll's */}
+      <path d="M18.4 3.2v2.4M17.2 4.4h2.4" />
+    </svg>
+  );
+}
+
 const AGENT_ROLE_GLYPHS: Record<AgentRole, (props: GlyphProps) => ReactElement> = {
   'insurance-audit': InsuranceAuditGlyph,
+  marketing: MarketingGlyph,
 };

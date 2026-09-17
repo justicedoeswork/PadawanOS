@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { parseDevPage, parseHash, routeHash } from './routes';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { parseDevPage, parseHash, routeHash, useHashRoute } from './routes';
 
 describe('parseHash', () => {
   it.each([
@@ -8,12 +10,16 @@ describe('parseHash', () => {
     ['#/', 'main'],
     ['#//', 'main'],
     ['#/settings', 'settings'],
+    ['#/marketing', 'marketing'],
+    ['#marketing', 'marketing'],
+    ['#/marketing/', 'marketing'],
     ['#settings', 'settings'],
     ['#/settings/', 'settings'],
     ['#/settings//', 'settings'],
     // Unknown or stale links fall back to main — never a blank app.
     ['#/nope', 'main'],
     ['#/settings/extra', 'main'],
+    ['#/marketing/extra', 'main'],
   ])('parses %j as %s', (hash, route) => {
     expect(parseHash(hash)).toBe(route);
   });
@@ -41,13 +47,22 @@ describe('parseDevPage', () => {
   });
 });
 
+describe('useHashRoute under server-side rendering', () => {
+  it('renders without a window (this project SSR-renders components in tests) and falls back to main', () => {
+    const Probe = () => createElement('span', null, useHashRoute());
+    expect(renderToStaticMarkup(createElement(Probe))).toBe('<span>main</span>');
+  });
+});
+
 describe('routeHash / navigate round-trip', () => {
   it('produces canonical hashes parseHash round-trips', () => {
     expect(routeHash('main')).toBe('#/');
     expect(routeHash('settings')).toBe('#/settings');
     expect(routeHash('demo')).toBe('#/demo');
+    expect(routeHash('marketing')).toBe('#/marketing');
     expect(parseHash(routeHash('main'))).toBe('main');
     expect(parseHash(routeHash('settings'))).toBe('settings');
     expect(parseHash(routeHash('demo'))).toBe('demo');
+    expect(parseHash(routeHash('marketing'))).toBe('marketing');
   });
 });

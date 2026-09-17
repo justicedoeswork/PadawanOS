@@ -7,13 +7,16 @@ import type { ConnectionPhase } from '../projector/connectionLifecycle';
 import { isLinkUp } from '../projector/connectionLifecycle';
 import './AgentRail.css';
 
-export type RailView = 'dashboard' | 'agent';
+export type RailView = 'dashboard' | 'agent' | 'marketing';
 
 /**
  * The collapsible left agent sidebar for the JusticeOS gateway build
- * (LAYOUT #1). Every agent (today: exactly one, the managed Insurance
- * Audit Agent) lives here and only here -- the dashboard content column
- * never shows an agent card/launch control of its own.
+ * (LAYOUT #1). Every specialist lives here and only here -- the managed
+ * Insurance Audit Agent (an ACP chat connection) and the Marketing Agent
+ * (an operator review workspace served through the gateway's
+ * /api/marketing bridge, with no ACP connection of its own, which is why
+ * it carries no connection dot). The dashboard content column never shows
+ * an agent card/launch control of its own.
  *
  * Two independent size states, both driven by props (JusticeOsShell owns
  * the state -- this stays purely presentational: every action is a
@@ -41,6 +44,7 @@ export function AgentRail({
   mobileOpen,
   onHome,
   onOpenAgent,
+  onOpenMarketing,
   onSettings,
   onSignOut,
   onToggleCollapsed,
@@ -55,6 +59,7 @@ export function AgentRail({
   mobileOpen: boolean;
   onHome(): void;
   onOpenAgent(): void;
+  onOpenMarketing(): void;
   onSettings(): void;
   onSignOut(): void;
   onToggleCollapsed(): void;
@@ -117,6 +122,20 @@ export function AgentRail({
             />
           </span>
           <span className="gw-rail-agent-caption truncate">{agentName}</span>
+        </button>
+
+        <button
+          type="button"
+          className={`gw-rail-btn gw-rail-agent ${activeView === 'marketing' ? 'gw-rail-btn--active' : ''}`}
+          aria-label={t('rail.marketing')}
+          aria-current={activeView === 'marketing' ? 'page' : undefined}
+          title={t('rail.marketingTooltip')}
+          onClick={onOpenMarketing}
+        >
+          <span className="gw-rail-agent-icon">
+            <AgentAvatar role="marketing" size={20} />
+          </span>
+          <span className="gw-rail-agent-caption truncate">{t('rail.marketing')}</span>
         </button>
 
         <div className="gw-rail-spacer" />

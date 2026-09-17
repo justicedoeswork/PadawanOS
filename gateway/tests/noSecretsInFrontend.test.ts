@@ -22,8 +22,20 @@ const FORBIDDEN_IDENTIFIERS = [
   'JUSTICEOS_SESSION_SECRET',
   'ACP_GATEWAY_SERVICE_KEY',
   'ACP_ALLOWED_USER_ID',
-  'ACP_ALLOWED_REALM_ID'
+  'ACP_ALLOWED_REALM_ID',
+  // The Marketing Agent credential is the same class of secret as the
+  // ACP service key: the gateway presents it upstream, the browser
+  // authenticates with its session cookie instead and never needs it.
+  'MARKETING_AGENT_API_KEY'
 ];
+
+/**
+ * Server-only modules whose presence in the frontend build graph would
+ * mean the credential (or the code that attaches it) had been pulled
+ * into the bundle. Checked by name as well as by identifier, because an
+ * import is how such a leak would actually happen.
+ */
+const SERVER_ONLY_MODULES = ['marketingAgentClient', 'marketingRoutes'];
 
 function walkFiles(dir: string, extensions: string[]): string[] {
   const results: string[] = [];
@@ -64,6 +76,34 @@ describe('frontend source never references gateway secrets', () => {
     const content = fs.readFileSync(VITE_CONFIG_PATH, 'utf8');
     const offenders = FORBIDDEN_IDENTIFIERS.filter((identifier) => content.includes(identifier));
     expect(offenders).toEqual([]);
+  });
+
+  it('no frontend file imports the gateway package or a server-only module of it', () => {
+    const frontendFiles = walkFiles(FRONTEND_SRC_DIR, ['.ts', '.tsx']);
+    const offenders: string[] = [];
+
+    for (const file of frontendFiles) {
+      const content = fs.readFileSync(file, 'utf8');
+      for (const moduleName of SERVER_ONLY_MODULES) {
+        if (content.includes(moduleName)) {
+          offenders.push(`${path.relative(REPO_ROOT, file)} references ${moduleName}`);
+        }
+      }
+      if (/from\s+['"`][^'"`]*\.\.\/gateway\/src/.test(content)) {
+        offenders.push(`${path.relative(REPO_ROOT, file)} imports from gateway/src`);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('no frontend file builds an Authorization: Bearer header (the gateway does that server-side)', () => {
+    const frontendFiles = walkFiles(FRONTEND_SRC_DIR, ['.ts', '.tsx']);
+    const bearerPattern = /Bearer\s|authorization\s*:/i;
+
+    const offenders = frontendFiles.filter((file) => bearerPattern.test(fs.readFileSync(file, 'utf8')));
+
+    expect(offenders.map((file) => path.relative(REPO_ROOT, file))).toEqual([]);
   });
 
   it('no frontend file calls localStorage.setItem with a credential-shaped key', () => {

@@ -113,6 +113,13 @@ export default defineConfig({
         target: `http://127.0.0.1:${process.env.JUSTICEOS_GATEWAY_DEV_PORT || 4600}`,
         ws: true,
       },
+      // The Marketing workspace calls the gateway's own bridge, which is
+      // same-origin in production. Dev needs the same shape, for the same
+      // reason as /acp above: the session cookie is SameSite=Strict, so a
+      // cross-origin dev call would simply never carry it.
+      '/api/marketing': {
+        target: `http://127.0.0.1:${process.env.JUSTICEOS_GATEWAY_DEV_PORT || 4600}`,
+      },
     },
   },
 });
