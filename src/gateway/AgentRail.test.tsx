@@ -14,6 +14,7 @@ function renderRail(overrides: Partial<Parameters<typeof AgentRail>[0]> = {}) {
         mobileOpen={false}
         onHome={() => {}}
         onOpenAgent={() => {}}
+        onOpenMarketing={() => {}}
         onSettings={() => {}}
         onSignOut={() => {}}
         onToggleCollapsed={() => {}}
@@ -30,6 +31,29 @@ describe('AgentRail (JusticeOS gateway build, LAYOUT #1)', () => {
     const markup = renderRail();
     expect(markup).toContain('Insurance Audit Agent');
     expect(markup).not.toMatch(/add agent/i);
+  });
+
+  it('lists the Marketing specialist alongside the agent, with its own glyph', () => {
+    const markup = renderRail();
+    expect(markup).toContain('Marketing');
+    // Its own role glyph, not the audit scroll reused: the orb's stand is
+    // unique to it.
+    expect(markup).toContain('M7.5 17h9l-1.2 3h-6.6z');
+  });
+
+  it('gives Marketing no connection dot — it is a gateway workspace, not an ACP connection', () => {
+    const markup = renderRail({ connectionPhase: 'connected' });
+    // Exactly one status dot in the whole rail: the ACP agent's.
+    // The modifier class appears once per dot element (the base class
+    // appears twice in each class attribute).
+    expect(markup.match(/gw-rail-status-dot--/g)?.length).toBe(1);
+  });
+
+  it('marks Marketing as the current page when it is the active view', () => {
+    const marketingActive = renderRail({ activeView: 'marketing' });
+    expect(marketingActive).toMatch(/aria-label="Marketing"[^>]*aria-current="page"/);
+    // ...and the ACP agent is then NOT current.
+    expect(marketingActive).not.toMatch(/Insurance Audit Agent[^>]*aria-current="page"/);
   });
 
   it('never renders the word "Panda"', () => {

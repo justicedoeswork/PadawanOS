@@ -49,12 +49,20 @@ export function navigate(route: AppRoute): void {
   window.location.hash = routeHash(route);
 }
 
+/** The hash as seen from wherever this runs. Server-side rendering (which
+ * this project's component tests use instead of jsdom) has no `window` at
+ * all, so reading it during render would throw there — the initial route is
+ * simply "main" until the browser's own first effect resolves the real one. */
+function currentHash(): string {
+  return typeof window === 'undefined' ? '' : window.location.hash;
+}
+
 /** The current route, re-resolved on every `hashchange`. Navigation goes
  * through `navigate()` — it flips the hash and the listener re-resolves. */
 export function useHashRoute(): AppRoute {
-  const [route, setRoute] = useState(() => parseHash(window.location.hash));
+  const [route, setRoute] = useState(() => parseHash(currentHash()));
   useEffect(() => {
-    const onChange = () => setRoute(parseHash(window.location.hash));
+    const onChange = () => setRoute(parseHash(currentHash()));
     window.addEventListener('hashchange', onChange);
     return () => window.removeEventListener('hashchange', onChange);
   }, []);

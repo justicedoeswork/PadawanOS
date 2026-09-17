@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { parseDevPage, parseHash, routeHash } from './routes';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { parseDevPage, parseHash, routeHash, useHashRoute } from './routes';
 
 describe('parseHash', () => {
   it.each([
@@ -42,6 +44,13 @@ describe('parseDevPage', () => {
     expect(parseDevPage('#astryx-smoke/')).toBe('astryx-smoke');
     expect(parseDevPage('#/settings')).toBe(null);
     expect(parseDevPage('')).toBe(null);
+  });
+});
+
+describe('useHashRoute under server-side rendering', () => {
+  it('renders without a window (this project SSR-renders components in tests) and falls back to main', () => {
+    const Probe = () => createElement('span', null, useHashRoute());
+    expect(renderToStaticMarkup(createElement(Probe))).toBe('<span>main</span>');
   });
 });
 

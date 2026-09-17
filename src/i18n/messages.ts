@@ -732,6 +732,11 @@ export const messages = {
   'rail.home': { en: 'Home', zh: '主页' },
   'rail.homeTooltip': { en: 'Dashboard home', zh: '仪表盘主页' },
   'rail.agentTooltip': { en: 'Open {name}', zh: '打开 {name}' },
+  'rail.marketing': { en: 'Marketing', zh: '营销' },
+  'rail.marketingTooltip': {
+    en: 'Marketing Agent — review campaigns awaiting your decision',
+    zh: '营销 Agent —— 查看待你决策的活动',
+  },
   'rail.settings': { en: 'Settings', zh: '设置' },
   'rail.settingsTooltip': { en: 'Settings', zh: '设置' },
   'rail.signOut': { en: 'Sign out', zh: '退出登录' },

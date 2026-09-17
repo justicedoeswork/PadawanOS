@@ -11,7 +11,6 @@ import { StatusDot } from '@astryxdesign/core/StatusDot';
 import {
   Bot,
   BookmarkPlus,
-  Megaphone,
   MessagesSquare,
   PlugZap,
   Plus,
@@ -71,11 +70,7 @@ export function Sidebar({ mode, live, mobileOpen, onMobileClose, settingsSection
   // Route-aware since #113: settings shares the shell, so the sidebar must
   // reflect (gear highlight + toggle-back) and respect it (any session action
   // below returns to the session view instead of changing nothing).
-  const route = useHashRoute();
-  const onSettings = route === 'settings';
-  // The Marketing workspace shares the shell the same way settings does —
-  // the sidebar only needs to know so its entry can reflect and toggle it.
-  const onMarketing = route === 'marketing';
+  const onSettings = useHashRoute() === 'settings';
   const exitSettings = () => {
     if (onSettings) navigate('main');
   };
@@ -208,19 +203,6 @@ export function Sidebar({ mode, live, mobileOpen, onMobileClose, settingsSection
             {t('side.addAgent')}
           </button>
         )}
-        <button
-          type="button"
-          className={`sidebar-workspace-link ${onMarketing ? 'sidebar-workspace-link--active' : ''}`}
-          aria-current={onMarketing ? 'page' : undefined}
-          title={t('mkt.navTooltip')}
-          onClick={() => {
-            navigate(onMarketing ? 'main' : 'marketing');
-            onMobileClose();
-          }}
-        >
-          <Megaphone size={13} />
-          {t('mkt.title')}
-        </button>
         <div className="sidebar-footer">
           <Bot size={14} className="sidebar-footer-icon" />
           <span className="truncate">
