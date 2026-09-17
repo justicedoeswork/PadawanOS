@@ -43,12 +43,16 @@ export function JusticeOsShell({ children }: { children: ReactNode }) {
 
 function GatewayDashboardShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
-  const [view, setView] = useState<RailView>('dashboard');
   // Which workspace `children` is currently showing comes from the hash
   // route, not from a second copy of that state here: App renders the
   // Marketing workspace for #/marketing, so the rail reads the same source
   // of truth rather than one that could drift from it.
   const route = useHashRoute();
+  // A hash route that names a workspace (#/marketing, #/settings) has to
+  // survive a reload or a pasted link: opening on the dashboard instead
+  // would silently ignore the URL the person actually asked for. Every
+  // other route starts on the dashboard, as before.
+  const [view, setView] = useState<RailView>(() => (route === 'marketing' || route === 'settings' ? 'agent' : 'dashboard'));
   const [sidebarCollapsed, setSidebarCollapsedState] = useState(() => loadSidebarCollapsed());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const railNavRef = useRef<HTMLElement>(null);
@@ -93,18 +97,24 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
     closeMobileNav();
   }
 
-  function openAgent() {
-    // Leaves whatever hash workspace was showing (e.g. #/marketing) so the
-    // agent button always lands on the chat it names.
-    if (route === 'marketing') navigate('main');
+  /** Hands the content column back to `children` (App), whatever hash route it is on. */
+  function showWorkspace() {
     setView('agent');
     closeMobileNav();
   }
 
+  function openAgent() {
+    // Leaves whatever hash workspace was showing (e.g. #/marketing) so the
+    // agent button always lands on the chat it names. Settings deliberately
+    // does NOT go through here: it sets its own route, and routing it
+    // through this would immediately navigate away from it again.
+    if (route === 'marketing') navigate('main');
+    showWorkspace();
+  }
+
   function openMarketing() {
     navigate('marketing');
-    setView('agent');
-    closeMobileNav();
+    showWorkspace();
   }
 
   // The rail highlights the Marketing specialist whenever the content
@@ -124,7 +134,7 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
         onOpenMarketing={openMarketing}
         onSettings={() => {
           navigate('settings');
-          openAgent();
+          showWorkspace();
         }}
         onSignOut={() => void useGatewayAuth.getState().logout()}
         onToggleCollapsed={toggleSidebarCollapsed}
