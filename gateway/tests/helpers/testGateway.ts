@@ -10,6 +10,8 @@ export const TEST_SERVICE_KEY = 'test-service-key-do-not-use-in-real-life';
 export const TEST_USER_ID = 'austin';
 export const TEST_REALM_ID = '9130357381765966';
 export const TEST_ORIGIN = 'http://127.0.0.1:5173';
+export const TEST_MARKETING_API_KEY = 'test-marketing-agent-api-key-do-not-use';
+export const TEST_MARKETING_ACTOR = 'austin';
 
 /**
  * A config that satisfies configValidation.ts's production gate,
@@ -25,6 +27,8 @@ export const TEST_PRODUCTION_SESSION_SECRET = 'a'.repeat(32);
 export const TEST_PRODUCTION_SERVICE_KEY = 'b'.repeat(32);
 export const TEST_PRODUCTION_ORIGIN = 'https://justiceos.example.com';
 export const TEST_PRODUCTION_ACP_URL = 'ws://insurance-agent.internal:9000/acp';
+export const TEST_PRODUCTION_MARKETING_BASE_URL = 'http://marketing-agent.internal:8787';
+export const TEST_PRODUCTION_MARKETING_API_KEY = 'c'.repeat(32);
 
 export const TEST_PRODUCTION_OVERRIDES: GatewayOverrides = {
   isProduction: true,
@@ -37,6 +41,28 @@ export const TEST_PRODUCTION_OVERRIDES: GatewayOverrides = {
   allowedUserId: TEST_USER_ID,
   allowedRealmId: TEST_REALM_ID
 };
+
+/**
+ * Logs in with TEST_PASSWORD and returns the session cookie an
+ * authenticated browser would then send. Every test that exercises a
+ * session-protected route goes through the real login route rather
+ * than forging a token, so the cookie under test is the one production
+ * actually issues.
+ */
+export async function loginForTestCookie(port: number): Promise<string> {
+  const res = await fetch(`http://127.0.0.1:${port}/acp/session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: TEST_PASSWORD })
+  });
+
+  const setCookie = res.headers.get('set-cookie');
+  const cookie = setCookie?.split(';')[0];
+  if (!cookie) {
+    throw new Error('test login did not return a session cookie');
+  }
+  return cookie;
+}
 
 /**
  * Every test gets its own instance with its own explicit config --

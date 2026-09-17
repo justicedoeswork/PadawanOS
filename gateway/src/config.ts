@@ -62,6 +62,36 @@ export const config = {
   allowedRealmId: requireEnv('ACP_ALLOWED_REALM_ID'),
 
   /**
+   * The Marketing Agent's REST API root, e.g.
+   * http://marketing-agent.internal:8787 in production (Fly private
+   * networking) or http://127.0.0.1:8787 for local dev against a
+   * locally-run Marketing Agent. The gateway appends the agent's own
+   * /api/marketing prefix itself -- configure the host root only.
+   *
+   * Unset simply means the integration is off: /api/marketing/* answers
+   * MARKETING_AGENT_NOT_CONFIGURED and every other part of the gateway
+   * (login, ACP chat, the SPA) is unaffected.
+   */
+  marketingAgentBaseUrl: requireEnv('MARKETING_AGENT_BASE_URL'),
+
+  /**
+   * The Marketing Agent's own MARKETING_AGENT_API_KEY. Presented ONLY
+   * on the server-to-server call from marketingAgentClient.ts; it is
+   * never sent to, readable by, or needed by the browser -- the browser
+   * authenticates to this gateway with its session cookie instead.
+   */
+  marketingAgentApiKey: requireEnv('MARKETING_AGENT_API_KEY'),
+
+  /**
+   * Who the Marketing Agent records as the operator for actions taken
+   * through this gateway. Defaults to the same single owner the ACP
+   * side already asserts (ACP_ALLOWED_USER_ID), because JusticeOS's
+   * login is single-owner and its session token carries no user
+   * identity. Never taken from the browser.
+   */
+  marketingAgentActor: requireEnv('MARKETING_AGENT_ACTOR'),
+
+  /**
    * Exact-match allowlist for both the WebSocket upgrade's Origin
    * header and (if the gateway is ever run split from its own
    * frontend during development) CORS. Comma-separated, e.g.
@@ -75,6 +105,15 @@ export const config = {
 
 export function isAuthConfigured(): boolean {
   return Boolean(config.gatewayPassword || config.gatewayPasswordHash);
+}
+
+export function isMarketingAgentConfigured(): boolean {
+  return Boolean(config.marketingAgentBaseUrl && config.marketingAgentApiKey);
+}
+
+/** The operator identity recorded upstream: an explicit override, else the single owner the ACP side already asserts. */
+export function marketingAgentActor(): string | null {
+  return config.marketingAgentActor || config.allowedUserId;
 }
 
 export function isAcpUpstreamConfigured(): boolean {
