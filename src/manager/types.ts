@@ -114,29 +114,104 @@ export interface ManagerDecisionResponse {
   readonly publicationNote: string;
 }
 
-export interface MarketingEventView {
+/**
+ * Where one event stands in JusticeOS.
+ *
+ *   NEW            Seen, not yet taken. Either never claimed, or read only.
+ *   DELIVERING     Claimed and in flight to Communications right now.
+ *   DELIVERED      Communications accepted it.
+ *   DUPLICATE      Already handled — ours or the receiver's idempotency said so.
+ *   RETRY_PENDING  A transient failure; the outbox will offer it again.
+ *   FAILED         Permanently undeliverable, and kept as such.
+ */
+export type MarketingEventStatus = 'NEW' | 'DELIVERING' | 'DELIVERED' | 'DUPLICATE' | 'RETRY_PENDING' | 'FAILED';
+
+/** The Marketing Agent's own projection of one outbound event, relayed unchanged. */
+export interface OutboundMarketingEventView {
   readonly id: string;
+  readonly eventId: string | null;
+  /** The public MARKETING_* name where the agent has one; otherwise its durable internal type. */
   readonly kind: string;
+  readonly internalType: string;
   readonly severity: string | null;
-  readonly title: string;
-  readonly summary: string;
+  readonly significance: string | null;
   readonly trade: string | null;
   readonly channel: string | null;
-  readonly detectedAt: string | null;
+  readonly title: string | null;
+  readonly summary: string | null;
+  readonly recommendedAction: string | null;
+  readonly ownerApprovalRequired: boolean;
+  readonly firstDetectedAt: string | null;
   readonly lastDetectedAt: string | null;
-  readonly occurrences: number;
-  readonly ownerAttentionRequired: boolean;
+  readonly occurrenceCount: number | null;
+  readonly dedupeKey: string | null;
+  readonly idempotencyKey: string;
+}
+
+export interface MarketingEventView {
+  /** The outbox row id — upstream-assigned, and what an acknowledgement names. */
+  readonly id: string;
+  readonly event: OutboundMarketingEventView;
+  readonly status: MarketingEventStatus;
   readonly firstSeenAt: string;
   readonly lastSeenAt: string;
-  readonly handoff: { readonly state: string; readonly ref: string | null; readonly at: string | null; readonly detail: string | null };
+  readonly delivery: {
+    readonly status: MarketingEventStatus;
+    readonly at: string;
+    readonly ref: string | null;
+    readonly detail: string | null;
+    /** What JusticeOS reported upstream. Null before the acknowledgement. */
+    readonly acknowledgedResult: string | null;
+    /** False when the acknowledgement could not be confirmed — the event is not settled upstream. */
+    readonly acknowledged: boolean;
+    readonly attempts: number;
+  };
+  /**
+   * Dismissing stops the notification. It does NOT delete the upstream event:
+   * the outbox row is insert-only and undeletable, and JusticeOS makes no call
+   * that could touch it.
+   */
   readonly dismissedAt: string | null;
 }
 
 export interface MarketingEventsResponse {
+  readonly transport: 'MARKETING_OUTBOX';
+  readonly consumer: string;
   readonly events: readonly MarketingEventView[];
   readonly awaitingOwner: number;
+  readonly byStatus: Readonly<Record<MarketingEventStatus, number>>;
   readonly handoffConfigured: boolean;
-  readonly lastSyncAt: string | null;
+  readonly lastRelayAt: string | null;
+  readonly degraded: readonly string[];
+}
+
+/** What one claim → deliver → acknowledge cycle did. */
+export interface MarketingRelayResponse {
+  readonly transport: 'MARKETING_OUTBOX';
+  readonly relay: {
+    readonly ranAt: string;
+    readonly consumer: string;
+    readonly handoffConfigured: boolean;
+    /** READ_ONLY when no Communications endpoint is wired: events are read and retained, nothing is claimed. */
+    readonly mode: 'CLAIM_AND_DELIVER' | 'READ_ONLY';
+    readonly claimed: number;
+    readonly delivered: number;
+    readonly duplicate: number;
+    readonly retryScheduled: number;
+    readonly failed: number;
+    readonly abandoned: number;
+    /** Delivered, but the acknowledgement was not confirmed. Retried with the SAME ack key next cycle. */
+    readonly ackUncertain: number;
+    /** Acknowledgements refused deterministically. Not retried with the same key; a standing integration problem. */
+    readonly ackRefused: number;
+    readonly ackReplayed: number;
+    readonly claimInvalid: number;
+    readonly alreadyFinal: number;
+    readonly notFound: number;
+    readonly observed: number;
+    readonly degraded: readonly string[];
+    readonly events: readonly MarketingEventView[];
+  };
 }
 
 export interface MarketingHealthView {
@@ -154,7 +229,18 @@ export interface MarketingHealthView {
   readonly scheduler: { readonly owner: string; readonly justiceOsDrivesTicks: boolean; readonly disabled: boolean };
   readonly research: { readonly posture: string; readonly justiceOsMayTriggerPaidResearch: boolean };
   readonly businessFacts: { readonly state: string; readonly observedAt: string | null; readonly detail: string | null };
-  readonly events: { readonly retained: number; readonly awaitingOwner: number; readonly handoffConfigured: boolean; readonly lastSyncAt: string | null };
+  readonly events: {
+    readonly transport: 'MARKETING_OUTBOX';
+    readonly consumer: string;
+    readonly claimLimit: number;
+    readonly claimTtlMs: number;
+    readonly retained: number;
+    readonly awaitingOwner: number;
+    readonly byStatus: Readonly<Record<string, number>>;
+    readonly handoffConfigured: boolean;
+    readonly lastRelayAt: string | null;
+    readonly degraded: readonly string[];
+  };
   readonly degraded: readonly string[];
   readonly blocked: readonly string[];
   readonly checkedAt: string;

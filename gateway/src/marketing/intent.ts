@@ -2,7 +2,7 @@
  * Austin's words → one Marketing Agent operation.
  *
  * Padawan orchestrates; the Marketing Agent reasons. So this module is
- * deliberately shallow: it decides WHICH of the agent's ten operations a
+ * deliberately shallow: it decides WHICH of the agent's ten conversational operations a
  * request is, pulls out the couple of parameters the agent's own schema
  * accepts (a trade, a competitor), and stops. It never assembles a marketing
  * answer, never ranks anything, never decides what "performing well" means —

@@ -3,11 +3,29 @@ import {
   aggregateMarketingHealth,
   observeBusinessFacts,
   UNKNOWN_BUSINESS_FACTS,
+  type EventTransportHealth,
   type MarketingHealthInputs
 } from '../src/marketing/health.js';
 import { normalizeAnswer, parseAgentAnswer } from '../src/marketing/contract.js';
 import type { OperationOutcome } from '../src/marketing/operations.js';
 import { dataSourcesEnvelope, envelope, healthEnvelope, websitePackageEnvelope } from './helpers/agentEnvelopes.js';
+
+/** A wired, quiet event transport: one relay cycle has run and nothing is outstanding. */
+function eventTransport(overrides: Partial<EventTransportHealth> = {}): EventTransportHealth {
+  return {
+    transport: 'MARKETING_OUTBOX',
+    consumer: 'justiceos-communications-relay',
+    claimLimit: 10,
+    claimTtlMs: 600_000,
+    retained: 0,
+    awaitingOwner: 0,
+    byStatus: { NEW: 0, DELIVERING: 0, DELIVERED: 0, DUPLICATE: 0, RETRY_PENDING: 0, FAILED: 0 },
+    handoffConfigured: true,
+    lastRelayAt: '2026-09-24T12:00:00.000Z',
+    degraded: [],
+    ...overrides
+  };
+}
 
 function answerOutcome(body: unknown): OperationOutcome {
   const parsed = parseAgentAnswer(body);
@@ -25,7 +43,7 @@ function inputs(overrides: Partial<MarketingHealthInputs> = {}): MarketingHealth
     schedulerOwner: 'MARKETING_INTERNAL_LOOP',
     researchExecution: 'EXECUTE_ALLOWED',
     businessFacts: { state: 'AVAILABLE', observedAt: '2026-09-24T12:00:00.000Z', detail: null },
-    events: { retained: 0, awaitingOwner: 0, handoffConfigured: true, lastSyncAt: null },
+    events: eventTransport(),
     checkedAt: '2026-09-24T12:00:00.000Z',
     ...overrides
   };
@@ -153,7 +171,7 @@ describe('what only JusticeOS knows', () => {
   });
 
   it('degrades when no Communications endpoint is wired, since nobody is being notified', () => {
-    const report = aggregateMarketingHealth(inputs({ events: { retained: 3, awaitingOwner: 1, handoffConfigured: false, lastSyncAt: '2026-09-24T12:00:00.000Z' } }));
+    const report = aggregateMarketingHealth(inputs({ events: eventTransport({ retained: 3, awaitingOwner: 1, handoffConfigured: false }) }));
     expect(report.state).toBe('DEGRADED');
     expect(report.degraded.some((line) => line.includes('Communications Agent'))).toBe(true);
     expect(report.events.retained).toBe(3);

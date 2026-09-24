@@ -1,5 +1,6 @@
 /**
- * The ten Marketing Agent operations, as JusticeOS calls them.
+ * Every Marketing Agent operation, as JusticeOS calls them: the ten a request
+ * can reach, plus the three that drive the durable event transport.
  *
  * Every call in JusticeOS that reaches `/api/marketing/agent/*` goes through
  * this module, and it is the only place that knows the upstream paths. What
@@ -104,6 +105,42 @@ export interface MarketingOperations {
   prepareWork(context: RequestContext, input: { readonly kind: PrepareWorkKind; readonly trade?: ServiceTrade; readonly reason?: string }): Promise<OperationOutcome>;
   decide(context: RequestContext, input: { readonly revisionId: string; readonly decision: DecisionType; readonly reason?: string }): Promise<OperationOutcome>;
   tick(context: RequestContext, input?: { readonly jobs?: readonly string[] }): Promise<OperationOutcome>;
+
+  // ── The durable event transport ─────────────────────────────────────────
+  //
+  // Three operations, and the separation between them is the contract's whole
+  // safety property: listing takes nothing, claiming takes ownership, and only
+  // acknowledging settles anything. None of the three is ever de-duplicated
+  // locally — a claim must reach the agent to mean anything, and replaying a
+  // ten-minute-old claim would hand out a token that no longer owns its rows.
+
+  /** What is waiting, without taking it. A read with no side effects at either end. */
+  listEvents(context: RequestContext, filters?: EventListFilters): Promise<OperationOutcome>;
+  /** Takes ownership of what is due. The answer carries the claim token every acknowledgement must present. */
+  claimEvents(context: RequestContext, input: { readonly consumer: string; readonly limit: number; readonly ttlMs: number }): Promise<OperationOutcome>;
+  /** Reports what happened to one claimed event. Idempotent upstream per (outboxId, ackKey). */
+  acknowledgeEvent(context: RequestContext, input: EventAckInput): Promise<OperationOutcome>;
+}
+
+export interface EventListFilters {
+  readonly status?: string;
+  readonly kind?: string;
+  readonly limit?: number;
+  readonly after?: string;
+  readonly includeBackingOff?: boolean;
+}
+
+export interface EventAckInput {
+  readonly outboxId: string;
+  readonly result: 'DELIVERED' | 'DUPLICATE' | 'FAILED_RETRYABLE' | 'FAILED_FINAL';
+  readonly consumer: string;
+  /** From the claim, passed back unchanged. Ownership, not identity, is what authorises an acknowledgement. */
+  readonly claimToken: string;
+  /** Stable per delivery attempt. Re-sending it replays the recorded result instead of counting a second attempt. */
+  readonly ackKey: string;
+  readonly detail?: string;
+  /** Bounded separately from a normal call: an uncertain acknowledgement is retried, so each try must fail fast. */
+  readonly timeoutMs?: number;
 }
 
 export function createMarketingOperations(options: MarketingOperationsOptions): MarketingOperations {
@@ -123,6 +160,7 @@ export function createMarketingOperations(options: MarketingOperationsOptions): 
     readonly context: RequestContext;
     readonly dedupeKey: string | null;
     readonly idempotencyKey?: string;
+    readonly timeoutMs?: number;
   }): Promise<OperationOutcome> {
     const client = options.client;
     if (!client) return { kind: 'not-configured' };
@@ -134,6 +172,7 @@ export function createMarketingOperations(options: MarketingOperationsOptions): 
         ...(input.query ? { query: input.query } : {}),
         ...(input.body !== undefined ? { body: input.body } : {}),
         ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+        ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
         headers: headersFor(input.context, EXPECTED_CONTRACT_VERSION)
       });
 
@@ -272,6 +311,49 @@ export function createMarketingOperations(options: MarketingOperationsOptions): 
       const body = input.jobs && input.jobs.length > 0 ? { jobs: input.jobs } : {};
       const idempotencyKey = idempotencyKeyFor('tick', { jobs: [...(input.jobs ?? [])].sort() });
       return call({ method: 'POST', operation: 'tick', path: '/tick', body, context, dedupeKey: idempotencyKey, idempotencyKey });
+    },
+
+    listEvents(context, filters = {}) {
+      const query = queryOf({ ...filters });
+      return call({ method: 'GET', operation: 'events', path: '/events', ...(query ? { query } : {}), context, dedupeKey: null });
+    },
+
+    claimEvents(context, input) {
+      // No dedupe key and no idempotency key, deliberately. A claim is not a
+      // question with a stable answer: it hands out a token bound to the rows
+      // it just moved, and replaying an earlier one would give this pass
+      // ownership it does not have.
+      return call({
+        method: 'POST',
+        operation: 'claimEvents',
+        path: '/events/claim',
+        body: { consumer: input.consumer, limit: input.limit, ttlMs: input.ttlMs },
+        context,
+        dedupeKey: null
+      });
+    },
+
+    acknowledgeEvent(context, input) {
+      // The ackKey is the idempotency handle, and it is the CALLER's — the
+      // relay computes it once per attempt and reuses it verbatim on an
+      // uncertain retry. Deriving one here would break exactly the property
+      // that makes retrying safe, so this layer passes it through untouched.
+      return call({
+        method: 'POST',
+        operation: 'acknowledgeEvent',
+        path: `/events/${encodeURIComponent(input.outboxId)}/ack`,
+        body: {
+          result: input.result,
+          consumer: input.consumer,
+          claimToken: input.claimToken,
+          ackKey: input.ackKey,
+          ...(input.detail ? { detail: input.detail } : {})
+        },
+        context,
+        dedupeKey: null,
+        idempotencyKey: input.ackKey,
+        ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {})
+      });
     }
   };
 }

@@ -99,6 +99,145 @@ export function eventRow(overrides: Partial<Record<string, unknown>> = {}): Reco
   };
 }
 
+/**
+ * One outbound event, exactly as the Marketing Agent's outbox projection
+ * carries it (its `EventOutboxService.project()` output at commit 70e69d7).
+ *
+ * Every field present, including the ones JusticeOS treats as optional: the
+ * contract tests prove that JusticeOS refuses an event missing a structural
+ * field, so a fixture that quietly omitted one would make them pass for the
+ * wrong reason.
+ */
+export function outboxEvent(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
+  const delivery = { status: 'PENDING', attempts: 0, claimToken: null, claimExpiresAt: null, lastAttemptAt: null, deliveredAt: null, lastError: null };
+  return {
+    id: 'outbox_1',
+    eventId: 'evt_1',
+    kind: 'MARKETING_OPPORTUNITY_FOUND',
+    internalType: 'DEMAND_OPPORTUNITY',
+    severity: 'HIGH',
+    significance: 'ACTION_REQUIRED',
+    trade: 'GUTTERS',
+    channel: 'GOOGLE_ORGANIC',
+    title: 'Gutter demand is going uncaptured',
+    summary: 'Three high-intent gutter queries have no ranking page.',
+    detailedReasoning: 'Derived from stored evidence only; no provider was called.',
+    evidence: [{ kind: 'DEMAND_OPPORTUNITY', ref: 'opportunity-1', detail: { score: 71 } }],
+    recommendedAction: 'Publish a gutter service page for the uncaptured queries',
+    recommendedDeadline: null,
+    ownerApprovalRequired: true,
+    task: null,
+    firstDetectedAt: '2026-09-24T12:00:00.000Z',
+    lastDetectedAt: '2026-09-24T12:00:00.000Z',
+    occurrenceCount: 1,
+    confidence: 0.82,
+    dedupeKey: 'AGENT|MARKETING_OPPORTUNITY_FOUND|gutters',
+    idempotencyKey: 'evt_1:1',
+    correlationId: null,
+    schemaVersion: '1',
+    dataEnvironment: 'LIVE',
+    ...overrides,
+    delivery: { ...delivery, ...((overrides.delivery as Record<string, unknown>) ?? {}) },
+    freshness: {
+      emittedAt: '2026-09-24T12:00:00.000Z',
+      enqueuedAt: '2026-09-24T12:00:01.000Z',
+      detectedAt: '2026-09-24T12:00:00.000Z',
+      ...((overrides.freshness as Record<string, unknown>) ?? {})
+    }
+  };
+}
+
+/** `GET /agent/events` — a read with no side effects. */
+export function eventsEnvelope(events: readonly unknown[], options: { readonly counts?: Record<string, number>; readonly nextCursor?: string | null } = {}): Record<string, unknown> {
+  return envelope(
+    'events',
+    {
+      events,
+      counts: options.counts ?? { PENDING: events.length, CLAIMED: 0, DELIVERED: 0, DUPLICATE: 0, FAILED: 0 },
+      nextCursor: options.nextCursor ?? null,
+      filters: { status: 'PENDING', kind: 'EVENT', after: null }
+    },
+    {
+      headline: [
+        events.length === 0 ? 'Nothing is waiting to be delivered.' : `${events.length} marketing event(s) are waiting to be delivered.`,
+        'Reading them changes nothing — claim an event before delivering it.'
+      ]
+    }
+  );
+}
+
+/**
+ * A claim expiry the relay will still consider live.
+ *
+ * Relative to now rather than a fixed timestamp, and deliberately so: the
+ * relay compares the expiry against the real clock to decide whether it has
+ * time to deliver, so a hard-coded date would silently start failing the day
+ * the suite ran past it. Ten minutes matches the relay's own TTL.
+ */
+export const LIVE_CLAIM_EXPIRES_AT = new Date(Date.now() + 10 * 60_000).toISOString();
+
+/** `POST /agent/events/claim` — ownership taken, with the token every acknowledgement must present. */
+export function claimEnvelope(
+  events: readonly unknown[],
+  options: { readonly claimToken?: string; readonly expiresAt?: string | null } = {}
+): Record<string, unknown> {
+  const claimToken = options.claimToken ?? 'claim-token-1';
+  const expiresAt = options.expiresAt === undefined ? LIVE_CLAIM_EXPIRES_AT : options.expiresAt;
+  return envelope(
+    'claimEvents',
+    { claimToken, events, expiresAt },
+    {
+      headline: [
+        events.length === 0 ? 'Nothing was due, so nothing was claimed.' : `Claimed ${events.length} event(s) until ${expiresAt}.`,
+        'Acknowledge each one with this claim token. An unacknowledged claim lapses and the events are offered again.'
+      ]
+    }
+  );
+}
+
+/** `POST /agent/events/:id/ack` — what the agent recorded about one attempt. */
+export function ackEnvelope(
+  options: {
+    readonly outboxId?: string;
+    readonly result?: string;
+    readonly status?: string;
+    readonly attempts?: number;
+    readonly willRetry?: boolean;
+    readonly nextAttemptAt?: string | null;
+    readonly replayed?: boolean;
+    readonly history?: readonly unknown[];
+  } = {}
+): Record<string, unknown> {
+  const result = options.result ?? 'DELIVERED';
+  const status = options.status ?? (result === 'FAILED_RETRYABLE' ? 'PENDING' : result === 'FAILED_FINAL' ? 'FAILED' : result);
+  const willRetry = options.willRetry ?? status === 'PENDING';
+  return envelope(
+    'acknowledgeEvent',
+    {
+      outboxId: options.outboxId ?? 'outbox_1',
+      result,
+      status,
+      attempts: options.attempts ?? 1,
+      willRetry,
+      nextAttemptAt: options.nextAttemptAt ?? (willRetry ? '2026-09-24T12:01:00.000Z' : null),
+      reason: options.replayed === true ? 'This acknowledgement was already recorded; replaying it rather than counting a second attempt.' : 'The consumer delivered it.',
+      replayed: options.replayed ?? false,
+      history: options.history ?? []
+    },
+    { headline: ['The acknowledgement was recorded.'] }
+  );
+}
+
+/** The Marketing Agent's own refusal bodies for the transport, as `src/api/errors.ts` shapes them. */
+export function eventErrorBody(code: 'EVENT_CLAIM_INVALID' | 'EVENT_ALREADY_FINAL' | 'EVENT_NOT_FOUND', details: Record<string, unknown> = {}): Record<string, unknown> {
+  const messages: Record<string, string> = {
+    EVENT_CLAIM_INVALID: 'The claim on this outbox event has expired and it may already be in another consumer’s hands. Claim it again.',
+    EVENT_ALREADY_FINAL: 'This outbox event is already settled; a new acknowledgement would overwrite settled evidence.',
+    EVENT_NOT_FOUND: 'No outbox event with that id in this dataset.'
+  };
+  return { error: { code, message: messages[code], details } };
+}
+
 export function briefEnvelope(
   options: {
     readonly changes?: readonly unknown[];

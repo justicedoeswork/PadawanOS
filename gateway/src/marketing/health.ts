@@ -54,8 +54,32 @@ export interface MarketingHealthInputs {
   readonly schedulerOwner: SchedulerOwner;
   readonly researchExecution: ResearchExecutionPosture;
   readonly businessFacts: BusinessFactsObservation;
-  readonly events: { readonly retained: number; readonly awaitingOwner: number; readonly handoffConfigured: boolean; readonly lastSyncAt: string | null };
+  readonly events: EventTransportHealth;
   readonly checkedAt: string;
+}
+
+/**
+ * The state of the durable event transport, as JusticeOS knows it.
+ *
+ * `transport` is stated rather than assumed because it changed: events used to
+ * be reconstructed from the brief and now come from the Marketing Agent's
+ * outbox, and a health report that did not say which one it meant would be
+ * unreadable across that boundary.
+ */
+export interface EventTransportHealth {
+  readonly transport: 'MARKETING_OUTBOX';
+  /** The one stable JusticeOS consumer identity. The name that appears in the agent's own delivery log. */
+  readonly consumer: string;
+  readonly claimLimit: number;
+  readonly claimTtlMs: number;
+  readonly retained: number;
+  readonly awaitingOwner: number;
+  readonly byStatus: Readonly<Record<string, number>>;
+  readonly handoffConfigured: boolean;
+  /** When a claim → deliver → acknowledge cycle last ran. Null means never — nothing is driving it yet. */
+  readonly lastRelayAt: string | null;
+  /** Standing transport problems: an unsupported contract, an event the agent does not have. */
+  readonly degraded: readonly string[];
 }
 
 export interface MarketingHealthReport {
@@ -224,8 +248,18 @@ export function aggregateMarketingHealth(inputs: MarketingHealthInputs): Marketi
     degraded.push(inputs.businessFacts.detail ?? 'Verified business facts are unavailable to the Marketing Agent, so no public claim can be fact-checked. Drafting is degraded; analysis is unaffected.');
   }
   if (!inputs.events.handoffConfigured) {
-    degraded.push('No Communications Agent endpoint is configured, so marketing events are retained in JusticeOS but nobody is notified.');
+    degraded.push(
+      'No Communications Agent endpoint is configured, so marketing events are read from the outbox and retained in JusticeOS, nothing is claimed, and nobody is notified.'
+    );
   }
+  if (inputs.events.lastRelayAt === null) {
+    degraded.push('No event relay cycle has run on this gateway yet, so nothing has been claimed from the Marketing Agent outbox.');
+  }
+  // A transport problem is DEGRADED and not BLOCKED, for the same reason the
+  // rest of this report keeps that line: the Marketing Agent still answers
+  // every read, Austin can still ask it anything, and what is broken is the
+  // path by which he would have been told without asking.
+  degraded.push(...inputs.events.degraded);
 
   const state: MarketingHealthState = !inputs.configured
     ? 'NOT_CONFIGURED'

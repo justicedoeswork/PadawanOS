@@ -2,16 +2,21 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { startTestGateway, loginForTestCookie, TEST_MARKETING_API_KEY, TEST_MARKETING_ACTOR } from './helpers/testGateway.js';
 import { startMockAgentContract, type MockAgentContract } from './helpers/mockAgentContract.js';
 import {
+  ackEnvelope,
   briefEnvelope,
+  claimEnvelope,
   dataSourcesEnvelope,
   decisionEnvelope,
   envelope,
   eventRow,
+  eventsEnvelope,
   healthEnvelope,
+  outboxEvent,
   researchPlanEnvelope,
   websitePackageEnvelope
 } from './helpers/agentEnvelopes.js';
-import type { CommunicationsHandoff, MarketingEvent } from '../src/marketing/events.js';
+import type { CommunicationsHandoff } from '../src/marketing/events.js';
+import type { OutboundMarketingEvent } from '../src/marketing/outboxEvents.js';
 
 /**
  * End-to-end acceptance tests for the Padawan ↔ Marketing Agent path, against
@@ -27,7 +32,7 @@ import type { CommunicationsHandoff, MarketingEvent } from '../src/marketing/eve
 let agent: MockAgentContract;
 let gateway: Awaited<ReturnType<typeof startTestGateway>>;
 let cookie: string;
-let delivered: MarketingEvent[];
+let delivered: OutboundMarketingEvent[];
 let communications: CommunicationsHandoff;
 let handoffConfigured = true;
 
@@ -67,9 +72,9 @@ beforeEach(async () => {
       return handoffConfigured;
     },
     async deliver(event) {
-      if (!handoffConfigured) return { state: 'NOT_CONFIGURED', ref: null, detail: 'no endpoint configured' };
+      if (!handoffConfigured) return { outcome: 'NOT_CONFIGURED', ref: null, detail: 'no endpoint configured' };
       delivered.push(event);
-      return { state: 'DELIVERED', ref: event.id, detail: null };
+      return { outcome: 'ACCEPTED', ref: event.idempotencyKey, detail: null };
     }
   };
   agent = await startMockAgentContract({ expectedApiKey: TEST_MARKETING_API_KEY });
@@ -302,55 +307,62 @@ describe('C. approving an approval-required package', () => {
 // ── D ───────────────────────────────────────────────────────────────────────
 
 describe('D. an autonomous MARKETING_OPPORTUNITY_FOUND event', () => {
-  it('reaches JusticeOS, is handed to Communications, and is retained', async () => {
+  /**
+   * The transport is the Marketing Agent's durable outbox, not the brief.
+   * The full lifecycle — claim, deliver, acknowledge, and every way it can go
+   * wrong — is proven in `marketingEventRelay.test.ts`; what belongs here is
+   * that the bridge as a whole wires it up and keeps the brief out of it.
+   */
+  function scriptOutbox(): void {
+    agent.route('POST /agent/events/claim', { status: 200, body: claimEnvelope([outboxEvent()]) });
+    agent.route('POST /agent/events/outbox_1/ack', { status: 200, body: ackEnvelope() });
+    agent.route('GET /agent/events', { status: 200, body: eventsEnvelope([outboxEvent()]) });
+  }
+
+  it('is claimed from the outbox, handed to Communications, acknowledged, and retained', async () => {
+    scriptOutbox();
     agent.route('GET /agent/brief', { status: 200, body: briefEnvelope({ changes: [eventRow()] }) });
     await startWith();
 
-    const sync = await json(await api('/api/marketing/agent/events/sync', { method: 'POST', body: '{}' }));
-    expect(sync).toMatchObject({ received: 1, created: 1, handedOff: 1, handoffConfigured: true });
+    const cycle = await json(await api('/api/marketing/agent/events/relay', { method: 'POST', body: '{}' }));
+    expect(cycle.transport).toBe('MARKETING_OUTBOX');
+    expect(cycle.relay).toMatchObject({ claimed: 1, delivered: 1, handoffConfigured: true });
     expect(delivered).toHaveLength(1);
     expect(delivered[0]?.kind).toBe('MARKETING_OPPORTUNITY_FOUND');
+    // The brief is user-facing intelligence again: the relay never reads it.
+    expect(agent.countOf('GET /agent/brief')).toBe(0);
 
     const listed = await json(await api('/api/marketing/agent/events'));
     expect(listed.events).toHaveLength(1);
-    expect(listed.events[0].handoff.state).toBe('DELIVERED');
-  });
-
-  it('proves dedupe: a second sync of the same event notifies nobody again', async () => {
-    agent.route('GET /agent/brief', { status: 200, body: briefEnvelope({ changes: [eventRow()] }) });
-    await startWith();
-
-    await api('/api/marketing/agent/events/sync', { method: 'POST', body: '{}' });
-    const second = await json(await api('/api/marketing/agent/events/sync', { method: 'POST', body: '{}' }));
-
-    expect(second).toMatchObject({ received: 1, created: 0, updated: 1, handedOff: 0 });
-    expect(delivered).toHaveLength(1);
-    expect((await json(await api('/api/marketing/agent/events'))).events).toHaveLength(1);
+    expect(listed.events[0].status).toBe('DELIVERED');
   });
 
   it('retains a dismissed event so Austin can still see it in the app', async () => {
-    agent.route('GET /agent/brief', { status: 200, body: briefEnvelope({ changes: [eventRow({ ownerAttentionRequired: true })] }) });
+    scriptOutbox();
     await startWith();
-    await api('/api/marketing/agent/events/sync', { method: 'POST', body: '{}' });
+    await api('/api/marketing/agent/events/relay', { method: 'POST', body: '{}' });
 
     const id = (await json(await api('/api/marketing/agent/events'))).events[0].id;
     const dismissed = await json(await api(`/api/marketing/agent/events/${encodeURIComponent(id)}/dismiss`, { method: 'POST', body: '{}' }));
     expect(dismissed.event.dismissedAt).not.toBeNull();
     expect(dismissed.retained).toBe(true);
+    expect(dismissed.upstreamRetained).toBe(true);
 
     expect((await json(await api('/api/marketing/agent/events'))).events).toHaveLength(1);
     expect((await json(await api('/api/marketing/agent/events?includeDismissed=false'))).events).toHaveLength(0);
   });
 
-  it('retains the event and reports that nobody was notified when no Communications endpoint is wired', async () => {
+  it('reads and retains the event, and claims nothing, when no Communications endpoint is wired', async () => {
     handoffConfigured = false;
-    agent.route('GET /agent/brief', { status: 200, body: briefEnvelope({ changes: [eventRow()] }) });
+    scriptOutbox();
     await startWith();
 
-    const sync = await json(await api('/api/marketing/agent/events/sync', { method: 'POST', body: '{}' }));
-    expect(sync).toMatchObject({ created: 1, handedOff: 0, handoffConfigured: false });
-    expect(sync.events[0].handoff.state).toBe('NOT_CONFIGURED');
-    expect((await json(await api('/api/marketing/agent/events'))).events).toHaveLength(1);
+    const cycle = await json(await api('/api/marketing/agent/events/relay', { method: 'POST', body: '{}' }));
+    expect(cycle.relay).toMatchObject({ mode: 'READ_ONLY', observed: 1, claimed: 0, delivered: 0, handoffConfigured: false });
+    expect(agent.countOf('POST /agent/events/claim')).toBe(0);
+    const listed = await json(await api('/api/marketing/agent/events'));
+    expect(listed.events).toHaveLength(1);
+    expect(listed.events[0].status).toBe('NEW');
   });
 });
 

@@ -19,7 +19,7 @@ increment is deployed**; see "Blockers before deployment" at the end.
 
 Concretely, the gateway bridge does four things and no more:
 
-1. **Routes** a natural request onto one of the agent's ten operations.
+1. **Routes** a natural request onto one of the agent's ten conversational operations. (The three event-transport operations are driven by the relay, never by a sentence.)
 2. **Carries identity** — conversation, task, requesting agent, operator —
    and **de-duplicates**, so one intent is one upstream call.
 3. **Enforces the contract**, failing closed on a version it was not built
@@ -230,82 +230,245 @@ wires no publisher and the Marketing Agent has none.
 
 ---
 
-## 7. Events: Marketing → JusticeOS → Communications → Austin
+## 7. Events: Marketing outbox → JusticeOS → Communications → Austin
 
 > Marketing decides what matters. Communications decides how Austin hears
 > about it. **Marketing never contacts Austin directly.**
 
-### The path as built
+### The authoritative path
 
 ```
-Marketing Agent raises an event (its own dedupe lifecycle, one row per problem)
-  → GET /agent/brief  →  result.changesSinceLastBrief
-      → POST /api/marketing/agent/events/sync
-          → JusticeOS event store (retained, deduped)   ← Austin sees this in the app
-          → Communications handoff (one envelope, idempotency-keyed)
-              → Communications Agent decides channel, timing, and whether to send
+Marketing Agent raises an event and writes it to MarketingCommunicationOutbox
+  → POST /agent/events/claim          JusticeOS takes ownership (claimToken, TTL)
+      → Communications Agent          one envelope per event; it decides channel,
+                                      timing, wording, and whether to send at all
+      → POST /agent/events/:id/ack    DELIVERED | DUPLICATE | FAILED_RETRYABLE | FAILED_FINAL
+          → Marketing appends an immutable delivery attempt
+  → JusticeOS retains the event       ← Austin sees this in the app, before and after
 ```
 
-The seven kinds: `MARKETING_OPPORTUNITY_FOUND`,
-`MARKETING_PERFORMANCE_DROP`, `MARKETING_PERFORMANCE_GAIN`,
-`MARKETING_DATA_STALE`, `MARKETING_RESEARCH_COMPLETED`,
-`MARKETING_APPROVAL_REQUIRED`, `MARKETING_PROVIDER_BLOCKED`.
+Driven by `POST /api/marketing/agent/events/relay`, which runs exactly one
+cycle of that.
 
-### Why the brief, and not the outbox
+**The outbox is the transport, and it is the only one.** The brief's
+`result.changesSinceLastBrief` was the transport while the outbox had no
+endpoint of its own; that path is removed. A brief is a view and the outbox
+is a record, so the outbox is what a consumer reads. The brief remains what
+it always was — user-facing intelligence — and the relay never reads it.
+`POST …/events/sync` answers `410 MARKETING_EVENT_SYNC_RETIRED` and does
+nothing.
 
-The Marketing Agent writes every owner-facing envelope into
-`marketing_communication_outbox`, and that table's own header comment names
-"the JusticeOS shared backend / event queue" as its eventual reader. That
-is the more faithful transport — but **the agent contract exposes no
-endpoint over that table**, and JusticeOS has no shared backend to read it
-with (the gateway holds no database). The brief's
-`changesSinceLastBrief` is what the contract actually offers, it is already
-narrowed to the seven JusticeOS-facing kinds, it is already collapsed by the
-agent's own dedupe, and the read is free — stored evidence, no provider
-call. So it is the transport, and the outbox gap is recorded as a blocker
-rather than quietly worked around.
+### Why the outbox is safe to consume
 
-### Dedupe
+The Marketing Agent's `trg_protect_marketing_outbox` freezes `kind`,
+`idempotencyKey`, `schemaVersion`, `payload` and `createdAt`, and permits
+only `status` to move. So what a row *says* is immutable, a row can never be
+deleted, and only what has *happened* to it can change. The projection a
+consumer reads is built from the row's frozen payload, not the live event:
+an event's own row keeps changing as it recurs, and what JusticeOS has to
+deliver is what the agent decided at the moment of handoff.
 
-Event identity is `kind | trade | channel | firstDetectedAt | title`. The
-occurrence count and last-detection time deliberately do **not**
-participate: a recurring problem stays one event, which is what the agent's
-own dedupe already decided. A re-ingest updates the occurrence count and
-**does not re-notify** — otherwise one decision would become a notification
-every poll.
+### Claim before delivery
 
-### Retention and dismissal
+JusticeOS never fetches an event and sends it. Fetching is deliberately not
+delivering — a read claims nothing and settles nothing, so a relay that
+crashes after reading has not silently swallowed the event.
 
-JusticeOS retains every event so Austin can see it in the app even if a
-notification is dismissed. Dismissing sets `dismissedAt`; the event stays
-listable, and a later recurrence updates it in place rather than
-resurrecting it.
+| | |
+| --- | --- |
+| Consumer | `justiceos-communications-relay` — one identity, every deploy |
+| Limit | 10 events per claim |
+| TTL | 10 minutes |
+
+The consumer identity is a constant (`outboxEvents.ts`), not generated and
+not configured. The Marketing Agent stamps `claimedBy` and every delivery-log
+row with it, so it is how an operator answers *"who took that event, and who
+said it was delivered"* months later. A per-process name would make the audit
+log unreadable after the first restart. It names a role, never a person, a
+machine, or a credential.
+
+The TTL is **sized, not picked**: ten events at (5s Communications wait +
+2×10s acknowledgement) is 250 seconds, so ten minutes is ~2.4× the longest a
+cycle can legitimately take, and well inside the 30s–30m band the agent
+clamps to. It is deliberately not larger — a claim is a promise to deliver or
+die trying, and an over-long one means a crashed relay strands events for as
+long as it lasts. The relay also **stops early**: when less than one
+per-event budget of the claim remains, it delivers no more and lets the rest
+lapse, because an acknowledgement refused for a lapsed claim is a delivery
+nobody recorded.
+
+Every delivery attempt persists its whole claim context — outbox id, event
+id, `claimToken`, `ackKey`, `idempotencyKey`, `dedupeKey`, kind, and the
+claim expiry. The `claimToken` goes back **unchanged**; ownership, not
+identity, is what authorises an acknowledgement.
+
+### The ack key
+
+Derived, never random, and derived from the claim token:
+
+```
+ackKey = justiceos-ack-<sha256(consumer, outboxId, claimToken)[:32]>
+```
+
+That one choice gives both properties the contract needs.
+
+- **Stable within a claim.** An acknowledgement whose answer was lost is
+  re-sent verbatim, and Marketing's unique `(outboxId, ackKey)` replays the
+  recorded result instead of counting a second attempt. **This is the rule:
+  an uncertain acknowledgement is retried with the SAME ack key — once
+  in-line, and again on the next cycle if that also fails. A new key would
+  defeat the entire mechanism.**
+- **Different across claims.** A genuine second attempt after a retryable
+  failure arrives under a new claim token, so it is counted as an attempt
+  rather than silently replayed as the first one's result.
+
+Being derived also means a process that restarts mid-delivery recomputes the
+same key from the same claim instead of double-counting the attempt.
+
+### What JusticeOS reports back
+
+| Communications answered | JusticeOS acknowledges | Marketing makes it |
+| --- | --- | --- |
+| 2xx | `DELIVERED` | `DELIVERED` |
+| 409 — already had it | `DUPLICATE` | `DUPLICATE` |
+| 401, 403, 408, 429, 5xx, timeout, unreachable | `FAILED_RETRYABLE` | `PENDING`, after a backoff |
+| 400, 404, 405, 415, 422 | `FAILED_FINAL` | `FAILED`, retained for audit |
+
+The line between retryable and final is drawn by **what a second identical
+request would do**, not by how bad the status sounds. The receiver refusing
+*this message* is permanent — the same envelope will be refused forever. The
+receiver refusing *us*, or failing to answer, is a condition a human resolves
+while the backoff runs. `DUPLICATE` is terminal and deliberately distinct
+from `DELIVERED`: "I already handled this" is not the same evidence as "I
+delivered this", and collapsing them would lose the only signal that
+JusticeOS's own dedupe caught something the outbox did not.
+
+There is no retry inside the handoff itself. Retrying is the outbox's job and
+it does it properly — a backoff that doubles from a minute to an hour, with a
+ceiling of 8 attempts.
+
+### Duplicate protection, in three layers
+
+1. **Marketing** — a delivered, duplicate or failed row is never offered
+   again, and the claim means only one consumer holds it at a time.
+2. **JusticeOS** — before sending, the relay asks its own store whether it
+   has already handled this event, keyed on the agent's `idempotencyKey`
+   (unique per event *occurrence*). If so it **does not send again** and
+   acknowledges `DUPLICATE`. The `dedupeKey` is deliberately *not* used for
+   this: it is stable across recurrences, and a genuine recurrence is a new
+   occurrence the agent decided was worth raising again.
+3. **The receiver** — the envelope carries `idempotencyKey` as both a field
+   and an `Idempotency-Key` header, and a 409 back is read as `DUPLICATE`.
+
+### Error handling
+
+| Upstream | Status | JusticeOS does |
+| --- | --- | --- |
+| `EVENT_CLAIM_INVALID` | 409 | Nothing. No re-authentication, no second acknowledgement, no fabricated result. The event becomes `RETRY_PENDING` locally and re-enters the normal claim cycle on a later pass. |
+| `EVENT_ALREADY_FINAL` | 409 | Stops delivery work for that event and reconciles its local status to the one the agent reports. An unrecognised terminal status reconciles to `FAILED`, never to `DELIVERED` — that guess cannot be taken back. |
+| `EVENT_NOT_FOUND` | 404 | Records an integration inconsistency, degrades the transport in the health report, and keeps both facts: whatever Communications did, this acknowledgement did not happen. Never a fabricated success. |
+| Any other deterministic refusal | 4xx | Recorded as a standing integration problem and **not** retried with that ack key, now or on a later cycle — an acknowledgement that can never be accepted would otherwise be re-sent forever. The claim lapses and the outbox offers the event again under a fresh one. |
+| Unsupported / unreadable contract | 502 | Fails closed. Nothing claimed, delivered or acknowledged, and the Marketing integration is marked **degraded** until an operator acts. |
+
+A transport failure is `DEGRADED`, not `BLOCKED`: the agent still answers
+every read and Austin can still ask it anything. What is broken is the path
+by which he would have been told *without* asking.
+
+### No Communications endpoint configured
+
+Which, today, is every deployment. The relay then **claims nothing at all** —
+claiming is taking ownership of work it cannot do. It reads instead
+(`GET /agent/events`, no side effects), retains what it finds so Austin can
+see it in the app, and reports `mode: READ_ONLY`. The events stay `PENDING`
+upstream for whoever eventually wires a receiver, and their retry budget is
+untouched. It does not fall back to contacting anyone, does not queue for a
+retry that will never come, and does not report success. An event nobody was
+told about must not look delivered.
+
+### Event state in JusticeOS
+
+| Status | Meaning |
+| --- | --- |
+| `NEW` | Seen, not taken. Either never claimed, or read only. |
+| `DELIVERING` | Claimed and in flight to Communications. |
+| `DELIVERED` | Communications accepted it. |
+| `DUPLICATE` | Already handled — ours or the receiver's idempotency said so. |
+| `RETRY_PENDING` | A transient failure, or a lapsed claim. The outbox will offer it again. |
+| `FAILED` | Permanently undeliverable, and kept as such. |
+
+`delivery.acknowledged` is tracked separately from the status, because
+"Communications took it" and "Marketing knows Communications took it" are
+different facts — and an acknowledgement that timed out leaves the second one
+false while the first stays true. That is precisely the state the
+same-`ackKey` retry resolves.
+
+**Retention.** An event stays listable after Communications has handled it. A
+delivered event is settled, not erased.
+
+**Dismissal is local, and only local.** It sets `dismissedAt` so the app can
+stop showing the notification. It makes no upstream call — there is no
+endpoint that could delete an outbox row, the row is undeletable by database
+constraint, and JusticeOS would not use one if it existed. Dismissing means
+"stop telling me", not "this never happened".
 
 **Limitation, stated rather than implied.** The store is in the gateway
-process — no database. The durable record is upstream (the agent's own
-event rows and its outbox), and this store is a projection plus JusticeOS's
-handoff ledger, rebuilt by the next sync after a restart. The consequence:
-across a gateway restart, delivery de-duplication depends on the *receiver*
-honouring the idempotency key it is sent (the event identity), which the
-envelope carries for exactly that reason.
+process — no database. The durable record is upstream: the outbox row is
+insert-only and undeletable, and every acknowledgement is appended to an
+immutable log there. A restart loses the projection, not the record. The
+consequence is that JusticeOS's *own* layer of duplicate protection (layer 2
+above) is gone across a restart, and de-duplication falls back to the two
+layers that survive — Marketing never re-offering a settled event, and the
+receiver honouring the idempotency key it is sent. Building a shared database
+for JusticeOS was out of scope here and is not required for correctness,
+because those two layers are durable.
 
-### What crosses the boundary
+### What crosses the boundary to Communications
 
-`MARKETING_EVENT` / `schemaVersion: "1"` / `idempotencyKey` / `payload`,
-mirroring the shape the agent already writes to its own outbox. What does
-**not** cross it: a channel, a recipient, a phone number, an email address,
-a template, a send time, or any instruction to notify anyone. A JusticeOS
-that decided those would have quietly become a notification service.
+`MARKETING_EVENT` / `schemaVersion: "1"` / `idempotencyKey` / `consumer` /
+`payload`, where the payload is the Marketing Agent's own projection relayed
+field-for-field: `outboxId`, `eventId`, `eventKind` (the public `MARKETING_*`
+name), `internalType` (the durable one, for events with no public name),
+title, summary, detailed reasoning, severity, significance, trade, channel,
+evidence, recommended action and deadline, `ownerApprovalRequired`, first and
+last detection, occurrence count, confidence, `dedupeKey`, and freshness.
+
+What does **not** cross it: a channel choice, a recipient, a phone number, an
+email address, a template, a send time, or any instruction to notify anyone.
+JusticeOS composes no marketing copy and re-derives no event semantics — it
+carries the agent's judgement and the receiver makes its own.
 
 `MARKETING_AGENT_API_KEY` never appears on this path. The Communications
 Agent authenticates with its own `COMMUNICATIONS_AGENT_API_KEY`, and a test
 asserts the marketing credential reaches no Communications request.
 
-With no endpoint configured, the handoff records `NOT_CONFIGURED` and
-nothing else: it does not fall back to contacting anyone, does not queue
-for a retry that will never come, and does not report success. An event
-nobody was told about must not look delivered.
+### The relay driver — decided
 
+JusticeOS has no scheduler and its Fly machine stops when idle, so something
+outside the process has to run the cycle. Three options were real:
+
+| Option | Why not / why |
+| --- | --- |
+| Communications polls the Marketing outbox itself | Cheapest, but it means handing a second service the Marketing credential and the claim/ack protocol — and it puts *which events matter* one step closer to the service that decides *how to tell Austin*, which is the line this integration exists to keep. |
+| A lightweight always-on relay process | Costs money every hour of every day to do a few seconds of work, and is a new thing to deploy and monitor. Wrong shape for "move whatever is waiting". |
+| **Platform cron → authenticated JusticeOS relay endpoint** | **Chosen.** No new process, no new credential distribution. `auto_start_machines = true` means the request wakes the machine, one cycle runs, and it sleeps again. |
+
+Implemented as `.github/workflows/marketing-event-relay.yml`, deliberately
+**not scheduled** — the `schedule:` trigger is commented out and activating
+it is a listed deployment step. It authenticates with `JUSTICEOS_RELAY_KEY`,
+a machine credential for exactly one route: not the gateway password (which
+would grant the whole app) and not the Marketing key (which would grant
+approval rights upstream). The worst a leaked relay key can do is make one
+cycle run early; it cannot log in, read events, approve anything, tick the
+agent, or reach the Marketing Agent directly, and tests prove each of those.
+Unset, the relay is operator-triggered only and nothing falls open.
+
+**This is not a second Marketing scheduler.** It drives no research, fires no
+tick, and decides nothing about what the agent should look at — it moves
+events the agent has already decided to raise.
+`MARKETING_AGENT_SCHEDULER_OWNER` stays `marketing-internal-loop`, and
+production still refuses to start if it says otherwise. If the relay never
+runs, nothing is lost: the outbox is insert-only and undeletable, and the
+events are still there.
 ---
 
 ## 8. Authentication
@@ -368,6 +531,14 @@ requires a recorded `reason`, is de-duplicated, and its response names the
 scheduler owner so nobody can mistake calling it for having enabled
 scheduling. The agent's DB leases make a duplicate tick a no-op anyway;
 single ownership is about knowing who to look at when nothing ran.
+
+**The event relay driver (§7) does not change any of this.** It runs
+`claim → deliver → acknowledge` on events the Marketing Agent has already
+decided to raise. It drives no research, fires no tick, and decides nothing
+about what the agent should look at — so it is not a second scheduler and
+`MARKETING_AGENT_SCHEDULER_OWNER` stays `marketing-internal-loop`. Two
+different jobs, two different owners: the agent decides *when to look*,
+JusticeOS decides *when to carry what it found*.
 
 Configuration to apply on the **Marketing Agent** app when scheduling is
 turned on (not yet):
@@ -548,8 +719,15 @@ load-bearing and a test covers it.
 | POST | `…/decisions` | Requires `revisionId` + `decision` + `confirmed: true`. |
 | POST | `…/tick` | Operator action; requires `reason`. |
 | GET | `…/events` | Retained events. `?includeDismissed=false` to exclude. |
-| POST | `…/events/sync` | Ingest from the brief, hand new ones to Communications. |
-| POST | `…/events/:eventId/dismiss` | Dismisses the notification; retains the event. |
+| POST | `…/events/relay` | One claim → deliver → acknowledge cycle. **Session cookie OR `JUSTICEOS_RELAY_KEY`.** |
+| POST | `…/events/sync` | Retired. Always `410 MARKETING_EVENT_SYNC_RETIRED`; does nothing. |
+| POST | `…/events/:eventId/dismiss` | Dismisses the notification; retains the event here and upstream. |
+
+`…/events/relay` is the one route registered **before** the blanket session
+check, and that order is load-bearing: the scheduled driver has no browser,
+so the route carries its own credential check (§7) rather than inheriting one
+only a browser can satisfy. Everything else under the prefix stays
+session-only, and a test proves the relay key reaches nothing else.
 
 Anything else under the prefix answers JSON `404 ROUTE_NOT_FOUND` rather
 than the SPA shell.
@@ -566,6 +744,7 @@ than the SPA shell.
 | `MARKETING_ACTOR_NOT_CONFIGURED` | 503 | No operator identity; mutations only. |
 | `MARKETING_DECISION_NOT_CONFIRMED` | 400 | A decision without a deliberate confirmation. No upstream call. |
 | `MARKETING_EVENT_NOT_FOUND` | 404 | No retained event with that id. |
+| `MARKETING_EVENT_SYNC_RETIRED` | 410 | The brief-based transport is gone. Points at `…/events/relay`. Nothing synced, claimed, or delivered. |
 | `INVALID_REQUEST` | 400 | Rejected before any upstream call. |
 | `ROUTE_NOT_FOUND` | 404 | No such bridge endpoint. |
 
@@ -590,12 +769,19 @@ All server-side, read only by the gateway package
 | `MARKETING_AGENT_ACTOR` | no | Operator recorded upstream. Defaults to `ACP_ALLOWED_USER_ID`. |
 | `MARKETING_AGENT_SCHEDULER_OWNER` | no | `marketing-internal-loop` (default) · `justiceos` (refused in production) · `none`. |
 | `MARKETING_AGENT_RESEARCH_EXECUTION` | no | `plan-only` (default) · `execute-allowed`. Reporting only. |
-| `COMMUNICATIONS_AGENT_EVENT_URL` | no | The Communications Agent's inbound event endpoint. Unset = events retained, nobody notified. |
+| `COMMUNICATIONS_AGENT_EVENT_URL` | no | The Communications Agent's inbound event endpoint. Unset = the relay reads without claiming; events retained, nobody notified. |
 | `COMMUNICATIONS_AGENT_API_KEY` | no | The Communications Agent's **own** credential. |
+| `JUSTICEOS_RELAY_KEY` | no | The scheduled relay driver's machine credential, for `…/events/relay` and nothing else. Unset = the relay is operator-triggered only. |
 
 Production validation (`configValidation.ts`) refuses to start on: a
 half-configured Communications handoff, a plaintext public endpoint for it,
-a short/placeholder credential, or `justiceos` as scheduler owner.
+a short/placeholder credential, a short/placeholder `JUSTICEOS_RELAY_KEY`,
+or `justiceos` as scheduler owner.
+
+No JusticeOS migration is required by the event transport, and none is
+possible: the gateway holds no database. The migration this change depends
+on is the Marketing Agent's own `20260927090000_outbox_delivery`, which adds
+the claim/attempt columns and `marketing_outbox_deliveries` on that side.
 
 ---
 
@@ -616,30 +802,78 @@ appears only for an `APPROVAL_REQUIRED` answer that names its revision, and
 a contract mismatch renders as an integration problem rather than as a
 marketing answer.
 
+`src/manager/client.ts` exposes `relayEvents()` (one cycle, the operator's
+"run it now") in place of the removed `syncEvents()`, and
+`src/manager/types.ts` carries the six-state `MarketingEventStatus` and the
+outbox event projection so a surface can be built against real types.
+
 Not in this increment: an events/alerts surface on the dashboard (the
 `/events` API exists and is tested; nothing renders it yet), and a
-marketing health tile.
+marketing health tile. Nothing in the browser holds or needs a credential —
+the relay key is server-side, and a test asserts no frontend file names it
+or imports the transport modules.
 
 ---
 
 ## 16. Tests
 
 ```
-pnpm --filter panda-gateway test     # 325 tests
-pnpm test                            # 1224 (frontend + gateway), 5 skipped
+pnpm --filter panda-gateway test     # 383 tests
+pnpm test                            # frontend + gateway
 ```
 
-New gateway suites:
+Gateway suites:
 
 | File | Covers |
 | --- | --- |
 | `marketingContract.test.ts` | Version handling, envelope validation, approval state, constraints, normalization. |
 | `marketingIntent.test.ts` | All nine specified mappings, "a question is never a decision", trade recognition. |
 | `marketingRequestIdentity.test.ts` | Identifier hygiene, correlation headers, request identity, single-flight + replay window. |
-| `marketingEvents.test.ts` | Brief → events, identity, notify-once, retention through dismissal, handoff states, credential separation. |
+| `marketingEvents.test.ts` | The outbox contract (fail-closed parsing), the ack-key derivation, the retained store and its statuses, receiver-side dedupe, and the Communications handoff's outcome classification and credential separation. |
+| `marketingEventRelay.test.ts` | End-to-end transport acceptance A–L (below), plus the relay driver's credential and dismissal. |
 | `marketingHealth.test.ts` | Degraded-is-not-an-outage, what genuinely blocks, what only JusticeOS knows. |
 | `businessFactsArtifact.test.ts` | Validation, placeholder refusal, fingerprinting, provisioning steps. |
 | `marketingAgentBridge.test.ts` | End-to-end acceptance A–I against a mocked agent (below). |
+
+Transport acceptance cases, mapped to their `describe` blocks in
+`marketingEventRelay.test.ts`. The Communications endpoint is a **mock**,
+because the real one does not exist (§13 of the blockers):
+
+- **A** — pending event → claim → Communications accepts → ACK `DELIVERED`;
+  claimed before delivered, delivered before acknowledged; stable consumer,
+  bounded limit, TTL sized above the worst case; the whole claim context
+  persisted; still listable afterwards.
+- **B** — fetch alone never delivers: with no receiver wired the relay reads
+  and claims nothing, the event stays `NEW` and `PENDING` upstream, health
+  says so, `…/events/sync` is a `410` tombstone, and no source line names the
+  brief's event array any more.
+- **C** — a duplicate is not sent again and is acknowledged `DUPLICATE`, never
+  `DELIVERED`; the receiver's own 409 relays as `DUPLICATE` too; a genuine
+  recurrence still delivers.
+- **D** — transient failure → ACK `FAILED_RETRYABLE`; the event becomes
+  available again by Marketing's policy and the later attempt uses a **new**
+  ack key.
+- **E** — permanent failure → ACK `FAILED_FINAL`; the event is kept, not
+  discarded.
+- **F** — uncertain acknowledgement → retried with the **same** ack key, in
+  the cycle and again on the next one; Marketing replays; the attempt count
+  does not double and Communications is not called twice.
+- **G** — claim expired → `EVENT_CLAIM_INVALID`, no fake success, no second
+  acknowledgement, normal reclaim later. Also `EVENT_ALREADY_FINAL`
+  (reconcile) and `EVENT_NOT_FOUND` (recorded inconsistency).
+- **H** — two relay attempts cannot both deliver one claimed event: the loser
+  is handed an empty claim and issues no acknowledgement at all.
+- **I** — unsupported contract version fails closed: nothing claimed,
+  delivered or acknowledged, `502`, and the transport marked degraded (not an
+  outage) in health.
+- **J** — `MARKETING_AGENT_API_KEY` appears in no response body, no event
+  listing, no health report, nothing sent to Communications, and no frontend
+  source file.
+- **K** — no provider call: the relay reaches only the agent's
+  `/agent/events*` routes and never `/research`, `/tick`, `/prepare-work`,
+  `/decisions` or `/brief`.
+- **L** — no real notification: the only receiver is the mock, and the
+  unconfigured default sends nothing and falls back to nobody.
 
 Acceptance cases, mapped to their `describe` blocks in
 `marketingAgentBridge.test.ts`:
@@ -652,9 +886,10 @@ Acceptance cases, mapped to their `describe` blocks in
   actor.
 - **C** — approval → decision endpoint → internal state only; refused
   without `confirmed: true`, without a revision, and from `/ask`.
-- **D** — `MARKETING_OPPORTUNITY_FOUND` → sync → Communications → visible
-  and retained; dedupe proven; retained through dismissal; retained with no
-  handoff configured.
+- **D** — `MARKETING_OPPORTUNITY_FOUND` → claimed from the outbox →
+  Communications → acknowledged → visible and retained; the brief is never
+  read; retained through dismissal; read-only with no handoff configured.
+  (The full lifecycle lives in `marketingEventRelay.test.ts`.)
 - **E** — provider blocked → `DEGRADED` with the provider named, not an
   outage; constraint surfaced; no retry storm; cooldown reported as
   deferred.
@@ -677,37 +912,48 @@ so de-duplication is proven rather than assumed.
 
 ## Blockers before deployment
 
-1. **No Communications Agent inbound event endpoint exists.** The handoff,
-   its envelope, its credential and its failure states are built and
-   tested, but the Communications Agent's API today exposes intake for
-   voice notes and call summaries, proposals, responses and direct
-   commands — nothing that accepts a marketing event. Until a contract is
-   agreed there, events are retained in JusticeOS and nobody is notified
-   (reported honestly as such). This is the one gap in requirement 7's
-   end-to-end path.
-2. **The outbox has no endpoint.** Event transport rides
-   `changesSinceLastBrief` rather than the Marketing Agent's
-   `marketing_communication_outbox`. Acceptable and free, but the outbox is
-   the more faithful path and would need either an agent endpoint over it
-   or the shared backend its own comment anticipates.
-3. **Nothing polls `/events/sync`.** It is operator/UI-triggered. With the
-   scheduler owned by the Marketing Agent and the JusticeOS machine
-   stopping when idle, a periodic JusticeOS-side sync needs a decision of
-   its own (a UI poll while the app is open is the obvious minimum).
-4. **Event retention is in-process.** No database in the gateway. A restart
-   rebuilds from the next sync and relies on the receiver's idempotency for
-   delivery dedupe.
-5. **The facts volume is not provisioned.** §11 is designed, validated and
+1. **No Communications Agent inbound event endpoint exists — still the one
+   gap in §7's end-to-end path.** The JusticeOS side is now complete: the
+   claim client, the relay lifecycle, the envelope, the credential, the
+   outcome classification and every failure state are built and tested
+   against a mock receiver. But the Communications Agent's API today exposes
+   intake for voice notes and call summaries, proposals, responses and
+   direct commands — nothing that accepts a marketing event. Until a
+   contract is agreed there, `NOT_CONFIGURED` remains a real state: the
+   relay reads the outbox, claims nothing, retains what it finds so Austin
+   sees it in the app, and reports honestly that nobody was notified. It
+   does not fall back to contacting Austin directly, and it never will —
+   that would make JusticeOS a notification service.
+2. **The relay driver is implemented but not activated.**
+   `.github/workflows/marketing-event-relay.yml` exists with its `schedule:`
+   trigger commented out, by design (§7). Activating it needs three things,
+   none of them done: the `JUSTICEOS_RELAY_KEY` secret set on the JusticeOS
+   Fly app, `JUSTICEOS_RELAY_URL`/`JUSTICEOS_RELAY_KEY` set as repository
+   secrets, and blocker 1 resolved — there is no point scheduling deliveries
+   to a receiver that does not exist. Until then the relay is
+   operator-triggered only.
+3. **Event retention is in-process.** No database in the gateway. A restart
+   loses JusticeOS's own duplicate-protection layer; the two durable layers
+   remain (the outbox never re-offers a settled event, and the receiver
+   honours the idempotency key it is sent). Not required for correctness,
+   and deliberately not built here.
+4. **The facts volume is not provisioned.** §11 is designed, validated and
    scripted; the volume, the mount, the env var and the upload have not
    been done.
-6. **The Marketing Agent app is not deployed or configured.** Its Fly app
-   name is still a placeholder; `AGENT_LOOP_ENABLED`, the
-   `AGENT_EXECUTE_*` flags and its migrations are untouched by this work.
-7. **No JusticeOS secrets are set.** `MARKETING_AGENT_BASE_URL` /
+5. **The Marketing Agent app is not deployed or configured, and its
+   outbox-delivery migration has not been run.** Its Fly app name is still a
+   placeholder; `AGENT_LOOP_ENABLED`, the `AGENT_EXECUTE_*` flags and its
+   migrations — including `20260927090000_outbox_delivery`, which this
+   transport depends on — are untouched by this work. JusticeOS needs no
+   migration of its own; the gateway holds no database.
+6. **No JusticeOS secrets are set.** `MARKETING_AGENT_BASE_URL` /
    `MARKETING_AGENT_API_KEY` have never been set on the JusticeOS Fly app;
    the integration is off there.
-8. **Single-owner actor.** The audit identity upstream is the configured
+7. **Single-owner actor.** The audit identity upstream is the configured
    owner, not a per-user identity, because JusticeOS has no user table. Fine
-   for a single-owner tool; revisit if JusticeOS grows accounts.
-9. **No events/alerts UI.** The API is there; the dashboard does not render
-   it yet, so today a retained event is visible only through the API.
+   for a single-owner tool; revisit if JusticeOS grows accounts. (The relay's
+   consumer identity is a separate thing and is correctly a service name.)
+8. **No events/alerts UI.** The API is there — `GET …/events` now reports
+   the six-state status, the per-status counts and the transport's degraded
+   list — but the dashboard does not render it yet, so today a retained event
+   is visible only through the API.

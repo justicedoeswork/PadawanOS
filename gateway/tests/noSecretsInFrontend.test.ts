@@ -29,7 +29,10 @@ const FORBIDDEN_IDENTIFIERS = [
   'MARKETING_AGENT_API_KEY',
   // The Communications Agent's credential is a DIFFERENT secret for a
   // different service, and belongs to the server for the same reason.
-  'COMMUNICATIONS_AGENT_API_KEY'
+  'COMMUNICATIONS_AGENT_API_KEY',
+  // The relay driver's machine credential. The browser drives the relay with
+  // its session cookie and never needs this.
+  'JUSTICEOS_RELAY_KEY'
 ];
 
 /**
@@ -46,7 +49,13 @@ const SERVER_ONLY_MODULES = [
   // side. The browser talks to the bridge over HTTP and imports none of it.
   'agentRoutes',
   'communicationsHandoff',
-  'businessFactsArtifact'
+  'businessFactsArtifact',
+  // The durable event transport: the claim client, the relay lifecycle and
+  // the relay's own credential check. All three hold or present a credential,
+  // and the browser reaches the relay through the bridge over HTTP instead.
+  'outboxEvents',
+  'eventRelay',
+  'relayAuth'
 ];
 
 function walkFiles(dir: string, extensions: string[]): string[] {

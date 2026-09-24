@@ -3,7 +3,7 @@
  *
  * Distinct from `marketingRoutes.ts`, which is the older campaign-review
  * proxy: that one forwards operator actions on campaign revisions, this one
- * speaks the agent contract — one answer envelope, ten operations, and the
+ * speaks the agent contract — one answer envelope, every agent operation, and the
  * approval state model Padawan branches on. They share the session check, the
  * credential, and nothing else.
  *
@@ -36,8 +36,10 @@ import {
 } from './operations.js';
 import { asServiceTrade, routeMarketingIntent, type MarketingIntent } from './intent.js';
 import { newTaskId, sanitizeId, PADAWAN_AGENT_ID, type RequestContext } from './requestIdentity.js';
-import { eventsInBriefResult, MarketingEventStore, type CommunicationsHandoff } from './events.js';
+import { MarketingEventStore, type CommunicationsHandoff } from './events.js';
 import { notConfiguredHandoff } from './communicationsHandoff.js';
+import { createEventRelay, JUSTICEOS_CONSUMER_ID, RELAY_CLAIM_LIMIT, RELAY_CLAIM_TTL_MS, type EventRelay } from './eventRelay.js';
+import { createRelayAuth } from './relayAuth.js';
 import {
   aggregateMarketingHealth,
   observeBusinessFacts,
@@ -60,9 +62,17 @@ export interface MarketingAgentRoutesOptions {
   readonly actor: string | null;
   readonly schedulerOwner: SchedulerOwner;
   readonly researchExecution: ResearchExecutionPosture;
-  /** Absent means no Communications Agent is wired: events are retained, nobody is notified. */
+  /** Absent means no Communications Agent is wired: events are read and retained, nothing is claimed, nobody is notified. */
   readonly communications?: CommunicationsHandoff;
+  /**
+   * The machine credential the scheduled relay driver presents. Absent means
+   * the relay route is session-only — an operator can still run a cycle from
+   * the app, but no cron can.
+   */
+  readonly relayKey?: string | null;
   readonly operations?: MarketingOperations;
+  /** Test seam: a pre-built relay, so a test can drive the lifecycle without a real Communications endpoint. */
+  readonly relay?: EventRelay;
   readonly now?: () => Date;
 }
 
@@ -164,12 +174,21 @@ export function createMarketingAgentRouter(options: MarketingAgentRoutesOptions)
   const now = options.now ?? (() => new Date());
   const operations = options.operations ?? createMarketingOperations({ client: options.client, actor: options.actor });
   const communications = options.communications ?? notConfiguredHandoff;
-  const events = new MarketingEventStore(communications, now);
+  const events = new MarketingEventStore(now);
+  const relay = options.relay ?? createEventRelay({ operations, store: events, handoff: communications, now });
+  const requireRelayCredential = createRelayAuth(options.sessionSecret, options.relayKey ?? null);
 
   // What JusticeOS has last OBSERVED about the verified-facts gate. It starts
   // as UNKNOWN and is never guessed at — see health.ts.
   let businessFacts: BusinessFactsObservation = UNKNOWN_BUSINESS_FACTS;
-  let lastEventSyncAt: string | null = null;
+  let lastRelayAt: string | null = null;
+  /**
+   * Why the event transport is degraded, if it is. Sticky on purpose: an
+   * unsupported contract or an event the agent has never heard of is a
+   * standing condition an operator has to act on, not a blip that disappears
+   * because the next cycle happened to find nothing due.
+   */
+  let transportDegraded: readonly string[] = [];
 
   /** Every answer is a chance to learn something for the health report, for free. */
   function observe(outcome: OperationOutcome): void {
@@ -177,6 +196,56 @@ export function createMarketingAgentRouter(options: MarketingAgentRoutesOptions)
     const observed = observeBusinessFacts(outcome.answer, now().toISOString());
     if (observed) businessFacts = observed;
   }
+
+  /**
+   * One relay cycle: claim → deliver to Communications → acknowledge.
+   *
+   * Registered BEFORE the blanket session check, and that order is
+   * load-bearing: this is the one route a scheduled driver with no browser has
+   * to be able to reach, so it carries its own credential check (a session
+   * cookie OR the relay key) rather than inheriting one that only a browser
+   * can satisfy. Everything else under this prefix stays session-only.
+   *
+   * It drives no Marketing research and fires no tick. It moves events the
+   * agent has already decided to raise, which is why a second scheduler is not
+   * what this creates — see §12 of the integration doc.
+   */
+  router.post(`${AGENT_BRIDGE_PREFIX}/events/relay`, requireRelayCredential, async (req, res) => {
+    const context = contextOf(req, options.actor);
+    const result = await relay.runCycle(context);
+
+    if (result.kind === 'outcome') {
+      // A contract failure here degrades the integration until an operator
+      // acts on it, and says so in the health report rather than only in the
+      // response nobody kept.
+      if (result.outcome.kind === 'unsupported-contract') {
+        transportDegraded = [
+          ...new Set([
+            ...transportDegraded,
+            `The Marketing Agent's event transport answers contract version ${result.outcome.found}; this JusticeOS build supports ${SUPPORTED_CONTRACT_VERSIONS.join(', ')}. No event was claimed, delivered, or acknowledged.`
+          ])
+        ];
+      } else if (result.outcome.kind === 'invalid-contract') {
+        transportDegraded = [
+          ...new Set([...transportDegraded, `The Marketing Agent's event transport answered a body JusticeOS could not read: ${result.outcome.problems.join('; ')}.`])
+        ];
+      }
+      sendOutcome(res, result.outcome, taskEnvelope(context, result.outcome));
+      return;
+    }
+
+    lastRelayAt = result.report.ranAt;
+    if (result.report.degraded.length > 0) {
+      transportDegraded = [...new Set([...transportDegraded, ...result.report.degraded])];
+    }
+    res.status(200).json({
+      agent: MARKETING_AGENT.id,
+      contractVersion: EXPECTED_CONTRACT_VERSION,
+      transport: 'MARKETING_OUTBOX',
+      relay: result.report,
+      task: { conversationId: context.conversationId, taskId: context.taskId, originalTaskId: null, requestingAgent: context.requestingAgent }
+    });
+  });
 
   router.use(AGENT_BRIDGE_PREFIX, requireSession);
   router.use(AGENT_REGISTRY_PATH, requireSession);
@@ -282,10 +351,16 @@ export function createMarketingAgentRouter(options: MarketingAgentRoutesOptions)
       researchExecution: options.researchExecution,
       businessFacts,
       events: {
-        retained: events.list().length,
+        transport: 'MARKETING_OUTBOX',
+        consumer: JUSTICEOS_CONSUMER_ID,
+        claimLimit: RELAY_CLAIM_LIMIT,
+        claimTtlMs: RELAY_CLAIM_TTL_MS,
+        retained: events.counts().retained,
         awaitingOwner: events.countAwaitingOwner(),
+        byStatus: events.counts().byStatus,
         handoffConfigured: communications.configured,
-        lastSyncAt: lastEventSyncAt
+        lastRelayAt,
+        degraded: transportDegraded
       },
       checkedAt: now().toISOString()
     });
@@ -504,49 +579,51 @@ export function createMarketingAgentRouter(options: MarketingAgentRoutesOptions)
   // ── Events ────────────────────────────────────────────────────────────────
 
   /**
-   * Pulls whatever the Marketing Agent has raised since the last brief, records
-   * it, and hands the new ones to Communications.
+   * The retired transport.
    *
-   * The read is free — the agent builds the brief from stored evidence and
-   * calls no provider — which is what makes this an acceptable transport while
-   * the outbox has no endpoint of its own.
+   * Events used to be reconstructed from the brief's `changesSinceLastBrief`,
+   * because the outbox had no endpoint. It has one now, and the brief is back
+   * to being what it always was — user-facing intelligence, not a queue. A
+   * tombstone rather than a silent 404: a caller still pointed at the old
+   * route is told where the transport went, and is told plainly that calling
+   * this did nothing.
    */
-  router.post(`${AGENT_BRIDGE_PREFIX}/events/sync`, async (req, res) => {
-    const context = contextOf(req, options.actor);
-    const outcome = await operations.brief(context);
-    if (outcome.kind !== 'answer') {
-      sendOutcome(res, outcome, taskEnvelope(context, outcome));
-      return;
-    }
-    const summary = await events.ingest(eventsInBriefResult(outcome.answer.result));
-    lastEventSyncAt = now().toISOString();
-    res.status(200).json({
-      agent: MARKETING_AGENT.id,
-      contractVersion: outcome.answer.contractVersion,
-      syncedAt: lastEventSyncAt,
-      received: summary.received,
-      created: summary.created,
-      updated: summary.updated,
-      handedOff: summary.handedOff,
-      handoffConfigured: communications.configured,
-      events: summary.events,
-      ...taskEnvelope(context, outcome)
-    });
+  router.post(`${AGENT_BRIDGE_PREFIX}/events/sync`, (_req, res) => {
+    res.status(410).json(
+      errorBody(
+        'MARKETING_EVENT_SYNC_RETIRED',
+        'Marketing events no longer ride the brief. The authoritative transport is the Marketing Agent\'s durable outbox — POST /api/marketing/agent/events/relay runs one claim → deliver → acknowledge cycle. Nothing was synced, claimed, or delivered by this call.',
+        { replacement: `${AGENT_BRIDGE_PREFIX}/events/relay`, transport: 'MARKETING_OUTBOX' }
+      )
+    );
   });
 
+  /** JusticeOS's retained view. Every event stays listable after Communications has handled it. */
   router.get(`${AGENT_BRIDGE_PREFIX}/events`, (req, res) => {
     const includeDismissed = req.query.includeDismissed !== 'false';
-    const list = events.list({ includeDismissed });
+    const counts = events.counts();
     res.status(200).json({
       agent: MARKETING_AGENT.id,
-      events: list,
-      awaitingOwner: events.countAwaitingOwner(),
+      transport: 'MARKETING_OUTBOX',
+      consumer: JUSTICEOS_CONSUMER_ID,
+      events: events.list({ includeDismissed }),
+      awaitingOwner: counts.awaitingOwner,
+      byStatus: counts.byStatus,
       handoffConfigured: communications.configured,
-      lastSyncAt: lastEventSyncAt
+      lastRelayAt,
+      degraded: transportDegraded
     });
   });
 
-  /** Dismissing is about the notification, never the record: the event stays listable. */
+  /**
+   * Dismissing is about the notification, never the record.
+   *
+   * It is local and it stays local: there is no upstream call here and no
+   * endpoint to make one with. The Marketing Agent's outbox row is
+   * insert-only and undeletable by construction, its immutable delivery log is
+   * untouched, and the event remains listable in JusticeOS. Dismissing means
+   * "stop telling me", not "this never happened".
+   */
   router.post(`${AGENT_BRIDGE_PREFIX}/events/:eventId/dismiss`, (req, res) => {
     const id = decodeURIComponent(String(req.params.eventId ?? ''));
     const event = events.dismiss(id);
@@ -554,7 +631,7 @@ export function createMarketingAgentRouter(options: MarketingAgentRoutesOptions)
       res.status(404).json(errorBody('MARKETING_EVENT_NOT_FOUND', 'No retained marketing event with that id.', { eventId: id }));
       return;
     }
-    res.status(200).json({ agent: MARKETING_AGENT.id, event, retained: true });
+    res.status(200).json({ agent: MARKETING_AGENT.id, event, retained: true, upstreamRetained: true });
   });
 
   // Anything else under the agent prefix is a client mistake, not a client-side

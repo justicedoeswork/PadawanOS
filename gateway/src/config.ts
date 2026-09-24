@@ -141,6 +141,23 @@ export const config = {
   communicationsAgentApiKey: requireEnv('COMMUNICATIONS_AGENT_API_KEY'),
 
   /**
+   * The machine credential a scheduled driver presents to run one marketing
+   * event relay cycle (POST /api/marketing/agent/events/relay).
+   *
+   * This gateway has no scheduler of its own and its Fly machine stops when
+   * idle, so the relay is driven from outside by a platform cron. That caller
+   * has no browser and no session cookie, so it needs a credential -- a
+   * narrow one, for one route. It is deliberately NOT the gateway password
+   * (which would grant the whole app) and NOT the Marketing Agent key (which
+   * would grant approval rights upstream): the worst a leaked relay key can
+   * do is make one claim -> deliver -> acknowledge cycle run early.
+   *
+   * Unset means the relay stays session-only: an operator can still run a
+   * cycle from the app, and no cron can. Nothing falls open.
+   */
+  justiceOsRelayKey: requireEnv('JUSTICEOS_RELAY_KEY'),
+
+  /**
    * Exact-match allowlist for both the WebSocket upgrade's Origin
    * header and (if the gateway is ever run split from its own
    * frontend during development) CORS. Comma-separated, e.g.
@@ -184,6 +201,11 @@ export function marketingResearchExecution(): ResearchExecutionSetting {
 
 export function isCommunicationsHandoffConfigured(): boolean {
   return Boolean(config.communicationsAgentEventUrl && config.communicationsAgentApiKey);
+}
+
+/** Whether a scheduled driver can reach the relay at all. False means the event relay is operator-triggered only. */
+export function isRelayDriverConfigured(): boolean {
+  return Boolean(config.justiceOsRelayKey);
 }
 
 export function isAcpUpstreamConfigured(): boolean {

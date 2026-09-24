@@ -14,6 +14,7 @@
 import type {
   MarketingEventsResponse,
   MarketingHealthView,
+  MarketingRelayResponse,
   ManagerAskResponse,
   ManagerDecisionResponse,
   RegisteredAgentView
@@ -36,6 +37,8 @@ export type ManagerBridgeErrorCode =
   | 'MARKETING_ACTOR_NOT_CONFIGURED'
   | 'MARKETING_DECISION_NOT_CONFIRMED'
   | 'MARKETING_EVENT_NOT_FOUND'
+  /** The retired brief-based sync. Means "the transport moved", not "something failed". */
+  | 'MARKETING_EVENT_SYNC_RETIRED'
   | 'AUTONOMY_REFUSED'
   | 'AGENT_NOT_CONFIGURED'
   | 'DEMAND_NOT_CONFIGURED'
@@ -120,8 +123,20 @@ export function getEvents(signal?: AbortSignal): Promise<ManagerBridgeResult<Mar
   return call('/events', { method: 'GET', ...(signal ? { signal } : {}) });
 }
 
-export function syncEvents(signal?: AbortSignal): Promise<ManagerBridgeResult<{ created: number; updated: number; handedOff: number; handoffConfigured: boolean }>> {
-  return call('/events/sync', { method: 'POST', body: {}, ...(signal ? { signal } : {}) });
+/**
+ * Runs one claim → deliver → acknowledge cycle against the Marketing Agent's
+ * durable outbox.
+ *
+ * This replaced `syncEvents`, which reconstructed events from the brief. The
+ * brief is a view and the outbox is a record, so the outbox is what a consumer
+ * reads — and the gateway answers `410 MARKETING_EVENT_SYNC_RETIRED` to anyone
+ * still calling the old route.
+ *
+ * The relay is normally driven from outside this app (see §12 of the
+ * integration doc); this is the operator's "run it now", not the schedule.
+ */
+export function relayEvents(signal?: AbortSignal): Promise<ManagerBridgeResult<MarketingRelayResponse>> {
+  return call('/events/relay', { method: 'POST', body: {}, ...(signal ? { signal } : {}) });
 }
 
 export function dismissEvent(eventId: string, signal?: AbortSignal): Promise<ManagerBridgeResult<{ retained: boolean }>> {

@@ -2,7 +2,7 @@
  * The Marketing Agent's Padawan-facing answer envelope, as JusticeOS reads
  * it.
  *
- * The Marketing Agent publishes one envelope for all ten of its
+ * The Marketing Agent publishes one envelope for every one of its
  * `/api/marketing/agent/*` operations (its own
  * `domain/agent/padawan-response.ts`), carrying a `contractVersion`. This
  * module is the only place in JusticeOS that interprets that shape, and it

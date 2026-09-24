@@ -284,6 +284,21 @@ describe('createGatewayServer production startup gate', () => {
     });
   });
 
+  describe('the relay driver credential', () => {
+    it('is optional: no key means the relay is operator-triggered only, which is a valid deployment', () => {
+      expect(findProductionConfigProblems({ ...validInput, justiceOsRelayKey: null })).toEqual([]);
+    });
+
+    it('refuses a weak or placeholder one, since it reaches a route without a login', () => {
+      expect(findProductionConfigProblems({ ...validInput, justiceOsRelayKey: 'short' })[0]).toContain('JUSTICEOS_RELAY_KEY');
+      expect(findProductionConfigProblems({ ...validInput, justiceOsRelayKey: `replace-me-${'0'.repeat(40)}` })[0]).toContain('placeholder');
+    });
+
+    it('accepts a real generated one', () => {
+      expect(findProductionConfigProblems({ ...validInput, justiceOsRelayKey: 'a1b2c3d4'.repeat(8) })).toEqual([]);
+    });
+  });
+
   it('leaves throwaway development/test configuration completely unaffected outside production', () => {
     expect(() =>
       createGatewayServer({

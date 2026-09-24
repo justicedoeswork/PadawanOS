@@ -53,6 +53,13 @@ export interface ProductionConfigInput {
    * ticks at all.
    */
   marketingSchedulerOwner?: 'MARKETING_INTERNAL_LOOP' | 'JUSTICEOS' | 'NONE';
+  /**
+   * Also optional: absent means the marketing event relay is operator-
+   * triggered only, which is a valid (if incomplete) production state. What is
+   * not valid is a weak or placeholder one -- it is the only credential that
+   * reaches an authenticated route without a login.
+   */
+  justiceOsRelayKey?: string | null;
 }
 
 /**
@@ -170,6 +177,7 @@ export function findProductionConfigProblems(input: ProductionConfigInput): stri
 
   problems.push(...findMarketingAgentProblems(input));
   problems.push(...findCommunicationsHandoffProblems(input));
+  problems.push(...findRelayDriverProblems(input));
 
   if (input.marketingSchedulerOwner === 'JUSTICEOS') {
     problems.push(
@@ -178,6 +186,25 @@ export function findProductionConfigProblems(input: ProductionConfigInput): stri
   }
 
   return problems;
+}
+
+/**
+ * The scheduled relay driver's credential. Optional -- an unset key means the
+ * relay is operator-triggered only, and nothing falls open. A set one is
+ * checked on exactly the terms of every other secret here, because it is the
+ * only credential in this gateway that reaches an authenticated route without
+ * a login: a guessable one would let anyone make the relay cycle run.
+ */
+function findRelayDriverProblems(input: ProductionConfigInput): string[] {
+  const key = input.justiceOsRelayKey ?? null;
+  if (!key) return [];
+  if (key.length < MIN_SECRET_LENGTH) {
+    return [`JUSTICEOS_RELAY_KEY must be at least ${MIN_SECRET_LENGTH} characters in production.`];
+  }
+  if (looksLikePlaceholder(key)) {
+    return ['JUSTICEOS_RELAY_KEY looks like an example/placeholder value, not a real generated secret.'];
+  }
+  return [];
 }
 
 /**

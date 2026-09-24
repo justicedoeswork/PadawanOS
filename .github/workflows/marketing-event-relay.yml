@@ -1,0 +1,94 @@
+# The driver for the marketing event relay.
+#
+# NOT ACTIVE. The `schedule:` trigger below is commented out deliberately:
+# nothing in this repository is deployed yet, no JusticeOS secret is set, and
+# the Communications Agent has no inbound marketing-event endpoint to deliver
+# to. Uncommenting it is the last step of turning the transport on, and it is
+# listed as such in docs/marketing-agent-padawan-integration.md. Until then
+# this workflow exists to be reviewed and to be runnable by hand.
+#
+# WHY A PLATFORM CRON, and not the two alternatives:
+#
+#   - A second always-on process (a Fly machine that never sleeps) would cost
+#     money every hour of every day to do a few seconds of work, and would be
+#     a new thing to deploy, monitor and page someone about. For a relay whose
+#     entire job is "move whatever is waiting", an always-on process is the
+#     wrong shape.
+#   - The Communications Agent polling the Marketing outbox directly would be
+#     cheaper still, but it would mean handing a second service the Marketing
+#     Agent's credential and making it implement the claim/ack protocol. It
+#     would also put the decision about WHICH events matter one step closer to
+#     the service that decides HOW to tell Austin, which is exactly the line
+#     this integration exists to keep.
+#
+# A cron hitting an authenticated JusticeOS route needs no new process and no
+# new credential distribution: the JusticeOS Fly machine has
+# auto_start_machines = true, so the request wakes it, one claim -> deliver ->
+# acknowledge cycle runs, and the machine goes back to sleep.
+#
+# AND IT IS NOT A SECOND MARKETING SCHEDULER. This drives no research, fires
+# no tick, and decides nothing about what the Marketing Agent should look at.
+# The Marketing Agent's own AGENT_LOOP_ENABLED loop remains the single owner
+# of that (MARKETING_AGENT_SCHEDULER_OWNER stays "marketing-internal-loop",
+# and production refuses to start if it says otherwise). This moves events the
+# agent has ALREADY decided to raise. If it never runs, nothing is lost: the
+# outbox is insert-only and undeletable, and the events are still there.
+
+name: Marketing event relay
+
+on:
+  # Run one cycle by hand, from the Actions tab.
+  workflow_dispatch:
+
+  # TO ACTIVATE: uncomment, once JUSTICEOS_RELAY_KEY and JUSTICEOS_RELAY_URL
+  # are set as repository secrets and the Communications Agent has an inbound
+  # marketing-event endpoint. Every 15 minutes is a starting point, not a
+  # requirement -- the relay is idempotent and a cycle with nothing due is a
+  # single cheap call that claims nothing.
+  # schedule:
+  #   - cron: '*/15 * * * *'
+
+permissions:
+  contents: read
+
+# One cycle at a time. Two overlapping runs would be harmless -- the Marketing
+# Agent's claim is a conditional UPDATE, so the second would simply be handed
+# nothing -- but a queue is clearer than relying on that.
+concurrency:
+  group: marketing-event-relay
+  cancel-in-progress: false
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    # Without the secrets this is a no-op rather than a red X every 15
+    # minutes: an unconfigured relay is a state to report, not a failure.
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.MARKETING_RELAY_ENABLED == 'true' }}
+    steps:
+      - name: Run one claim -> deliver -> acknowledge cycle
+        env:
+          RELAY_URL: ${{ secrets.JUSTICEOS_RELAY_URL }}
+          RELAY_KEY: ${{ secrets.JUSTICEOS_RELAY_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RELAY_URL:-}" ] || [ -z "${RELAY_KEY:-}" ]; then
+            echo "JUSTICEOS_RELAY_URL / JUSTICEOS_RELAY_KEY are not set; the relay is not wired yet. Nothing was claimed, delivered, or acknowledged."
+            exit 0
+          fi
+
+          # --fail-with-body so a non-2xx fails the run AND prints the
+          # gateway's own structured error, which is the thing worth reading.
+          # No retry here: a failed cycle is not a lost event. The outbox
+          # keeps every unacknowledged event and offers it again, and the next
+          # scheduled run is the retry.
+          response="$(curl --silent --show-error --fail-with-body \
+            --max-time 120 \
+            --request POST \
+            --header "authorization: Bearer ${RELAY_KEY}" \
+            --header 'content-type: application/json' \
+            --data '{}' \
+            "${RELAY_URL}")"
+
+          # The credential is in a header, never in the URL and never in the
+          # body, so nothing printed here can carry it.
+          echo "${response}"

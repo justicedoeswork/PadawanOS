@@ -47,6 +47,8 @@ export interface GatewayOverrides {
   communicationsHandoff?: CommunicationsHandoff;
   communicationsAgentEventUrl?: string | null;
   communicationsAgentApiKey?: string | null;
+  /** The scheduled relay driver's credential. Omitted = from config; unset = the relay route is session-only. */
+  justiceOsRelayKey?: string | null;
 }
 
 export interface GatewayInstance {
@@ -101,7 +103,8 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       marketingAgentApiKey: marketingApiKey,
       communicationsAgentEventUrl: overrides.communicationsAgentEventUrl ?? config.communicationsAgentEventUrl,
       communicationsAgentApiKey: overrides.communicationsAgentApiKey ?? config.communicationsAgentApiKey,
-      marketingSchedulerOwner: overrides.marketingSchedulerOwner ?? marketingSchedulerOwner()
+      marketingSchedulerOwner: overrides.marketingSchedulerOwner ?? marketingSchedulerOwner(),
+      justiceOsRelayKey: overrides.justiceOsRelayKey ?? config.justiceOsRelayKey
     });
   }
 
@@ -165,7 +168,8 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       actor: marketingActor,
       schedulerOwner: overrides.marketingSchedulerOwner ?? marketingSchedulerOwner(),
       researchExecution: overrides.marketingResearchExecution ?? marketingResearchExecution(),
-      communications
+      communications,
+      relayKey: overrides.justiceOsRelayKey ?? config.justiceOsRelayKey
     })
   );
 

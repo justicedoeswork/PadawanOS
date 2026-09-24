@@ -28,7 +28,11 @@ const SECRET_ENV_NAMES = [
   // The Communications Agent's own credential, for the marketing-event
   // handoff. A different secret for a different service, and it belongs in
   // `fly secrets set` exactly as the others do.
-  'COMMUNICATIONS_AGENT_API_KEY'
+  'COMMUNICATIONS_AGENT_API_KEY',
+  // The scheduled relay driver's machine credential. Narrow -- it reaches one
+  // route -- but it is still a credential, so it belongs in `fly secrets set`
+  // exactly as the others do and never in a committed file.
+  'JUSTICEOS_RELAY_KEY'
 ];
 
 /**

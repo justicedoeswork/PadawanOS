@@ -73,11 +73,27 @@ primary_region = "iad"
   # cannot trigger spend whichever way it is set.
   MARKETING_AGENT_RESEARCH_EXECUTION = "plan-only"
 
+# The marketing event relay is driven from OUTSIDE this app, by a platform
+# cron calling POST /api/marketing/agent/events/relay with JUSTICEOS_RELAY_KEY
+# (a secret, set with `fly secrets set`; see .github/workflows/
+# marketing-event-relay.yml, which is deliberately not scheduled yet). That
+# choice follows directly from the two settings below: this gateway runs no
+# scheduler, and auto_stop_machines/min_machines_running = 0 means an idle
+# machine is stopped and could not fire a timer even if it had one. An
+# incoming request wakes it (auto_start_machines = true), one claim -> deliver
+# -> acknowledge cycle runs, and it goes back to sleep.
+#
+# This does not make JusticeOS a second Marketing scheduler and does not
+# change MARKETING_AGENT_SCHEDULER_OWNER above: the relay drives no research
+# and fires no tick, it moves events the Marketing Agent has already decided
+# to raise. With JUSTICEOS_RELAY_KEY unset the relay is operator-triggered
+# only, which is what this deployment is today.
+
 # No secret ever belongs in this file. JUSTICEOS_GATEWAY_PASSWORD_HASH,
 # JUSTICEOS_SESSION_SECRET, ACP_GATEWAY_SERVICE_KEY, ACP_ALLOWED_USER_ID,
-# and ACP_ALLOWED_REALM_ID are set with `fly secrets set` (see
-# docs/fly-deployment.md) -- they never appear in this repo in any
-# form, placeholder or real.
+# ACP_ALLOWED_REALM_ID, and JUSTICEOS_RELAY_KEY are set with
+# `fly secrets set` (see docs/fly-deployment.md) -- they never appear in this
+# repo in any form, placeholder or real.
 
 [http_service]
   # Only the gateway's own HTTP(S)/WebSocket port is exposed -- there
