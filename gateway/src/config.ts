@@ -92,6 +92,55 @@ export const config = {
   marketingAgentActor: requireEnv('MARKETING_AGENT_ACTOR'),
 
   /**
+   * Which side owns making the Marketing Agent tick. Exactly one owner, by
+   * design -- see docs/marketing-agent-padawan-integration.md.
+   *
+   *   marketing-internal-loop  (default) The Marketing Agent's own
+   *                            AGENT_LOOP_ENABLED loop. JusticeOS drives no
+   *                            ticks on a timer; its /tick route stays as an
+   *                            operator action.
+   *   justiceos                JusticeOS would drive ticks. NOT implemented:
+   *                            this gateway has no scheduler, and its Fly
+   *                            machine scales to zero, so it cannot be a
+   *                            reliable one. Declaring it only changes what
+   *                            the health report says.
+   *   none                     Nothing is ticking. Reported as degraded.
+   */
+  marketingSchedulerOwner: requireEnv('MARKETING_AGENT_SCHEDULER_OWNER'),
+
+  /**
+   * The paid-research posture this deployment was configured with. Reporting
+   * only: the real switches are AGENT_EXECUTE_WEBSITE_RESEARCH and
+   * AGENT_EXECUTE_WATCHLIST_RECHECK on the Marketing Agent. JusticeOS pins
+   * dryRun on every research call it makes regardless of this value, so it
+   * can never itself trigger provider spend (marketing/operations.ts).
+   *
+   *   plan-only        (default) Free/read-only monitoring continues; the
+   *                    agent plans and reports research rather than spending.
+   *   execute-allowed  The operator has deliberately enabled autonomous paid
+   *                    research on the Marketing Agent side.
+   */
+  marketingResearchExecution: requireEnv('MARKETING_AGENT_RESEARCH_EXECUTION'),
+
+  /**
+   * The Communications Agent's inbound marketing-event endpoint, e.g.
+   * http://communications-agent.internal:8080/api/v1/... -- a private
+   * destination, same rule as every other upstream here.
+   *
+   * Unset means no notification path is wired: marketing events are still
+   * ingested and RETAINED by JusticeOS (so Austin sees them in the app), and
+   * the health report says plainly that nobody is being notified.
+   */
+  communicationsAgentEventUrl: requireEnv('COMMUNICATIONS_AGENT_EVENT_URL'),
+
+  /**
+   * The COMMUNICATIONS Agent's own credential -- a different secret for a
+   * different service. MARKETING_AGENT_API_KEY is never sent on this path
+   * (marketing/communicationsHandoff.ts, and a test that proves it).
+   */
+  communicationsAgentApiKey: requireEnv('COMMUNICATIONS_AGENT_API_KEY'),
+
+  /**
    * Exact-match allowlist for both the WebSocket upgrade's Origin
    * header and (if the gateway is ever run split from its own
    * frontend during development) CORS. Comma-separated, e.g.
@@ -114,6 +163,27 @@ export function isMarketingAgentConfigured(): boolean {
 /** The operator identity recorded upstream: an explicit override, else the single owner the ACP side already asserts. */
 export function marketingAgentActor(): string | null {
   return config.marketingAgentActor || config.allowedUserId;
+}
+
+export type SchedulerOwnerSetting = 'MARKETING_INTERNAL_LOOP' | 'JUSTICEOS' | 'NONE';
+
+/** Unrecognized spellings fall back to the default owner rather than silently leaving nothing ticking. */
+export function marketingSchedulerOwner(): SchedulerOwnerSetting {
+  const raw = (config.marketingSchedulerOwner ?? '').toLowerCase();
+  if (raw === 'justiceos') return 'JUSTICEOS';
+  if (raw === 'none') return 'NONE';
+  return 'MARKETING_INTERNAL_LOOP';
+}
+
+export type ResearchExecutionSetting = 'PLAN_ONLY' | 'EXECUTE_ALLOWED';
+
+/** Anything other than an explicit opt-in is plan-only. Spending must be asked for, never inherited from a typo. */
+export function marketingResearchExecution(): ResearchExecutionSetting {
+  return (config.marketingResearchExecution ?? '').toLowerCase() === 'execute-allowed' ? 'EXECUTE_ALLOWED' : 'PLAN_ONLY';
+}
+
+export function isCommunicationsHandoffConfigured(): boolean {
+  return Boolean(config.communicationsAgentEventUrl && config.communicationsAgentApiKey);
 }
 
 export function isAcpUpstreamConfigured(): boolean {

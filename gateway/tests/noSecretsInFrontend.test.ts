@@ -26,7 +26,10 @@ const FORBIDDEN_IDENTIFIERS = [
   // The Marketing Agent credential is the same class of secret as the
   // ACP service key: the gateway presents it upstream, the browser
   // authenticates with its session cookie instead and never needs it.
-  'MARKETING_AGENT_API_KEY'
+  'MARKETING_AGENT_API_KEY',
+  // The Communications Agent's credential is a DIFFERENT secret for a
+  // different service, and belongs to the server for the same reason.
+  'COMMUNICATIONS_AGENT_API_KEY'
 ];
 
 /**
@@ -35,7 +38,16 @@ const FORBIDDEN_IDENTIFIERS = [
  * into the bundle. Checked by name as well as by identifier, because an
  * import is how such a leak would actually happen.
  */
-const SERVER_ONLY_MODULES = ['marketingAgentClient', 'marketingRoutes'];
+const SERVER_ONLY_MODULES = [
+  'marketingAgentClient',
+  'marketingRoutes',
+  // The agent bridge and its parts: the contract parser, the operations
+  // layer, the event store and the Communications handoff all live server-
+  // side. The browser talks to the bridge over HTTP and imports none of it.
+  'agentRoutes',
+  'communicationsHandoff',
+  'businessFactsArtifact'
+];
 
 function walkFiles(dir: string, extensions: string[]): string[] {
   const results: string[] = [];

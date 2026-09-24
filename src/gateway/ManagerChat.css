@@ -83,3 +83,212 @@
   line-height: 1.5;
   color: var(--color-muted);
 }
+
+/* ---------------------------------------------------------------------------
+ * Manager-ask panel: the marketing-routing surface inside the Justice Manager
+ * panel. Taller and scrollable, because a real answer carries the agent's
+ * sentences plus what it could not see -- and truncating the second half
+ * would hide exactly the part an operator needs.
+ * ------------------------------------------------------------------------- */
+.gw-manager-panel {
+  width: min(400px, calc(100vw - 32px));
+  max-height: min(620px, calc(100vh - 140px));
+  display: flex;
+  flex-direction: column;
+}
+
+.gw-manager-panel-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gw-mgr-intro,
+.gw-mgr-scope {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.gw-mgr-scope {
+  margin: 12px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.gw-mgr-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gw-mgr-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.gw-mgr-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-md);
+  background: var(--color-bg);
+  padding: 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-fg);
+  resize: vertical;
+}
+.gw-mgr-input:focus-visible {
+  outline: 2px solid var(--color-accent, var(--color-fg));
+  outline-offset: 1px;
+}
+
+.gw-mgr-send {
+  align-self: flex-start;
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-md);
+  background: var(--color-raised);
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+.gw-mgr-send:hover:not(:disabled) {
+  background: var(--color-bg);
+}
+.gw-mgr-send:disabled {
+  opacity: 0.55;
+}
+
+.gw-mgr-answer,
+.gw-mgr-problem,
+.gw-mgr-unroutable,
+.gw-mgr-pending {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* The approval state, as a label rather than a colour alone -- the words are
+   what carries the meaning, so this still reads correctly in monochrome and
+   to a screen reader. */
+.gw-mgr-badge {
+  display: inline-block;
+  margin-bottom: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+.gw-mgr-badge--approval_required,
+.gw-mgr-badge--approval {
+  border-color: color-mix(in oklab, var(--color-warning, var(--color-fg)) 60%, var(--color-border));
+}
+.gw-mgr-badge--blocked {
+  border-color: color-mix(in oklab, var(--color-danger, var(--color-fg)) 60%, var(--color-border));
+}
+
+.gw-mgr-summary-line {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--color-fg);
+}
+
+.gw-mgr-meta,
+.gw-mgr-hint,
+.gw-mgr-problem-detail {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.gw-mgr-constraint {
+  margin: 8px 0 0;
+  border-left: 2px solid color-mix(in oklab, var(--color-warning, var(--color-fg)) 60%, var(--color-border));
+  padding-left: 8px;
+  font-size: 12px;
+  color: var(--color-fg);
+}
+
+.gw-mgr-problem-headline {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.gw-mgr-section {
+  margin-top: 10px;
+}
+
+.gw-mgr-section-title {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.gw-mgr-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+.gw-mgr-list li {
+  margin-bottom: 3px;
+}
+
+.gw-mgr-owner-tag {
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.gw-mgr-notice {
+  margin: 10px 0 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-md);
+  background: var(--color-bg);
+  padding: 8px;
+  font-size: 12px;
+  color: var(--color-fg);
+}
+
+/* Decisions live in their own block with their own reminder that approval
+   publishes nothing -- it is the last thing read before the click. */
+.gw-mgr-decisions {
+  margin-top: 12px;
+  border: 1px solid color-mix(in oklab, var(--color-warning, var(--color-fg)) 40%, var(--color-border));
+  border-radius: var(--panda-radius-md);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gw-mgr-decision-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gw-mgr-decision {
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-md);
+  background: var(--color-raised);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+.gw-mgr-decision:hover:not(:disabled) {
+  background: var(--color-bg);
+}
+.gw-mgr-decision:disabled {
+  opacity: 0.5;
+}

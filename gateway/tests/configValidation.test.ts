@@ -219,6 +219,71 @@ describe('createGatewayServer production startup gate', () => {
     ).not.toThrow();
   });
 
+  /**
+   * The Communications Agent event handoff and the scheduler-ownership
+   * declaration, both added with the Padawan bridge. The handoff is optional
+   * -- no endpoint means events are retained and nobody is notified, which is
+   * a valid production state -- so only a half-configured or weak one is worth
+   * refusing to start over.
+   */
+  describe('marketing event handoff and scheduler ownership', () => {
+    const validBase = {
+      gatewayPassword: null,
+      gatewayPasswordHash: 'somesalt:somehash',
+      sessionSecret: 'a'.repeat(32),
+      acpGatewayServiceKey: 'b'.repeat(32),
+      allowedOrigins: ['https://justiceos.example.com'],
+      insuranceAgentAcpUrl: 'ws://agent.internal:9000/acp',
+      allowedUserId: 'austin',
+      allowedRealmId: '123'
+    };
+
+    it('accepts neither Communications variable being set -- the handoff is optional', () => {
+      expect(findProductionConfigProblems({ ...validBase })).toEqual([]);
+    });
+
+    it('rejects a half-configured handoff in either direction', () => {
+      expect(findProductionConfigProblems({ ...validBase, communicationsAgentApiKey: 'c'.repeat(32) })).toEqual([
+        'COMMUNICATIONS_AGENT_EVENT_URL is required when COMMUNICATIONS_AGENT_API_KEY is set.'
+      ]);
+      expect(findProductionConfigProblems({ ...validBase, communicationsAgentEventUrl: 'https://comms.example.com/events' })).toEqual([
+        'COMMUNICATIONS_AGENT_API_KEY is required when COMMUNICATIONS_AGENT_EVENT_URL is set.'
+      ]);
+    });
+
+    it('rejects a plaintext public endpoint, and accepts a private or https one', () => {
+      expect(
+        findProductionConfigProblems({ ...validBase, communicationsAgentEventUrl: 'http://comms.example.com/events', communicationsAgentApiKey: 'c'.repeat(32) })
+      ).toHaveLength(1);
+      expect(
+        findProductionConfigProblems({ ...validBase, communicationsAgentEventUrl: 'http://communications-agent.internal:8080/events', communicationsAgentApiKey: 'c'.repeat(32) })
+      ).toEqual([]);
+      expect(
+        findProductionConfigProblems({ ...validBase, communicationsAgentEventUrl: 'https://comms.example.com/events', communicationsAgentApiKey: 'c'.repeat(32) })
+      ).toEqual([]);
+    });
+
+    it('rejects a weak or placeholder Communications credential', () => {
+      expect(
+        findProductionConfigProblems({ ...validBase, communicationsAgentEventUrl: 'https://comms.example.com/events', communicationsAgentApiKey: 'short' })
+      ).toHaveLength(1);
+      expect(
+        findProductionConfigProblems({ ...validBase, communicationsAgentEventUrl: 'https://comms.example.com/events', communicationsAgentApiKey: 'replace-me-with-a-real-generated-secret' })
+      ).toHaveLength(1);
+    });
+
+    it('refuses to let JusticeOS claim scheduler ownership it cannot honour', () => {
+      const problems = findProductionConfigProblems({ ...validBase, marketingSchedulerOwner: 'JUSTICEOS' });
+      expect(problems).toHaveLength(1);
+      expect(problems[0]).toContain('MARKETING_AGENT_SCHEDULER_OWNER');
+    });
+
+    it('accepts the Marketing Agent own loop, and accepts none', () => {
+      expect(findProductionConfigProblems({ ...validBase, marketingSchedulerOwner: 'MARKETING_INTERNAL_LOOP' })).toEqual([]);
+      expect(findProductionConfigProblems({ ...validBase, marketingSchedulerOwner: 'NONE' })).toEqual([]);
+    });
+  });
+
   it('leaves throwaway development/test configuration completely unaffected outside production', () => {
     expect(() =>
       createGatewayServer({

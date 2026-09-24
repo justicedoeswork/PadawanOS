@@ -805,6 +805,68 @@ export const messages = {
     zh: 'Justice Manager 对话尚未接入,这是即将推出功能的占位界面 —— 你在这里输入的内容不会被发送。',
   },
 
+  // ---- The Justice Manager's marketing routing. Austin asks in his own
+  // words; the gateway bridge picks the Marketing Agent operation and the
+  // panel relays the agent's own sentences. Approving is always a separate,
+  // deliberate click -- never something a question turns into.
+  //
+  // The visible name here is "Justice Manager", matching the rest of this
+  // UI. The internal orchestrator identity on the wire is a different thing
+  // and lives server-side only. ----
+  'manager.ask.intro': {
+    en: 'Ask about marketing. Your Justice Manager routes the question to the Marketing Agent and relays its answer -- it never publishes, spends, or approves anything on its own.',
+    zh: '询问营销相关问题。Justice Manager 会把问题转交给营销智能体并转述其回答 —— 它自身不会发布、花费或批准任何内容。',
+  },
+  'manager.ask.inputLabel': { en: 'Ask about marketing', zh: '询问营销问题' },
+  'manager.ask.inputPlaceholder': { en: 'What should we work on in marketing right now?', zh: '我们现在应该在营销上做什么?' },
+  'manager.ask.send': { en: 'Ask', zh: '提问' },
+  'manager.ask.thinking': { en: 'Asking the Marketing Agent…', zh: '正在询问营销智能体…' },
+  'manager.ask.marketingOnly': {
+    en: 'Marketing only, for now -- other specialists are not wired into the manager yet.',
+    zh: '目前仅支持营销 —— 其他专员尚未接入管理器。',
+  },
+  'manager.section.blockers': { en: 'Blocking or missing', zh: '受阻或缺失' },
+  'manager.section.stale': { en: 'Out-of-date sources', zh: '数据已过期的来源' },
+  'manager.section.followUps': { en: 'What could happen next', zh: '接下来可以做什么' },
+  'manager.section.evidence': { en: 'Evidence behind this', zh: '支撑证据' },
+  'manager.ask.confidence': { en: 'Confidence', zh: '置信度' },
+  'manager.ask.deduped': {
+    en: 'That request was already running, so this is its answer rather than a second one.',
+    zh: '该请求已在进行中,这里显示的是它的结果,而非重复发起的第二次请求。',
+  },
+  'manager.ask.needsOwner': { en: 'Needs your decision', zh: '需要你的决定' },
+  'manager.state.informational': { en: 'For information', zh: '仅供参考' },
+  'manager.state.preparedWork': { en: 'Draft ready to review', zh: '草稿已可审阅' },
+  'manager.state.approvalRequired': { en: 'Waiting on your approval', zh: '等待你的批准' },
+  'manager.state.blocked': { en: 'Blocked', zh: '已受阻' },
+  'manager.decision.approve': { en: 'Approve', zh: '批准' },
+  'manager.decision.reject': { en: 'Reject', zh: '拒绝' },
+  'manager.decision.revise': { en: 'Request a revision', zh: '要求修改' },
+  'manager.decision.nothingPublished': {
+    en: 'Approving records an internal decision. Nothing is published, sent, or launched by it.',
+    zh: '批准仅记录内部决定,不会因此发布、发送或投放任何内容。',
+  },
+  'manager.decision.whichOne': {
+    en: 'Which package? Open the Marketing workspace and act on the one you mean -- the manager will not guess.',
+    zh: '是哪一个方案?请打开营销工作台并在具体项目上操作 —— 管理器不会替你猜测。',
+  },
+  'manager.decision.reasonLabel': { en: 'What should change?', zh: '需要修改什么?' },
+  'manager.decision.recorded': { en: 'Decision recorded.', zh: '决定已记录。' },
+  'manager.unroutable': { en: "Your Justice Manager couldn't tell what to ask", zh: 'Justice Manager 无法判断该询问什么' },
+  'manager.unroutable.tryOne': { en: 'Try one of these:', zh: '可以试试这些:' },
+  'manager.error.contract': {
+    en: 'JusticeOS and the Marketing Agent are on different contract versions. Nothing was read from the answer -- JusticeOS needs updating before this works.',
+    zh: 'JusticeOS 与营销智能体的接口版本不一致。未从回答中读取任何内容 —— 需要先更新 JusticeOS。',
+  },
+  'manager.error.unavailable': {
+    en: "The Marketing Agent didn't answer, so there is nothing to report. JusticeOS did not guess from older data.",
+    zh: '营销智能体没有响应,因此无内容可报告。JusticeOS 不会基于旧数据进行推测。',
+  },
+  'manager.error.notConfigured': { en: 'The Marketing Agent is not configured on this deployment.', zh: '此部署尚未配置营销智能体。' },
+  'manager.error.refused': { en: 'The Marketing Agent refused: that is outside what it is allowed to do.', zh: '营销智能体拒绝执行:此操作超出其权限范围。' },
+  'manager.error.signedOut': { en: 'Your session expired. Sign in again.', zh: '会话已过期,请重新登录。' },
+  'manager.error.generic': { en: 'That did not work. Nothing was changed.', zh: '操作未成功,未做任何更改。' },
+
 // ---- marketing workspace (#/marketing) ----
   'mkt.title': { en: 'Marketing', zh: '营销' },
   'mkt.navLabel': { en: 'Marketing workspace', zh: '营销工作台' },

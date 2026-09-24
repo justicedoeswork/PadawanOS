@@ -48,6 +48,31 @@ primary_region = "iad"
   # production without at least one exact HTTPS entry here; this is it.
   JUSTICEOS_ALLOWED_ORIGINS = "https://justiceos.fly.dev"
 
+  # Non-secret. Which side owns making the Marketing Agent tick. There is
+  # exactly one owner by design, and it is the Marketing Agent's own
+  # AGENT_LOOP_ENABLED loop -- not this app. Two reasons, both structural:
+  # this gateway contains no scheduler, and [http_service] below sets
+  # auto_stop_machines/min_machines_running = 0, so an idle JusticeOS
+  # machine is stopped and could not fire a timer even if it had one. The
+  # Marketing Agent's DB job leases make a duplicate tick a no-op anyway;
+  # single ownership is about knowing who to look at when nothing ran.
+  # gateway/src/configValidation.ts refuses to start production if this is
+  # set to "justiceos". Setting this does not enable any scheduling here --
+  # JusticeOS drives no ticks on a timer at all; POST /api/marketing/agent/
+  # tick stays an operator action that requires a recorded reason.
+  MARKETING_AGENT_SCHEDULER_OWNER = "marketing-internal-loop"
+
+  # Non-secret, and reporting only: the declared paid-research posture, so
+  # GET /api/marketing/agent/health can state it without an operator
+  # opening a terminal. The switches that actually gate provider spend are
+  # AGENT_EXECUTE_WEBSITE_RESEARCH / AGENT_EXECUTE_WATCHLIST_RECHECK on the
+  # MARKETING AGENT's own app, not here. "plan-only" is the initial
+  # production posture: free/read-only monitoring continues, and research is
+  # planned and reported rather than executed. JusticeOS pins dryRun on
+  # every research call it makes regardless of this value, so the bridge
+  # cannot trigger spend whichever way it is set.
+  MARKETING_AGENT_RESEARCH_EXECUTION = "plan-only"
+
 # No secret ever belongs in this file. JUSTICEOS_GATEWAY_PASSWORD_HASH,
 # JUSTICEOS_SESSION_SECRET, ACP_GATEWAY_SERVICE_KEY, ACP_ALLOWED_USER_ID,
 # and ACP_ALLOWED_REALM_ID are set with `fly secrets set` (see

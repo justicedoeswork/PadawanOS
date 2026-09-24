@@ -12,6 +12,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node --import tsx src/index.ts",
     "typecheck": "tsc --noEmit",
+    "facts:check": "node --import tsx src/businessFactsArtifactCli.ts",
     "test": "vitest run"
   },
   "dependencies": {

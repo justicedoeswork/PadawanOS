@@ -24,7 +24,11 @@ const SECRET_ENV_NAMES = [
   'ACP_GATEWAY_SERVICE_KEY',
   'ACP_ALLOWED_USER_ID',
   'ACP_ALLOWED_REALM_ID',
-  'MARKETING_AGENT_API_KEY'
+  'MARKETING_AGENT_API_KEY',
+  // The Communications Agent's own credential, for the marketing-event
+  // handoff. A different secret for a different service, and it belongs in
+  // `fly secrets set` exactly as the others do.
+  'COMMUNICATIONS_AGENT_API_KEY'
 ];
 
 /**
@@ -98,6 +102,27 @@ describe('fly.toml (production deployment prep)', () => {
     // The public host may still be mentioned in an explanatory comment
     // (why it must never be used) -- only the actual assignment matters.
     expect(assignmentLine).not.toMatch(/insurance-audit-agent\.fly\.dev/);
+  });
+
+  /**
+   * The two Marketing Agent posture declarations. Both are non-secret and both
+   * are load-bearing: the first says who owns ticking the agent (exactly one
+   * owner, and it is not this app), the second is the conservative initial
+   * paid-research posture. Asserting them here means a change to either is a
+   * visible, reviewed edit rather than something that drifts.
+   */
+  it('does not claim scheduler ownership JusticeOS cannot honour', () => {
+    const line = readFlyToml()
+      .split('\n')
+      .find((candidate) => /^\s*MARKETING_AGENT_SCHEDULER_OWNER\s*=/.test(candidate));
+    expect(line?.trim()).toBe('MARKETING_AGENT_SCHEDULER_OWNER = "marketing-internal-loop"');
+  });
+
+  it('declares the conservative plan-only paid-research posture', () => {
+    const line = readFlyToml()
+      .split('\n')
+      .find((candidate) => /^\s*MARKETING_AGENT_RESEARCH_EXECUTION\s*=/.test(candidate));
+    expect(line?.trim()).toBe('MARKETING_AGENT_RESEARCH_EXECUTION = "plan-only"');
   });
 
   it('never sets a real secret env var -- those five are absent from [env] entirely', () => {

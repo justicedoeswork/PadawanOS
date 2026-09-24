@@ -38,6 +38,21 @@ export interface ProductionConfigInput {
    */
   marketingAgentBaseUrl?: string | null;
   marketingAgentApiKey?: string | null;
+  /**
+   * Also optional: no Communications Agent endpoint means marketing events
+   * are retained in JusticeOS and nobody is notified, which is a valid (if
+   * incomplete) production state. Only a half-configured or weak one is worth
+   * refusing to start over.
+   */
+  communicationsAgentEventUrl?: string | null;
+  communicationsAgentApiKey?: string | null;
+  /**
+   * Which side owns making the Marketing Agent tick. 'JUSTICEOS' is refused
+   * in production: this gateway has no scheduler, and its machine is
+   * configured to stop when idle, so claiming ownership would mean nothing
+   * ticks at all.
+   */
+  marketingSchedulerOwner?: 'MARKETING_INTERNAL_LOOP' | 'JUSTICEOS' | 'NONE';
 }
 
 /**
@@ -154,6 +169,47 @@ export function findProductionConfigProblems(input: ProductionConfigInput): stri
   }
 
   problems.push(...findMarketingAgentProblems(input));
+  problems.push(...findCommunicationsHandoffProblems(input));
+
+  if (input.marketingSchedulerOwner === 'JUSTICEOS') {
+    problems.push(
+      'MARKETING_AGENT_SCHEDULER_OWNER must not be "justiceos" in production -- this gateway runs no scheduler and its machine stops when idle, so nothing would tick the Marketing Agent. Use the agent\'s own AGENT_LOOP_ENABLED loop.'
+    );
+  }
+
+  return problems;
+}
+
+/**
+ * The event handoff to the Communications Agent. Its credential is a
+ * DIFFERENT secret from the Marketing Agent's -- one service, one key -- and
+ * the same private-destination rule applies, because an event carries what
+ * the business is worried about this week.
+ */
+function findCommunicationsHandoffProblems(input: ProductionConfigInput): string[] {
+  const problems: string[] = [];
+  const url = input.communicationsAgentEventUrl ?? null;
+  const apiKey = input.communicationsAgentApiKey ?? null;
+
+  if (!url && !apiKey) {
+    return problems;
+  }
+
+  if (!url) {
+    problems.push('COMMUNICATIONS_AGENT_EVENT_URL is required when COMMUNICATIONS_AGENT_API_KEY is set.');
+  } else if (!isApprovedPrivateHttpUrl(url)) {
+    problems.push(
+      'COMMUNICATIONS_AGENT_EVENT_URL must be an https:// URL, or an http(s):// URL to an approved private/internal destination (a .internal hostname, 127.0.0.1, or localhost), in production.'
+    );
+  }
+
+  if (!apiKey) {
+    problems.push('COMMUNICATIONS_AGENT_API_KEY is required when COMMUNICATIONS_AGENT_EVENT_URL is set.');
+  } else if (apiKey.length < MIN_SECRET_LENGTH) {
+    problems.push(`COMMUNICATIONS_AGENT_API_KEY must be at least ${MIN_SECRET_LENGTH} characters in production.`);
+  } else if (looksLikePlaceholder(apiKey)) {
+    problems.push('COMMUNICATIONS_AGENT_API_KEY looks like an example/placeholder value, not a real generated secret.');
+  }
 
   return problems;
 }

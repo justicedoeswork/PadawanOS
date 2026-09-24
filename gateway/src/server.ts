@@ -1,16 +1,26 @@
 import express from 'express';
 import http from 'node:http';
 import path from 'node:path';
-import { config, marketingAgentActor } from './config.js';
+import {
+  config,
+  marketingAgentActor,
+  marketingResearchExecution,
+  marketingSchedulerOwner,
+  type ResearchExecutionSetting,
+  type SchedulerOwnerSetting
+} from './config.js';
 import { createAuthRouter } from './auth.js';
 import { createHealthRouter } from './health.js';
 import { createAcpApiFallbackRouter } from './acpApiFallback.js';
 import { createMarketingRouter } from './marketingRoutes.js';
+import { createMarketingAgentRouter } from './marketing/agentRoutes.js';
+import { createHttpCommunicationsHandoff, notConfiguredHandoff } from './marketing/communicationsHandoff.js';
+import type { CommunicationsHandoff } from './marketing/events.js';
 import { createStaticSiteRouter } from './staticSite.js';
 import { attachAcpProxy, type AcpProxyHandle } from './acpProxy.js';
 import { assertProductionConfigIsValid } from './configValidation.js';
 import { logError, logInfo } from './log.js';
-import type { MarketingAgentClient } from './marketingAgentClient.js';
+import { createMarketingAgentClient, type MarketingAgentClient } from './marketingAgentClient.js';
 
 export interface GatewayOverrides {
   port?: number;
@@ -31,6 +41,12 @@ export interface GatewayOverrides {
   marketingAgentTimeoutMs?: number;
   /** Test seam: an already-built Marketing Agent client, so a test never needs a real upstream or a real key. */
   marketingAgentClient?: MarketingAgentClient;
+  marketingSchedulerOwner?: SchedulerOwnerSetting;
+  marketingResearchExecution?: ResearchExecutionSetting;
+  /** Test seam: the Communications Agent handoff. Omitted = built from config; unconfigured = events are retained and nobody is notified. */
+  communicationsHandoff?: CommunicationsHandoff;
+  communicationsAgentEventUrl?: string | null;
+  communicationsAgentApiKey?: string | null;
 }
 
 export interface GatewayInstance {
@@ -82,7 +98,10 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       allowedUserId: userId,
       allowedRealmId: realmId,
       marketingAgentBaseUrl: marketingBaseUrl,
-      marketingAgentApiKey: marketingApiKey
+      marketingAgentApiKey: marketingApiKey,
+      communicationsAgentEventUrl: overrides.communicationsAgentEventUrl ?? config.communicationsAgentEventUrl,
+      communicationsAgentApiKey: overrides.communicationsAgentApiKey ?? config.communicationsAgentApiKey,
+      marketingSchedulerOwner: overrides.marketingSchedulerOwner ?? marketingSchedulerOwner()
     });
   }
 
@@ -117,6 +136,39 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   // an unconfigured integration must answer a clear JSON error, not
   // fall through to index.html. A missing/unreachable Marketing Agent
   // never affects login or ACP chat.
+  // The Padawan-facing agent bridge (/api/marketing/agent/*) is registered
+  // BEFORE the campaign-review proxy, and that order is load-bearing: the
+  // older router ends with a catch-all 404 for everything under
+  // /api/marketing, which would otherwise swallow every agent route.
+  const marketingClient =
+    overrides.marketingAgentClient ??
+    (marketingBaseUrl && marketingApiKey
+      ? createMarketingAgentClient({
+          baseUrl: marketingBaseUrl,
+          apiKey: marketingApiKey,
+          ...(overrides.marketingAgentTimeoutMs !== undefined ? { timeoutMs: overrides.marketingAgentTimeoutMs } : {})
+        })
+      : null);
+
+  const communicationsEventUrl = overrides.communicationsAgentEventUrl ?? config.communicationsAgentEventUrl;
+  const communicationsApiKey = overrides.communicationsAgentApiKey ?? config.communicationsAgentApiKey;
+  const communications: CommunicationsHandoff =
+    overrides.communicationsHandoff ??
+    (communicationsEventUrl && communicationsApiKey
+      ? createHttpCommunicationsHandoff({ endpoint: communicationsEventUrl, apiKey: communicationsApiKey })
+      : notConfiguredHandoff);
+
+  app.use(
+    createMarketingAgentRouter({
+      sessionSecret,
+      client: marketingClient,
+      actor: marketingActor,
+      schedulerOwner: overrides.marketingSchedulerOwner ?? marketingSchedulerOwner(),
+      researchExecution: overrides.marketingResearchExecution ?? marketingResearchExecution(),
+      communications
+    })
+  );
+
   app.use(
     createMarketingRouter({
       sessionSecret,
@@ -124,7 +176,7 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       apiKey: marketingApiKey,
       actor: marketingActor,
       ...(overrides.marketingAgentTimeoutMs !== undefined ? { timeoutMs: overrides.marketingAgentTimeoutMs } : {}),
-      ...(overrides.marketingAgentClient ? { client: overrides.marketingAgentClient } : {})
+      ...(marketingClient ? { client: marketingClient } : {})
     })
   );
 

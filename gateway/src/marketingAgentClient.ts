@@ -41,6 +41,13 @@ export interface MarketingAgentRequest {
   readonly body?: unknown;
   /** Forwarded verbatim when the caller supplied one. The gateway never invents one — see docs/marketing-agent-integration.md. */
   readonly idempotencyKey?: string;
+  /**
+   * Extra request headers, for correlation only (the `X-JusticeOS-*` family —
+   * see marketing/requestIdentity.ts). Never a credential: `authorization` is
+   * set by this module and a caller cannot override it, which is enforced
+   * below rather than merely documented.
+   */
+  readonly headers?: Readonly<Record<string, string>>;
   readonly timeoutMs?: number;
 }
 
@@ -73,12 +80,18 @@ export function createMarketingAgentClient(options: MarketingAgentClientOptions)
   async function call(input: MarketingAgentRequest): Promise<MarketingAgentResult> {
     const url = joinUrl(options.baseUrl, input.path, input.query);
     const startedAt = Date.now();
-    const headers: Record<string, string> = {
-      // The one place the credential is attached. Never logged, never
-      // echoed into a response body.
-      authorization: `Bearer ${options.apiKey}`,
-      accept: 'application/json'
-    };
+    const headers: Record<string, string> = {};
+    // Correlation headers first, so the credential below cannot be
+    // overwritten by one of them however this is ever called.
+    for (const [name, value] of Object.entries(input.headers ?? {})) {
+      const lower = name.toLowerCase();
+      if (lower === 'authorization' || lower === 'cookie') continue;
+      headers[lower] = value;
+    }
+    // The one place the credential is attached. Never logged, never
+    // echoed into a response body.
+    headers.authorization = `Bearer ${options.apiKey}`;
+    headers.accept = 'application/json';
     if (input.body !== undefined) {
       headers['content-type'] = 'application/json';
     }

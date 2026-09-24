@@ -18,10 +18,29 @@ describe('ManagerChat (floating Justice Manager button, LAYOUT #3)', () => {
     expect(markup).toMatch(/aria-label="Chat with your Justice Manager"/);
   });
 
-  it('does not render the placeholder panel until opened (closed by default)', () => {
+  it('does not render the panel until opened (closed by default)', () => {
     const markup = render();
     expect(markup).not.toContain('gw-manager-panel"');
-    expect(markup).not.toContain('Justice Manager chat is not connected yet');
+    expect(markup).not.toContain('gw-mgr-input');
+  });
+
+  /**
+   * The panel is now Padawan's marketing surface rather than a placeholder, so
+   * the claim it must never make is the opposite of the old one: it must not
+   * say it is disconnected, and it must not put an approval control on screen
+   * before an answer has earned one. Both are asserted on the closed/initial
+   * render, which is all `renderToStaticMarkup` can reach (see
+   * GatewayGate.test.tsx's header comment on why this project does not seed a
+   * store and re-render).
+   */
+  it('no longer claims the manager is unconnected', () => {
+    expect(render()).not.toContain('is not connected yet');
+  });
+
+  it('renders no approve/reject control before any answer has asked for one', () => {
+    const markup = render();
+    expect(markup).not.toContain('gw-mgr-decision');
+    expect(markup).not.toMatch(/>Approve</);
   });
 
   it('never calls itself "Panda" anywhere in its own visible text', () => {

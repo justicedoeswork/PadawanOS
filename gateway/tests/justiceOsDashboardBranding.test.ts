@@ -49,9 +49,18 @@ describe('JusticeOS dashboard UI source (gateway-build-only files)', () => {
     expect(offenders.map((f) => path.relative(REPO_ROOT, f))).toEqual([]);
   });
 
-  it('never claims the manager backend is operational or sends data anywhere (ManagerChat is a placeholder only)', () => {
+  /**
+   * ManagerChat is no longer a placeholder -- it routes marketing questions
+   * through the gateway's own bridge. The invariant that survives that change
+   * is about HOW it talks, not whether: it must go through the same-origin
+   * client module (src/manager/client.ts), never open a transport of its own.
+   * A component that built its own request is how a header, a URL, or a
+   * credential ends up somewhere it was never reviewed.
+   */
+  it('opens no transport of its own -- every call goes through the same-origin client module', () => {
     const managerChatSource = fs.readFileSync(path.join(REPO_ROOT, 'src/gateway/ManagerChat.tsx'), 'utf8');
     expect(managerChatSource).not.toMatch(/fetch\s*\(|WebSocket\s*\(|axios/);
+    expect(managerChatSource).toMatch(/from '\.\.\/manager\/client'/);
   });
 
   it('the dashboard never hardcodes a fabricated count/business figure for Work queue or Upcoming', () => {
