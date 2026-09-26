@@ -38,6 +38,9 @@ export interface ProductionConfigInput {
    */
   marketingAgentBaseUrl?: string | null;
   marketingAgentApiKey?: string | null;
+  /** Optional read-only Communications Agent integration. */
+  communicationsAgentBaseUrl?: string | null;
+  communicationsApiReadKey?: string | null;
 }
 
 /**
@@ -154,6 +157,7 @@ export function findProductionConfigProblems(input: ProductionConfigInput): stri
   }
 
   problems.push(...findMarketingAgentProblems(input));
+  problems.push(...findCommunicationsAgentProblems(input));
 
   return problems;
 }
@@ -190,6 +194,37 @@ function findMarketingAgentProblems(input: ProductionConfigInput): string[] {
     problems.push(`MARKETING_AGENT_API_KEY must be at least ${MIN_SECRET_LENGTH} characters in production.`);
   } else if (looksLikePlaceholder(apiKey)) {
     problems.push('MARKETING_AGENT_API_KEY looks like an example/placeholder value, not a real generated secret.');
+  }
+
+  return problems;
+}
+
+/**
+ * Communications is optional and read-only, but still fails closed when
+ * only half-configured. HTTPS is allowed; plaintext HTTP is allowed only
+ * to private/internal or loopback destinations.
+ */
+function findCommunicationsAgentProblems(input: ProductionConfigInput): string[] {
+  const problems: string[] = [];
+  const baseUrl = input.communicationsAgentBaseUrl ?? null;
+  const readKey = input.communicationsApiReadKey ?? null;
+
+  if (!baseUrl && !readKey) return problems;
+
+  if (!baseUrl) {
+    problems.push('COMMUNICATIONS_AGENT_BASE_URL is required when COMMUNICATIONS_API_READ_KEY is set.');
+  } else if (!isApprovedPrivateHttpUrl(baseUrl)) {
+    problems.push(
+      'COMMUNICATIONS_AGENT_BASE_URL must be an https:// URL, or an http(s):// URL to an approved private/internal destination (a .internal hostname, 127.0.0.1, or localhost), in production.'
+    );
+  }
+
+  if (!readKey) {
+    problems.push('COMMUNICATIONS_API_READ_KEY is required when COMMUNICATIONS_AGENT_BASE_URL is set.');
+  } else if (readKey.length < MIN_SECRET_LENGTH) {
+    problems.push(`COMMUNICATIONS_API_READ_KEY must be at least ${MIN_SECRET_LENGTH} characters in production.`);
+  } else if (looksLikePlaceholder(readKey)) {
+    problems.push('COMMUNICATIONS_API_READ_KEY looks like an example/placeholder value, not a real generated secret.');
   }
 
   return problems;
