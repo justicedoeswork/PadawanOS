@@ -91,7 +91,9 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       allowedUserId: userId,
       allowedRealmId: realmId,
       marketingAgentBaseUrl: marketingBaseUrl,
-      marketingAgentApiKey: marketingApiKey
+      marketingAgentApiKey: marketingApiKey,
+      communicationsAgentBaseUrl: communicationsBaseUrl,
+      communicationsApiReadKey: communicationsReadKey
     });
   }
 
