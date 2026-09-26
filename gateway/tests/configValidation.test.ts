@@ -84,6 +84,54 @@ describe('findProductionConfigProblems', () => {
     }
   });
 
+  it('requires complete and safe Communications read-only config when enabled', () => {
+    expect(
+      findProductionConfigProblems({ ...validInput, communicationsAgentBaseUrl: 'https://communications.example.com' }).some((p) =>
+        p.includes('COMMUNICATIONS_API_READ_KEY')
+      )
+    ).toBe(true);
+
+    expect(
+      findProductionConfigProblems({ ...validInput, communicationsApiReadKey: 'c'.repeat(32) }).some((p) =>
+        p.includes('COMMUNICATIONS_AGENT_BASE_URL')
+      )
+    ).toBe(true);
+
+    expect(
+      findProductionConfigProblems({
+        ...validInput,
+        communicationsAgentBaseUrl: 'http://public.example.com',
+        communicationsApiReadKey: 'c'.repeat(32)
+      }).some((p) => p.includes('COMMUNICATIONS_AGENT_BASE_URL') && p.includes('private/internal'))
+    ).toBe(true);
+
+    expect(
+      findProductionConfigProblems({
+        ...validInput,
+        communicationsAgentBaseUrl: 'https://justice-exteriors-communications-nonprod.fly.dev',
+        communicationsApiReadKey: 'c'.repeat(32)
+      })
+    ).toEqual([]);
+  });
+
+  it('rejects weak or placeholder Communications read keys', () => {
+    expect(
+      findProductionConfigProblems({
+        ...validInput,
+        communicationsAgentBaseUrl: 'https://communications.example.com',
+        communicationsApiReadKey: 'short'
+      }).some((p) => p.includes('COMMUNICATIONS_API_READ_KEY'))
+    ).toBe(true);
+
+    expect(
+      findProductionConfigProblems({
+        ...validInput,
+        communicationsAgentBaseUrl: 'https://communications.example.com',
+        communicationsApiReadKey: 'replace-me-with-a-real-read-key-padding'
+      }).some((p) => p.includes('COMMUNICATIONS_API_READ_KEY') && p.includes('placeholder'))
+    ).toBe(true);
+  });
+
   it('requires the allowed user id and realm id', () => {
     expect(findProductionConfigProblems({ ...validInput, allowedUserId: null }).some((p) => p.includes('ACP_ALLOWED_USER_ID'))).toBe(
       true
