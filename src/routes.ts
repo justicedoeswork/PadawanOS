@@ -16,7 +16,7 @@
  */
 import { useEffect, useState } from 'react';
 
-export type AppRoute = 'main' | 'settings' | 'demo' | 'marketing';
+export type AppRoute = 'main' | 'settings' | 'demo' | 'marketing' | 'communications';
 
 export type DevPage = 'astryx-smoke' | 'crash';
 
@@ -29,6 +29,7 @@ export function parseHash(hash: string): AppRoute {
   if (path === 'settings') return 'settings';
   if (path === 'demo') return 'demo';
   if (path === 'marketing') return 'marketing';
+  if (path === 'communications') return 'communications';
   return 'main';
 }
 
