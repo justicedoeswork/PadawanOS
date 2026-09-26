@@ -92,6 +92,15 @@ export const config = {
   marketingAgentActor: requireEnv('MARKETING_AGENT_ACTOR'),
 
   /**
+   * Communications Agent REST API root. This integration is deliberately
+   * read-only: the gateway receives only COMMUNICATIONS_API_READ_KEY and
+   * exposes a narrow GET allowlist to the signed-in JusticeOS browser.
+   * No write/approval/send credential is accepted here.
+   */
+  communicationsAgentBaseUrl: requireEnv('COMMUNICATIONS_AGENT_BASE_URL'),
+  communicationsApiReadKey: requireEnv('COMMUNICATIONS_API_READ_KEY'),
+
+  /**
    * Exact-match allowlist for both the WebSocket upgrade's Origin
    * header and (if the gateway is ever run split from its own
    * frontend during development) CORS. Comma-separated, e.g.
@@ -109,6 +118,10 @@ export function isAuthConfigured(): boolean {
 
 export function isMarketingAgentConfigured(): boolean {
   return Boolean(config.marketingAgentBaseUrl && config.marketingAgentApiKey);
+}
+
+export function isCommunicationsAgentConfigured(): boolean {
+  return Boolean(config.communicationsAgentBaseUrl && config.communicationsApiReadKey);
 }
 
 /** The operator identity recorded upstream: an explicit override, else the single owner the ACP side already asserts. */
