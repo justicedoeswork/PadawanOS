@@ -33,46 +33,55 @@ const isGatewayBuild = process.env.JUSTICEOS_BUILD_MODE === 'gateway';
  * throws and fails the build loudly instead of silently becoming a
  * no-op and shipping the old Panda-branded title.
  */
+function replaceExactlyOnce(html: string, pattern: string | RegExp, replacement: string, description: string): string {
+  const matches = typeof pattern === 'string' ? html.split(pattern).length - 1 : [...html.matchAll(new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g'))].length;
+  if (matches !== 1) {
+    throw new Error(
+      `applyJusticeOsHtmlBranding: expected index.html to contain exactly one ${description}; found ${matches} -- index.html's markup changed shape, update this function.`
+    );
+  }
+  return html.replace(pattern, replacement);
+}
+
 export function applyJusticeOsHtmlBranding(html: string): string {
-  const replacements: Array<[string, string]> = [
+  const replacements: Array<[string | RegExp, string, string]> = [
     // Marks this document as the gateway build for the dark-mode token
     // override in index.css ([data-justiceos-theme]) -- present from the
     // very first byte of HTML, so there is no flash of the demo build's
     // (chocolate) theme before JS runs.
-    ['<html lang="en">', '<html lang="en" data-justiceos-theme="true">'],
-    ['<title>Panda — ACP Client</title>', '<title>JusticeOS</title>'],
+    ['<html lang="en">', '<html lang="en" data-justiceos-theme="true">', '<html lang="en">'],
+    ['<title>Panda — ACP Client</title>', '<title>JusticeOS</title>', '<title>Panda — ACP Client</title>'],
     [
-      '    <link rel="icon" type="image/png" href="/favicon.png" />\n    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />',
+      /    <link rel="icon" type="image\/png" href="\/favicon\.png" \/>\r?\n    <link rel="apple-touch-icon" href="\/apple-touch-icon\.png" \/>/,
       '    <link rel="icon" href="/justiceos/favicon.ico" sizes="any" />\n' +
         '    <link rel="icon" type="image/png" sizes="32x32" href="/justiceos/favicon-32.png" />\n' +
         '    <link rel="apple-touch-icon" href="/justiceos/apple-touch-icon.png" />\n' +
         '    <link rel="manifest" href="/justiceos/manifest.webmanifest" />\n' +
         '    <meta name="theme-color" content="#11151D" />',
+      'favicon/apple-touch-icon block',
     ],
     [
-      '    <meta\n      name="description"\n      content="A ready-made client for agent developers: your agent speaks ACP, Panda is its UI. Streaming conversations, tool-call cards, inline permissions and polished diffs — no accounts, no telemetry, no backend."\n    />',
+      /    <meta\r?\n      name="description"\r?\n      content="A ready-made client for agent developers: your agent speaks ACP, Panda is its UI\. Streaming conversations, tool-call cards, inline permissions and polished diffs — no accounts, no telemetry, no backend\."\r?\n    \/>/,
       '    <meta\n      name="description"\n      content="JusticeOS: sign in to reach your Insurance Audit Agent — streaming conversations, tool-call cards, inline permissions and polished diffs."\n    />\n    <meta name="application-name" content="JusticeOS" />\n    <meta name="apple-mobile-web-app-title" content="JusticeOS" />',
+      'description meta block',
     ],
-    ['<meta property="og:url" content="https://lukaisluka.github.io/Panda/" />\n    ', ''],
+    [/<meta property="og:url" content="https:\/\/lukaisluka\.github\.io\/Panda\/" \/>\r?\n    /, '', 'og:url meta line'],
     [
       '<meta property="og:title" content="Panda — a ready-made UI for your ACP agent" />',
       '<meta property="og:title" content="JusticeOS" />',
+      'og:title meta line',
     ],
     [
-      '    <meta\n      property="og:description"\n      content="Build the agent, skip the frontend: speak ACP and Panda is your chat UI — streaming replies, tool-call cards, inline permissions and polished diffs."\n    />',
+      /    <meta\r?\n      property="og:description"\r?\n      content="Build the agent, skip the frontend: speak ACP and Panda is your chat UI — streaming replies, tool-call cards, inline permissions and polished diffs\."\r?\n    \/>/,
       '    <meta\n      property="og:description"\n      content="Sign in to reach your Insurance Audit Agent."\n    />',
+      'og:description meta block',
     ],
-    ['<meta property="og:image" content="https://lukaisluka.github.io/Panda/og-image.png" />\n    ', ''],
+    [/<meta property="og:image" content="https:\/\/lukaisluka\.github\.io\/Panda\/og-image\.png" \/>\r?\n    /, '', 'og:image meta line'],
   ];
 
   let result = html;
-  for (const [before, after] of replacements) {
-    if (!result.includes(before)) {
-      throw new Error(
-        `applyJusticeOsHtmlBranding: expected index.html to contain ${JSON.stringify(before)} -- index.html's markup changed shape, update this function.`,
-      );
-    }
-    result = result.replace(before, after);
+  for (const [before, after, description] of replacements) {
+    result = replaceExactlyOnce(result, before, after, description);
   }
   return result;
 }
