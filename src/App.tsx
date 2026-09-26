@@ -22,6 +22,8 @@ import { navigate, useHashRoute } from './routes';
 import { composerDraftKey, DEMO_DRAFT_KEY } from './composerDrafts';
 import { SettingsPage, SETTINGS_SECTIONS, type SettingsSectionId } from './components/SettingsPage';
 import { MarketingPage } from './marketing/MarketingPage';
+import { CommunicationsPage } from './communications/CommunicationsPage';
+import './communications/CommunicationsPage.css';
 import { useReplaySession } from './useReplaySession';
 import { useLiveSession } from './useLiveSession';
 import { UserNoticeToasts } from './components/UserNoticeToasts';
@@ -53,6 +55,7 @@ function MainScreen() {
   // The marketing workspace replaces the content column only: the sidebar,
   // its connections and every ACP session keep running untouched behind it.
   const onMarketing = route === 'marketing';
+  const onCommunications = route === 'communications';
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   // Which settings section is showing (#117) — MainScreen-level so it
   // survives settings ⇄ main route flips (returning lands where you left).
@@ -107,6 +110,8 @@ function MainScreen() {
   const settingsSectionMeta = SETTINGS_SECTIONS.find((entry) => entry.id === settingsSection);
   const headerTitle = onMarketing
     ? t('mkt.title')
+    : onCommunications
+    ? t('communications.title')
     : onSettings
     ? t(settingsSectionMeta?.titleKey ?? 'settings.title')
     : !liveActive
@@ -114,6 +119,8 @@ function MainScreen() {
       : (activeSession?.title ?? connection.agentName ?? t('app.liveSessionTitle'));
   const headerMeta = onMarketing
     ? t('mkt.headerMeta')
+    : onCommunications
+    ? t('communications.headerMeta')
     : onSettings
     ? (settingsSectionMeta ? t(settingsSectionMeta.descKey) : null)
     : liveActive
@@ -161,7 +168,7 @@ function MainScreen() {
                 <Menu size={18} />
               </button>
             )}
-            {(onSettings || onMarketing) && (
+            {(onSettings || onMarketing || onCommunications) && (
               <IconButton
                 variant="ghost"
                 icon={<ArrowLeft size={16} />}
@@ -173,13 +180,15 @@ function MainScreen() {
             <span className="truncate app-header-title">{headerTitle}</span>
           </div>
           {headerMeta !== null && (
-            <span className={`app-header-meta ${onSettings || onMarketing ? 'app-header-meta--desc' : ''}`}>
+            <span className={`app-header-meta ${onSettings || onMarketing || onCommunications ? 'app-header-meta--desc' : ''}`}>
               {headerMeta}
             </span>
           )}
         </header>
         {onMarketing ? (
           <MarketingPage />
+        ) : onCommunications ? (
+          <CommunicationsPage />
         ) : onSettings ? (
           <SettingsPage section={settingsSection} />
         ) : (
