@@ -118,6 +118,14 @@ describe('the gateway PWA manifest (public/justiceos/manifest.webmanifest)', () 
 });
 
 describe('applyJusticeOsHtmlBranding fails loudly rather than silently no-op-ing', () => {
+  it('produces the same JusticeOS branding from Windows CRLF source HTML', () => {
+    const crlfHtml = sourceHtml.replace(/\r?\n/g, '\r\n');
+    const branded = applyJusticeOsHtmlBranding(crlfHtml);
+    expect(branded).toMatch(/<title>JusticeOS<\/title>/);
+    expect(branded).toMatch(/\/justiceos\/favicon\.ico/);
+    expect(branded).not.toMatch(/href="\/favicon\.png"/);
+  });
+
   it('throws if index.html no longer contains the expected Panda title markup', () => {
     const changedHtml = sourceHtml.replace('<title>Panda — ACP Client</title>', '<title>Something else entirely</title>');
     expect(() => applyJusticeOsHtmlBranding(changedHtml)).toThrow(/expected index\.html to contain/);
