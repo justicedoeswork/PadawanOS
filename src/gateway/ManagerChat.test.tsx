@@ -18,10 +18,10 @@ describe('ManagerChat (floating Justice Manager button, LAYOUT #3)', () => {
     expect(markup).toMatch(/aria-label="Chat with your Justice Manager"/);
   });
 
-  it('does not render the placeholder panel until opened (closed by default)', () => {
+  it('does not render the manager panel until opened (closed by default)', () => {
     const markup = render();
     expect(markup).not.toContain('gw-manager-panel"');
-    expect(markup).not.toContain('Justice Manager chat is not connected yet');
+    expect(markup).not.toContain('I can read your Communications workspace');
   });
 
   it('never calls itself "Panda" anywhere in its own visible text', () => {
