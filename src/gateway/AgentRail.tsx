@@ -7,7 +7,7 @@ import type { ConnectionPhase } from '../projector/connectionLifecycle';
 import { isLinkUp } from '../projector/connectionLifecycle';
 import './AgentRail.css';
 
-export type RailView = 'dashboard' | 'agent' | 'marketing';
+export type RailView = 'dashboard' | 'agent' | 'marketing' | 'communications';
 
 /**
  * The collapsible left agent sidebar for the JusticeOS gateway build
@@ -45,6 +45,7 @@ export function AgentRail({
   onHome,
   onOpenAgent,
   onOpenMarketing,
+  onOpenCommunications,
   onSettings,
   onSignOut,
   onToggleCollapsed,
@@ -60,6 +61,7 @@ export function AgentRail({
   onHome(): void;
   onOpenAgent(): void;
   onOpenMarketing(): void;
+  onOpenCommunications(): void;
   onSettings(): void;
   onSignOut(): void;
   onToggleCollapsed(): void;
@@ -136,6 +138,20 @@ export function AgentRail({
             <AgentAvatar role="marketing" size={20} />
           </span>
           <span className="gw-rail-agent-caption truncate">{t('rail.marketing')}</span>
+        </button>
+
+        <button
+          type="button"
+          className={`gw-rail-btn gw-rail-agent ${activeView === 'communications' ? 'gw-rail-btn--active' : ''}`}
+          aria-label={t('rail.communications')}
+          aria-current={activeView === 'communications' ? 'page' : undefined}
+          title={t('rail.communicationsTooltip')}
+          onClick={onOpenCommunications}
+        >
+          <span className="gw-rail-agent-icon">
+            <AgentAvatar role="communications" size={20} />
+          </span>
+          <span className="gw-rail-agent-caption truncate">{t('rail.communications')}</span>
         </button>
 
         <div className="gw-rail-spacer" />
