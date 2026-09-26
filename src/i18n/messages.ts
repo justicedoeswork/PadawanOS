@@ -793,16 +793,24 @@ export const messages = {
     zh: 'Insurance Audit Agent 正在处理你当前的对话。',
   },
 
-  // ---- Floating Justice Manager chat button + placeholder panel
-  // (dashboard home, gateway build only). Phase 1: no manager backend
-  // exists yet -- the panel says so plainly rather than pretending to
-  // be operational. ----
+  // ---- Floating Justice Manager chat (dashboard home, gateway build only). ----
   'manager.openTooltip': { en: 'Chat with your Justice Manager', zh: '与 Justice Manager 对话' },
   'manager.panelTitle': { en: 'Justice Manager', zh: 'Justice Manager' },
   'manager.panelClose': { en: 'Close', zh: '关闭' },
-  'manager.placeholderBody': {
-    en: 'Justice Manager chat is not connected yet. This is a placeholder for an upcoming feature -- nothing you type here is sent anywhere.',
-    zh: 'Justice Manager 对话尚未接入,这是即将推出功能的占位界面 —— 你在这里输入的内容不会被发送。',
+  'manager.readyBody': {
+    en: 'I can read your Communications workspace. Ask what you need to handle today, who you are waiting on, which emails need replies, what needs approval, or what is going on with a person or project.',
+    zh: '我可以读取你的 Communications 工作区。你可以问今天要处理什么、在等谁、哪些邮件需要回复、哪些事项需要批准，或某个人/项目的情况。',
+  },
+  'manager.placeholder': { en: 'Ask Padawan…', zh: '问 Padawan…' },
+  'manager.send': { en: 'Send', zh: '发送' },
+  'manager.working': { en: 'Checking Communications…', zh: '正在查询 Communications…' },
+  'manager.error': {
+    en: 'I could not read Communications right now. Nothing was changed.',
+    zh: '当前无法读取 Communications。未作任何更改。',
+  },
+  'manager.readOnly': {
+    en: 'Read-only · Padawan cannot send email, change tasks, or modify Communications yet.',
+    zh: '只读 · Padawan 目前不能发送邮件、修改任务或更改 Communications。',
   },
 
 // ---- marketing workspace (#/marketing) ----
