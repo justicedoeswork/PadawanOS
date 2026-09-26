@@ -8,7 +8,7 @@ import type { CSSProperties, ReactElement } from 'react';
  * generic shield/coat-of-arms. Adding a role here is how an agent gets its
  * own icon; nothing else about this component changes.
  */
-export type AgentRole = 'insurance-audit' | 'marketing';
+export type AgentRole = 'insurance-audit' | 'marketing' | 'communications';
 
 type GlyphProps = { size: number; className?: string; style?: CSSProperties };
 
@@ -91,7 +91,30 @@ function MarketingGlyph({ size, className, style }: GlyphProps): ReactElement {
   );
 }
 
+function CommunicationsGlyph({ size, className, style }: GlyphProps): ReactElement {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={style}
+      aria-hidden="true"
+    >
+      <path d="M5 6.5h14v9H9l-4 3v-12Z" />
+      <path d="M8 9.5h8M8 12.5h5" />
+      <path d="M18.2 4.2v2.2M17.1 5.3h2.2" />
+    </svg>
+  );
+}
+
 const AGENT_ROLE_GLYPHS: Record<AgentRole, (props: GlyphProps) => ReactElement> = {
   'insurance-audit': InsuranceAuditGlyph,
   marketing: MarketingGlyph,
+  communications: CommunicationsGlyph,
 };
