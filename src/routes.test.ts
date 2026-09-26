@@ -11,6 +11,7 @@ describe('parseHash', () => {
     ['#//', 'main'],
     ['#/settings', 'settings'],
     ['#/marketing', 'marketing'],
+    ['#/communications', 'communications'],
     ['#marketing', 'marketing'],
     ['#/marketing/', 'marketing'],
     ['#settings', 'settings'],
@@ -60,6 +61,7 @@ describe('routeHash / navigate round-trip', () => {
     expect(routeHash('settings')).toBe('#/settings');
     expect(routeHash('demo')).toBe('#/demo');
     expect(routeHash('marketing')).toBe('#/marketing');
+    expect(routeHash('communications')).toBe('#/communications');
     expect(parseHash(routeHash('main'))).toBe('main');
     expect(parseHash(routeHash('settings'))).toBe('settings');
     expect(parseHash(routeHash('demo'))).toBe('demo');

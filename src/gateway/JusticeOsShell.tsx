@@ -52,7 +52,7 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
   // survive a reload or a pasted link: opening on the dashboard instead
   // would silently ignore the URL the person actually asked for. Every
   // other route starts on the dashboard, as before.
-  const [view, setView] = useState<RailView>(() => (route === 'marketing' || route === 'settings' ? 'agent' : 'dashboard'));
+  const [view, setView] = useState<RailView>(() => (route === 'marketing' || route === 'communications' || route === 'settings' ? 'agent' : 'dashboard'));
   const [sidebarCollapsed, setSidebarCollapsedState] = useState(() => loadSidebarCollapsed());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const railNavRef = useRef<HTMLElement>(null);
@@ -117,9 +117,19 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
     showWorkspace();
   }
 
-  // The rail highlights the Marketing specialist whenever the content
-  // column is showing its workspace; 'agent' otherwise.
-  const railView: RailView = view === 'agent' && route === 'marketing' ? 'marketing' : view;
+  function openCommunications() {
+    navigate('communications');
+    showWorkspace();
+  }
+
+  // The rail highlights whichever specialist workspace the content column
+  // is showing; 'agent' is the Insurance Audit Agent chat.
+  const railView: RailView =
+    view === 'agent' && route === 'marketing'
+      ? 'marketing'
+      : view === 'agent' && route === 'communications'
+        ? 'communications'
+        : view;
 
   return (
     <div className="gw-shell">
@@ -132,6 +142,7 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
         onHome={goHome}
         onOpenAgent={openAgent}
         onOpenMarketing={openMarketing}
+        onOpenCommunications={openCommunications}
         onSettings={() => {
           navigate('settings');
           showWorkspace();

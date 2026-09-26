@@ -15,6 +15,7 @@ function renderRail(overrides: Partial<Parameters<typeof AgentRail>[0]> = {}) {
         onHome={() => {}}
         onOpenAgent={() => {}}
         onOpenMarketing={() => {}}
+        onOpenCommunications={() => {}}
         onSettings={() => {}}
         onSignOut={() => {}}
         onToggleCollapsed={() => {}}
@@ -33,6 +34,12 @@ describe('AgentRail (JusticeOS gateway build, LAYOUT #1)', () => {
     expect(markup).not.toMatch(/add agent/i);
   });
 
+  it('lists Marketing and Communications specialists alongside the Insurance Agent', () => {
+    const markup = renderRail();
+    expect(markup).toContain('Marketing');
+    expect(markup).toContain('Communications');
+  });
+
   it('lists the Marketing specialist alongside the agent, with its own glyph', () => {
     const markup = renderRail();
     expect(markup).toContain('Marketing');
@@ -41,7 +48,7 @@ describe('AgentRail (JusticeOS gateway build, LAYOUT #1)', () => {
     expect(markup).toContain('M7.5 17h9l-1.2 3h-6.6z');
   });
 
-  it('gives Marketing no connection dot — it is a gateway workspace, not an ACP connection', () => {
+  it('gives Marketing and Communications no connection dots — they are gateway workspaces, not ACP connections', () => {
     const markup = renderRail({ connectionPhase: 'connected' });
     // Exactly one status dot in the whole rail: the ACP agent's.
     // The modifier class appears once per dot element (the base class

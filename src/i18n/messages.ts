@@ -737,6 +737,11 @@ export const messages = {
     en: 'Marketing Agent — review campaigns awaiting your decision',
     zh: '营销 Agent —— 查看待你决策的活动',
   },
+  'rail.communications': { en: 'Communications', zh: 'Communications' },
+  'rail.communicationsTooltip': {
+    en: 'Communications Agent — email, follow-ups, approvals, and priorities',
+    zh: 'Communications Agent —— 邮件、跟进、审批和优先事项',
+  },
   'rail.settings': { en: 'Settings', zh: '设置' },
   'rail.settingsTooltip': { en: 'Settings', zh: '设置' },
   'rail.signOut': { en: 'Sign out', zh: '退出登录' },
@@ -811,6 +816,32 @@ export const messages = {
   'manager.readOnly': {
     en: 'Read-only · Padawan cannot send email, change tasks, or modify Communications yet.',
     zh: '只读 · Padawan 目前不能发送邮件、修改任务或更改 Communications。',
+  },
+
+// ---- Communications workspace (#/communications) ----
+  'communications.title': { en: 'Communications Agent', zh: 'Communications Agent' },
+  'communications.headerMeta': { en: 'Operational communications workspace', zh: '运营沟通工作区' },
+  'communications.kicker': { en: 'JusticeOS specialist', zh: 'JusticeOS 专项 Agent' },
+  'communications.subtitle': {
+    en: 'Email, follow-ups, waiting items, approvals, and communications priorities in one read-only workspace.',
+    zh: '在一个只读工作区中查看邮件、跟进、等待事项、审批和沟通优先级。',
+  },
+  'communications.loading': { en: 'Checking connection…', zh: '正在检查连接…' },
+  'communications.connected': { en: 'Connected · Read-only', zh: '已连接 · 只读' },
+  'communications.unavailable': { en: 'Unavailable', zh: '不可用' },
+  'communications.error': {
+    en: 'Communications data is unavailable right now. Nothing was changed.',
+    zh: '当前无法读取 Communications 数据。未作任何更改。',
+  },
+  'communications.today': { en: 'Handle today', zh: '今日处理' },
+  'communications.waiting': { en: 'Waiting on others', zh: '等待他人' },
+  'communications.replies': { en: 'Emails needing reply', zh: '待回复邮件' },
+  'communications.approvals': { en: 'Pending approvals', zh: '待审批' },
+  'communications.notifications': { en: 'Notifications', zh: '通知' },
+  'communications.readOnlyTitle': { en: 'Read-only connection', zh: '只读连接' },
+  'communications.readOnlyBody': {
+    en: 'JusticeOS can read this agent’s operational state. Sending email, modifying tasks, calendar actions, and other external changes remain disabled.',
+    zh: 'JusticeOS 可以读取该 Agent 的运营状态。发送邮件、修改任务、日历操作及其他外部更改仍处于禁用状态。',
   },
 
 // ---- marketing workspace (#/marketing) ----
