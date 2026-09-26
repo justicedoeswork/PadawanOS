@@ -737,6 +737,11 @@ export const messages = {
     en: 'Marketing Agent — review campaigns awaiting your decision',
     zh: '营销 Agent —— 查看待你决策的活动',
   },
+  'rail.communications': { en: 'Communications', zh: 'Communications' },
+  'rail.communicationsTooltip': {
+    en: 'Communications Agent — email, follow-ups, approvals, and priorities',
+    zh: 'Communications Agent —— 邮件、跟进、审批和优先事项',
+  },
   'rail.settings': { en: 'Settings', zh: '设置' },
   'rail.settingsTooltip': { en: 'Settings', zh: '设置' },
   'rail.signOut': { en: 'Sign out', zh: '退出登录' },
