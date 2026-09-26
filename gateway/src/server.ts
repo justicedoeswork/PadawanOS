@@ -6,11 +6,13 @@ import { createAuthRouter } from './auth.js';
 import { createHealthRouter } from './health.js';
 import { createAcpApiFallbackRouter } from './acpApiFallback.js';
 import { createMarketingRouter } from './marketingRoutes.js';
+import { createCommunicationsRouter } from './communicationsRoutes.js';
 import { createStaticSiteRouter } from './staticSite.js';
 import { attachAcpProxy, type AcpProxyHandle } from './acpProxy.js';
 import { assertProductionConfigIsValid } from './configValidation.js';
 import { logError, logInfo } from './log.js';
 import type { MarketingAgentClient } from './marketingAgentClient.js';
+import type { CommunicationsAgentClient } from './communicationsAgentClient.js';
 
 export interface GatewayOverrides {
   port?: number;
@@ -31,6 +33,11 @@ export interface GatewayOverrides {
   marketingAgentTimeoutMs?: number;
   /** Test seam: an already-built Marketing Agent client, so a test never needs a real upstream or a real key. */
   marketingAgentClient?: MarketingAgentClient;
+  communicationsAgentBaseUrl?: string | null;
+  communicationsApiReadKey?: string | null;
+  communicationsAgentTimeoutMs?: number;
+  /** Test seam for the read-only Communications bridge. */
+  communicationsAgentClient?: CommunicationsAgentClient;
 }
 
 export interface GatewayInstance {
@@ -60,6 +67,8 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   const marketingBaseUrl = overrides.marketingAgentBaseUrl ?? config.marketingAgentBaseUrl;
   const marketingApiKey = overrides.marketingAgentApiKey ?? config.marketingAgentApiKey;
   const marketingActor = overrides.marketingAgentActor ?? marketingAgentActor();
+  const communicationsBaseUrl = overrides.communicationsAgentBaseUrl ?? config.communicationsAgentBaseUrl;
+  const communicationsReadKey = overrides.communicationsApiReadKey ?? config.communicationsApiReadKey;
 
   const acpUpstreamUrl = overrides.insuranceAgentAcpUrl ?? config.insuranceAgentAcpUrl;
   const serviceKey = overrides.acpGatewayServiceKey ?? config.acpGatewayServiceKey;
@@ -125,6 +134,19 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       actor: marketingActor,
       ...(overrides.marketingAgentTimeoutMs !== undefined ? { timeoutMs: overrides.marketingAgentTimeoutMs } : {}),
       ...(overrides.marketingAgentClient ? { client: overrides.marketingAgentClient } : {})
+    })
+  );
+
+  // Read-only Communications Agent bridge. It is independent from ACP and
+  // Marketing: an unavailable/unconfigured Communications Agent never
+  // affects login, the SPA, or the Insurance Agent chat connection.
+  app.use(
+    createCommunicationsRouter({
+      sessionSecret,
+      baseUrl: communicationsBaseUrl,
+      readKey: communicationsReadKey,
+      ...(overrides.communicationsAgentTimeoutMs !== undefined ? { timeoutMs: overrides.communicationsAgentTimeoutMs } : {}),
+      ...(overrides.communicationsAgentClient ? { client: overrides.communicationsAgentClient } : {})
     })
   );
 
