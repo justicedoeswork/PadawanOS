@@ -1,21 +1,37 @@
-import { useState } from 'react';
-import { X } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { Send, X } from 'lucide-react';
 import justiceOsMark from '../assets/brand/justiceos-mark.png';
 import { useI18n } from '../i18n/context';
+import { askManager } from './managerCommunications';
 import './ManagerChat.css';
 
-/**
- * Floating Justice Manager chat button + placeholder panel (LAYOUT #3).
- * Phase 1 only: there is no manager backend yet, so this never claims to
- * be operational and never sends anything anywhere -- opening it just
- * shows a clearly-labeled placeholder. The standalone JusticeOS mark
- * (justiceos-mark.png -- a raster crop of the approved brand master, not
- * a vector) is the Justice Manager's avatar here, per the finalized
- * branding -- the earlier placeholder panda image is gone.
- */
+type ChatMessage = { role: 'user' | 'manager'; text: string };
+
 export function ManagerChat() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { role: 'manager', text: t('manager.readyBody') }
+  ]);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const question = input.trim();
+    if (!question || busy) return;
+    setInput('');
+    setMessages((current) => [...current, { role: 'user', text: question }]);
+    setBusy(true);
+    try {
+      const reply = await askManager(question);
+      setMessages((current) => [...current, { role: 'manager', text: reply.text }]);
+    } catch {
+      setMessages((current) => [...current, { role: 'manager', text: t('manager.error') }]);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <>
@@ -44,7 +60,35 @@ export function ManagerChat() {
               <X size={16} />
             </button>
           </div>
-          <p className="gw-manager-panel-body">{t('manager.placeholderBody')}</p>
+
+          <div className="gw-manager-transcript" aria-live="polite">
+            {messages.map((message, index) => (
+              <div key={index} className={`gw-manager-message gw-manager-message-${message.role}`}>
+                {message.text.split('\n').map((line, lineIndex) => (
+                  <span key={lineIndex}>
+                    {line}
+                    {lineIndex < message.text.split('\n').length - 1 ? <br /> : null}
+                  </span>
+                ))}
+              </div>
+            ))}
+            {busy && <div className="gw-manager-message gw-manager-message-manager">{t('manager.working')}</div>}
+          </div>
+
+          <form className="gw-manager-form" onSubmit={submit}>
+            <input
+              className="gw-manager-input"
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder={t('manager.placeholder')}
+              aria-label={t('manager.placeholder')}
+              disabled={busy}
+            />
+            <button className="gw-manager-send" type="submit" disabled={busy || input.trim().length === 0} aria-label={t('manager.send')}>
+              <Send size={16} />
+            </button>
+          </form>
+          <p className="gw-manager-readonly">{t('manager.readOnly')}</p>
         </div>
       )}
     </>
