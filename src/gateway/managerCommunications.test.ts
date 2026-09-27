@@ -10,6 +10,9 @@ describe('classifyManagerQuestion', () => {
     expect(classifyManagerQuestion('What did I promise?')).toEqual({ kind: 'ledger', view: 'promises' });
     expect(classifyManagerQuestion('Which emails need replies?')).toEqual({ kind: 'emails' });
     expect(classifyManagerQuestion('What needs my approval?')).toEqual({ kind: 'approvals' });
+    expect(classifyManagerQuestion('What is on my calendar today?')).toEqual({ kind: 'calendar', range: 'today' });
+    expect(classifyManagerQuestion('What is on my schedule tomorrow?')).toEqual({ kind: 'calendar', range: 'tomorrow' });
+    expect(classifyManagerQuestion('What is my next appointment?')).toEqual({ kind: 'calendar', range: 'next' });
   });
 
   it('routes related-entity searches', () => {

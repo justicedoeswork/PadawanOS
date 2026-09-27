@@ -105,6 +105,7 @@ export function createCommunicationsRouter(options: CommunicationsRoutesOptions)
   read(`${GATEWAY_PREFIX}/emails/needs-reply`, () => `${UPSTREAM_PREFIX}/emails/needs-reply`);
   read(`${GATEWAY_PREFIX}/approvals/pending`, () => `${UPSTREAM_PREFIX}/approvals/pending`);
   read(`${GATEWAY_PREFIX}/notifications`, () => `${UPSTREAM_PREFIX}/notifications`);
+  read(`${GATEWAY_PREFIX}/calendar/events`, () => `${UPSTREAM_PREFIX}/calendar/events`);
   read(`${GATEWAY_PREFIX}/search`, () => `${UPSTREAM_PREFIX}/search`);
 
   router.use(GATEWAY_PREFIX, (_req, res) => {
