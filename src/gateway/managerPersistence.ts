@@ -49,3 +49,29 @@ export async function appendManagerTurn(
     })
   });
 }
+
+
+export interface PendingManagerEvent {
+  id: string;
+  source_agent: string;
+  event_type: string;
+  severity: string;
+  significance: string;
+  title: string;
+  summary: string;
+  occurred_at: string;
+  received_at: string;
+  disposition: 'unread' | 'surfaced' | 'acknowledged' | 'suppressed' | 'resolved';
+  priority: 'routine' | 'important' | 'urgent';
+  last_surfaced_at: string | null;
+  surface_count: number;
+}
+
+export async function loadPendingManagerEvents(): Promise<PendingManagerEvent[]> {
+  const body = await request('/api/manager/events/pending');
+  return Array.isArray(body?.data) ? body.data : [];
+}
+
+export async function surfaceManagerEvent(eventId: string): Promise<void> {
+  await request(`/api/manager/events/${encodeURIComponent(eventId)}/surface`, { method: 'POST' });
+}
