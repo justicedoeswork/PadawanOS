@@ -64,7 +64,9 @@ export function ManagerChat() {
       const snapshot = await getManagerSnapshot();
       const previous = lastSnapshotRef.current;
 
-      if (announce && previous && snapshot.signature !== previous.signature) {
+      if (announce && !previous) {
+        setMessages((current) => [...current, { role: 'manager', text: summarizeSnapshot(snapshot) }]);
+      } else if (announce && previous && snapshot.signature !== previous.signature) {
         setMessages((current) => [...current, { role: 'manager', text: `Quick update: ${summarizeSnapshot(snapshot)}` }]);
       } else if (meaningfulIncrease(previous, snapshot)) {
         setUnreadUpdate(true);
@@ -100,7 +102,9 @@ export function ManagerChat() {
     setBusy(true);
     try {
       const reply = await askManager(question, contextRef.current);
-      contextRef.current = { lastIntent: reply.intent, lastReply: reply.text };
+      if (reply.intent.kind !== 'explain' && reply.intent.kind !== 'repeat' && reply.intent.kind !== 'help') {
+        contextRef.current = { lastIntent: reply.intent, lastReply: reply.text };
+      }
       setMessages((current) => [...current, { role: 'manager', text: reply.text }]);
     } catch {
       setMessages((current) => [...current, { role: 'manager', text: t('manager.error') }]);
