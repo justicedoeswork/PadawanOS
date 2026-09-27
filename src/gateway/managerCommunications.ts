@@ -65,7 +65,7 @@ export function classifyManagerQuestion(raw: string, context: ManagerContext = {
   if (/\bapproval|awaiting my approval|need my approval/i.test(lower)) return { kind: 'approvals' };
   if (/\bnotification|alerts?\b/i.test(lower)) return { kind: 'notifications' };
   if (/\b(next appointment|next meeting|next event)\b/i.test(lower)) return { kind: 'calendar', range: 'next' };
-  if (/\b(calendar|schedule|appointments?|meetings?)\b/i.test(lower)) {
+  if (/\b(calendar|calandar|schedule|appointments?|meetings?)\b/i.test(lower)) {
     if (/\btomorrow\b/i.test(lower)) return { kind: 'calendar', range: 'tomorrow' };
     if (/\bweek\b|\bnext 7 days\b/i.test(lower)) return { kind: 'calendar', range: 'week' };
     return { kind: 'calendar', range: 'today' };
