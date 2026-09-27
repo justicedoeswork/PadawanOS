@@ -101,6 +101,14 @@ export const config = {
   communicationsApiReadKey: requireEnv('COMMUNICATIONS_API_READ_KEY'),
 
   /**
+   * Persistent Padawan Manager backend. Both values remain server-side.
+   * The browser authenticates to this gateway with its JusticeOS session;
+   * only the gateway presents JUSTICEOS_MANAGER_SERVICE_KEY upstream.
+   */
+  managerApiUrl: requireEnv('JUSTICEOS_MANAGER_API_URL'),
+  managerServiceKey: requireEnv('JUSTICEOS_MANAGER_SERVICE_KEY'),
+
+  /**
    * Exact-match allowlist for both the WebSocket upgrade's Origin
    * header and (if the gateway is ever run split from its own
    * frontend during development) CORS. Comma-separated, e.g.
@@ -122,6 +130,10 @@ export function isMarketingAgentConfigured(): boolean {
 
 export function isCommunicationsAgentConfigured(): boolean {
   return Boolean(config.communicationsAgentBaseUrl && config.communicationsApiReadKey);
+}
+
+export function isManagerBackendConfigured(): boolean {
+  return Boolean(config.managerApiUrl && config.managerServiceKey && config.allowedUserId);
 }
 
 /** The operator identity recorded upstream: an explicit override, else the single owner the ACP side already asserts. */
