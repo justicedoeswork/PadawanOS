@@ -3,7 +3,7 @@ import { classifyManagerQuestion } from './managerCommunications';
 
 describe('classifyManagerQuestion', () => {
   it('routes core operational questions deterministically', () => {
-    expect(classifyManagerQuestion('What do I need to handle today?')).toEqual({ kind: 'ledger', view: 'today' });
+    expect(classifyManagerQuestion('What do I need to handle today?')).toEqual({ kind: 'briefing' });
     expect(classifyManagerQuestion('Show me urgent items')).toEqual({ kind: 'ledger', view: 'urgent' });
     expect(classifyManagerQuestion('What is overdue?')).toEqual({ kind: 'ledger', view: 'overdue' });
     expect(classifyManagerQuestion('Who am I waiting on?')).toEqual({ kind: 'ledger', view: 'waiting' });
@@ -15,6 +15,18 @@ describe('classifyManagerQuestion', () => {
   it('routes related-entity searches', () => {
     expect(classifyManagerQuestion("What's going on with Ryan?")).toEqual({ kind: 'search', phrase: 'Ryan' });
     expect(classifyManagerQuestion('Show me everything related to Otis St')).toEqual({ kind: 'search', phrase: 'Otis St' });
+  });
+
+  it('uses prior context for conversational follow-ups', () => {
+    const prior = { lastIntent: { kind: 'briefing' } as const, lastReply: 'A prior briefing.' };
+    expect(classifyManagerQuestion('why?', prior)).toEqual({ kind: 'explain' });
+    expect(classifyManagerQuestion('show me those', prior)).toEqual({ kind: 'repeat' });
+    expect(classifyManagerQuestion('what about Ryan?', prior)).toEqual({ kind: 'search', phrase: 'Ryan' });
+  });
+
+  it('routes explicit catch-up language to the combined briefing', () => {
+    expect(classifyManagerQuestion('Catch me up')).toEqual({ kind: 'briefing' });
+    expect(classifyManagerQuestion('What needs my attention?')).toEqual({ kind: 'briefing' });
   });
 
   it('falls back to help for unsupported questions rather than inventing an answer', () => {
