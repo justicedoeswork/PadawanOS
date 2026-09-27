@@ -45,7 +45,8 @@ function meaningfulIncrease(previous: ManagerSnapshot | null, current: ManagerSn
     current.overdue > previous.overdue ||
     current.today > previous.today ||
     current.replies > previous.replies ||
-    current.approvals > previous.approvals
+    current.approvals > previous.approvals ||
+    current.calendarToday > (previous.calendarToday ?? 0)
   );
 }
 
