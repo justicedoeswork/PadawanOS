@@ -66,6 +66,32 @@ describe('persistent manager gateway bridge', () => {
     });
   });
 
+  it('injects the configured owner identity when surfacing a manager event', async () => {
+    const fake = fakeClient();
+    const { port, close } = await startTestGateway({
+      allowedUserId: TEST_USER_ID,
+      managerApiUrl: 'https://manager.example.test',
+      managerServiceKey: 'x'.repeat(32),
+      managerApiClient: fake.client
+    });
+    cleanups.push(close);
+    const cookie = await loginForTestCookie(port);
+    const eventId = '22222222-2222-4222-8222-222222222222';
+
+    const res = await fetch(`http://127.0.0.1:${port}/api/manager/events/${eventId}/surface`, {
+      method: 'POST',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: 'attacker-selected-user' })
+    });
+
+    expect(res.status).toBe(201);
+    expect(fake.calls.at(-1)).toEqual({
+      method: 'POST',
+      path: `/events/${eventId}/surface`,
+      body: { userId: TEST_USER_ID }
+    });
+  });
+
   it('forwards only bounded manager-turn fields, never browser credentials', async () => {
     const fake = fakeClient();
     const { port, close } = await startTestGateway({
