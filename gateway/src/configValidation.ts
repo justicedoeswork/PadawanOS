@@ -41,6 +41,8 @@ export interface ProductionConfigInput {
   /** Optional read-only Communications Agent integration. */
   communicationsAgentBaseUrl?: string | null;
   communicationsApiReadKey?: string | null;
+  managerApiUrl?: string | null;
+  managerServiceKey?: string | null;
 }
 
 /**
@@ -158,6 +160,7 @@ export function findProductionConfigProblems(input: ProductionConfigInput): stri
 
   problems.push(...findMarketingAgentProblems(input));
   problems.push(...findCommunicationsAgentProblems(input));
+  problems.push(...findManagerBackendProblems(input));
 
   return problems;
 }
@@ -227,6 +230,28 @@ function findCommunicationsAgentProblems(input: ProductionConfigInput): string[]
     problems.push('COMMUNICATIONS_API_READ_KEY looks like an example/placeholder value, not a real generated secret.');
   }
 
+  return problems;
+}
+
+function findManagerBackendProblems(input: ProductionConfigInput): string[] {
+  const problems: string[] = [];
+  const baseUrl = input.managerApiUrl ?? null;
+  const serviceKey = input.managerServiceKey ?? null;
+  if (!baseUrl && !serviceKey) return problems;
+  if (!baseUrl) problems.push('JUSTICEOS_MANAGER_API_URL is required when JUSTICEOS_MANAGER_SERVICE_KEY is set.');
+  else {
+    try {
+      const parsed = new URL(baseUrl);
+      if (parsed.protocol !== 'https:' || parsed.username || parsed.password) {
+        problems.push('JUSTICEOS_MANAGER_API_URL must be an https:// URL without embedded credentials in production.');
+      }
+    } catch {
+      problems.push('JUSTICEOS_MANAGER_API_URL must be a valid https:// URL in production.');
+    }
+  }
+  if (!serviceKey) problems.push('JUSTICEOS_MANAGER_SERVICE_KEY is required when JUSTICEOS_MANAGER_API_URL is set.');
+  else if (serviceKey.length < MIN_SECRET_LENGTH) problems.push(`JUSTICEOS_MANAGER_SERVICE_KEY must be at least ${MIN_SECRET_LENGTH} characters in production.`);
+  else if (looksLikePlaceholder(serviceKey)) problems.push('JUSTICEOS_MANAGER_SERVICE_KEY looks like an example/placeholder value, not a real generated secret.');
   return problems;
 }
 
