@@ -7,8 +7,10 @@ import {
   getManagerSnapshot,
   summarizeSnapshot,
   type ManagerContext,
+  type ManagerIntent,
   type ManagerSnapshot,
 } from './managerCommunications';
+import { appendManagerTurn, loadManagerTurns, openManagerConversation } from './managerPersistence';
 import './ManagerChat.css';
 
 type ChatMessage = { role: 'user' | 'manager'; text: string };
