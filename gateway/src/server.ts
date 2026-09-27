@@ -7,12 +7,14 @@ import { createHealthRouter } from './health.js';
 import { createAcpApiFallbackRouter } from './acpApiFallback.js';
 import { createMarketingRouter } from './marketingRoutes.js';
 import { createCommunicationsRouter } from './communicationsRoutes.js';
+import { createManagerRouter } from './managerRoutes.js';
 import { createStaticSiteRouter } from './staticSite.js';
 import { attachAcpProxy, type AcpProxyHandle } from './acpProxy.js';
 import { assertProductionConfigIsValid } from './configValidation.js';
 import { logError, logInfo } from './log.js';
 import type { MarketingAgentClient } from './marketingAgentClient.js';
 import type { CommunicationsAgentClient } from './communicationsAgentClient.js';
+import type { ManagerApiClient } from './managerApiClient.js';
 
 export interface GatewayOverrides {
   port?: number;
@@ -38,6 +40,10 @@ export interface GatewayOverrides {
   communicationsAgentTimeoutMs?: number;
   /** Test seam for the read-only Communications bridge. */
   communicationsAgentClient?: CommunicationsAgentClient;
+  managerApiUrl?: string | null;
+  managerServiceKey?: string | null;
+  managerTimeoutMs?: number;
+  managerApiClient?: ManagerApiClient;
 }
 
 export interface GatewayInstance {
@@ -69,6 +75,8 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   const marketingActor = overrides.marketingAgentActor ?? marketingAgentActor();
   const communicationsBaseUrl = overrides.communicationsAgentBaseUrl ?? config.communicationsAgentBaseUrl;
   const communicationsReadKey = overrides.communicationsApiReadKey ?? config.communicationsApiReadKey;
+  const managerApiUrl = overrides.managerApiUrl ?? config.managerApiUrl;
+  const managerServiceKey = overrides.managerServiceKey ?? config.managerServiceKey;
 
   const acpUpstreamUrl = overrides.insuranceAgentAcpUrl ?? config.insuranceAgentAcpUrl;
   const serviceKey = overrides.acpGatewayServiceKey ?? config.acpGatewayServiceKey;
@@ -93,7 +101,9 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       marketingAgentBaseUrl: marketingBaseUrl,
       marketingAgentApiKey: marketingApiKey,
       communicationsAgentBaseUrl: communicationsBaseUrl,
-      communicationsApiReadKey: communicationsReadKey
+      communicationsApiReadKey: communicationsReadKey,
+      managerApiUrl,
+      managerServiceKey
     });
   }
 
@@ -149,6 +159,17 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       readKey: communicationsReadKey,
       ...(overrides.communicationsAgentTimeoutMs !== undefined ? { timeoutMs: overrides.communicationsAgentTimeoutMs } : {}),
       ...(overrides.communicationsAgentClient ? { client: overrides.communicationsAgentClient } : {})
+    })
+  );
+
+  app.use(
+    createManagerRouter({
+      sessionSecret,
+      baseUrl: managerApiUrl,
+      serviceKey: managerServiceKey,
+      userId,
+      ...(overrides.managerTimeoutMs !== undefined ? { timeoutMs: overrides.managerTimeoutMs } : {}),
+      ...(overrides.managerApiClient ? { client: overrides.managerApiClient } : {})
     })
   );
 
