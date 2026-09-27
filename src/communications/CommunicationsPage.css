@@ -70,3 +70,93 @@
 @media (max-width: 640px) {
   .communications-hero { flex-direction: column; }
 }
+
+
+.communications-card--button {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+.communications-card--button:hover {
+  transform: translateY(-1px);
+  background: var(--color-bg);
+}
+.communications-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.communications-drilldown {
+  margin-top: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-lg);
+  background: var(--color-raised);
+  padding: 16px;
+}
+.communications-drilldown-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.communications-drilldown-header h2 {
+  margin: 2px 0 0;
+  font-size: 18px;
+}
+.communications-drilldown-kicker {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.communications-drilldown-close {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--panda-radius-md);
+  color: var(--color-muted);
+}
+.communications-drilldown-close:hover {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+.communications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.communications-list-item {
+  border-top: 1px solid var(--color-border);
+  padding-top: 10px;
+}
+.communications-list-item:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.communications-list-item strong {
+  display: block;
+  font-size: 13px;
+}
+.communications-list-item p {
+  margin: 4px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.communications-list-item span {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+.communications-drilldown-empty {
+  margin: 0;
+  color: var(--color-muted);
+}
