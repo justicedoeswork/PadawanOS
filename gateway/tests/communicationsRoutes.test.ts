@@ -34,6 +34,7 @@ const READ_PATHS = [
   '/api/communications/emails/needs-reply',
   '/api/communications/approvals/pending',
   '/api/communications/notifications',
+  '/api/communications/calendar/events?start=2026-09-28T00%3A00%3A00.000Z&end=2026-09-29T00%3A00%3A00.000Z',
   '/api/communications/search?q=Ryan',
   '/api/communications/status'
 ];
@@ -58,6 +59,15 @@ describe('Communications read bridge', () => {
     expect(await res.json()).toEqual({ data: [{ id: 'item-1' }] });
     expect(upstream.requests.at(-1)?.method).toBe('GET');
     expect(upstream.requests.at(-1)?.url).toBe('/api/v1/ledger/views/waiting?person=Ryan');
+
+    const calendar = await fetch(
+      `http://127.0.0.1:${port}/api/communications/calendar/events?start=2026-09-28T00%3A00%3A00.000Z&end=2026-09-29T00%3A00%3A00.000Z`,
+      { headers: { Cookie: cookie } }
+    );
+    expect(calendar.status).toBe(200);
+    expect(upstream.requests.at(-1)?.url).toBe(
+      '/api/v1/calendar/events?start=2026-09-28T00%3A00%3A00.000Z&end=2026-09-29T00%3A00%3A00.000Z'
+    );
   });
 
   it('attaches the read key upstream and never forwards browser credentials', async () => {
