@@ -181,10 +181,35 @@ export async function askManager(raw: string, context: ManagerContext = {}): Pro
     return { intent, text: explanationFor(context.lastIntent, context.lastReply) };
   }
   if (intent.kind === 'repeat') {
-    if (!context.lastIntent || context.lastIntent.kind === 'help' || context.lastIntent.kind === 'explain' || context.lastIntent.kind === 'repeat') {
+    const previous = context.lastIntent;
+    if (!previous || previous.kind === 'help' || previous.kind === 'explain' || previous.kind === 'repeat') {
       return { intent: { kind: 'help' }, text: 'Tell me which queue or person you want me to show.' };
     }
-    return askManager(raw, { ...context, lastIntent: context.lastIntent });
+    const replay =
+      previous.kind === 'briefing'
+        ? 'catch me up'
+        : previous.kind === 'emails'
+          ? 'which emails need replies'
+          : previous.kind === 'approvals'
+            ? 'what needs my approval'
+            : previous.kind === 'notifications'
+              ? 'show notifications'
+              : previous.kind === 'search'
+                ? `what's going on with ${previous.phrase}`
+                : previous.person
+                  ? `what am i waiting on from ${previous.person}`
+                  : previous.view === 'urgent'
+                    ? 'show urgent items'
+                    : previous.view === 'overdue'
+                      ? 'what is overdue'
+                      : previous.view === 'waiting'
+                        ? 'who am i waiting on'
+                        : previous.view === 'promises'
+                          ? 'what did i promise'
+                          : previous.view === 'inbox'
+                            ? 'show inbox'
+                            : 'what is due today';
+    return askManager(replay);
   }
   if (intent.kind === 'briefing') {
     const snapshot = await getManagerSnapshot();
