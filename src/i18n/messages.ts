@@ -838,6 +838,7 @@ export const messages = {
   'communications.replies': { en: 'Emails needing reply', zh: '待回复邮件' },
   'communications.approvals': { en: 'Pending approvals', zh: '待审批' },
   'communications.notifications': { en: 'Notifications', zh: '通知' },
+  'communications.empty': { en: 'Nothing is currently in this queue.', zh: '当前此队列中没有项目。' },
   'communications.readOnlyTitle': { en: 'Read-only connection', zh: '只读连接' },
   'communications.readOnlyBody': {
     en: 'JusticeOS can read this agent’s operational state. Sending email, modifying tasks, calendar actions, and other external changes remain disabled.',
