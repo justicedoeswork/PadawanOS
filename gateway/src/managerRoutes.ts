@@ -114,6 +114,15 @@ export function createManagerRouter(options: ManagerRoutesOptions): Router {
     sendResult(res, await client.request('GET', `/events/pending?userId=${encodeURIComponent(options.userId)}`));
   });
 
+  router.post(`${PREFIX}/events/:id/surface`, async (req, res) => {
+    if (!client || !options.userId) {
+      notConfigured(res);
+      return;
+    }
+    const id = encodeURIComponent(String(req.params.id ?? ''));
+    sendResult(res, await client.request('POST', `/events/${id}/surface`, { userId: options.userId }));
+  });
+
   router.use(PREFIX, (_req, res) => {
     res.status(404).json({ error: { code: 'ROUTE_NOT_FOUND', message: 'No such Padawan manager route.', details: {} } });
   });
