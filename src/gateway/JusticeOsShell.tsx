@@ -171,7 +171,7 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
         </div>
         {view === 'dashboard' ? <Dashboard /> : children}
       </div>
-      {view === 'dashboard' && <ManagerChat />}
+      <ManagerChat />
     </div>
   );
 }
