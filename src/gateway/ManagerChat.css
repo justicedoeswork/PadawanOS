@@ -153,3 +153,15 @@
   font-size: 11px;
   color: var(--color-muted);
 }
+
+
+.gw-manager-update-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--color-raised);
+  border-radius: 50%;
+  background: var(--color-fg);
+}
