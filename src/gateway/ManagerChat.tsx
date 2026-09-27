@@ -10,7 +10,14 @@ import {
   type ManagerIntent,
   type ManagerSnapshot,
 } from './managerCommunications';
-import { appendManagerTurn, loadManagerTurns, openManagerConversation } from './managerPersistence';
+import {
+  appendManagerTurn,
+  loadManagerTurns,
+  loadPendingManagerEvents,
+  openManagerConversation,
+  surfaceManagerEvent,
+  type PendingManagerEvent
+} from './managerPersistence';
 import './ManagerChat.css';
 
 type ChatMessage = { role: 'user' | 'manager'; text: string };
@@ -48,6 +55,27 @@ function meaningfulIncrease(previous: ManagerSnapshot | null, current: ManagerSn
     current.approvals > previous.approvals ||
     current.calendarToday > (previous.calendarToday ?? 0)
   );
+}
+
+function summarizeServerEvents(events: PendingManagerEvent[]): string {
+  const unread = events.filter((event) => event.disposition === 'unread');
+  if (unread.length === 0) return '';
+
+  const urgent = unread.filter((event) => event.priority === 'urgent').length;
+  const important = unread.filter((event) => event.priority === 'important').length;
+  const routine = unread.length - urgent - important;
+  const counts = [
+    urgent ? `${urgent} urgent` : null,
+    important ? `${important} important` : null,
+    routine ? `${routine} routine` : null
+  ].filter(Boolean);
+
+  const lines = unread.slice(0, 8).map((event, index) => {
+    const when = new Date(event.occurred_at).toLocaleString();
+    return `${index + 1}. ${event.title} — ${when}${event.summary ? ` · ${event.summary}` : ''}`;
+  });
+
+  return `While you were away: ${counts.join(', ')} update${unread.length === 1 ? '' : 's'}.\n${lines.join('\n')}${unread.length > 8 ? `\n+${unread.length - 8} more.` : ''}`;
 }
 
 export function ManagerChat() {
@@ -108,6 +136,32 @@ export function ManagerChat() {
     }
   }
 
+  async function refreshServerEvents({ announce }: { announce: boolean }) {
+    try {
+      const events = await loadPendingManagerEvents();
+      const unread = events.filter((event) => event.disposition === 'unread');
+      if (unread.length === 0) return;
+
+      if (!announce) {
+        if (unread.some((event) => event.priority === 'urgent' || event.priority === 'important')) {
+          setUnreadUpdate(true);
+        }
+        return;
+      }
+
+      const text = summarizeServerEvents(unread);
+      if (text) {
+        setMessages((current) => [...current, { role: 'manager', text }]);
+        void persistTurn('manager', text, null);
+      }
+
+      await Promise.all(unread.map((event) => surfaceManagerEvent(event.id)));
+    } catch {
+      // Server event awareness is additive. Communications chat remains usable
+      // if the manager backend is temporarily unavailable.
+    }
+  }
+
   async function refreshCatchUp({ announce }: { announce: boolean }) {
     try {
       const snapshot = await getManagerSnapshot();
@@ -132,14 +186,20 @@ export function ManagerChat() {
   useEffect(() => {
     const timer = window.setInterval(() => {
       void refreshCatchUp({ announce: open });
+      void refreshServerEvents({ announce: open });
     }, POLL_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [open]);
 
   useEffect(() => {
+    void refreshServerEvents({ announce: false });
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     setUnreadUpdate(false);
     void refreshCatchUp({ announce: true });
+    void refreshServerEvents({ announce: true });
   }, [open]);
 
   async function submit(event: FormEvent) {
