@@ -13,6 +13,8 @@ describe('classifyManagerQuestion', () => {
     expect(classifyManagerQuestion('What is on my calendar today?')).toEqual({ kind: 'calendar', range: 'today' });
     expect(classifyManagerQuestion('What is on my schedule tomorrow?')).toEqual({ kind: 'calendar', range: 'tomorrow' });
     expect(classifyManagerQuestion('What is my next appointment?')).toEqual({ kind: 'calendar', range: 'next' });
+    expect(classifyManagerQuestion('whats on my calandar tomorrow?')).toEqual({ kind: 'calendar', range: 'tomorrow' });
+    expect(classifyManagerQuestion('what on the calandar tomorrow?')).toEqual({ kind: 'calendar', range: 'tomorrow' });
   });
 
   it('routes related-entity searches', () => {
