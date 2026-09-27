@@ -1,23 +1,54 @@
+export type LedgerView = 'today' | 'urgent' | 'overdue' | 'waiting' | 'inbox' | 'promises';
+
 export type ManagerIntent =
-  | { kind: 'ledger'; view: 'today' | 'urgent' | 'overdue' | 'waiting' | 'inbox' | 'promises'; person?: string }
+  | { kind: 'briefing' }
+  | { kind: 'ledger'; view: LedgerView; person?: string }
   | { kind: 'emails' }
   | { kind: 'approvals' }
   | { kind: 'notifications' }
   | { kind: 'search'; phrase: string }
+  | { kind: 'explain' }
+  | { kind: 'repeat' }
   | { kind: 'help' };
+
+export interface ManagerContext {
+  lastIntent?: ManagerIntent;
+  lastReply?: string;
+}
 
 export interface ManagerReply {
   text: string;
   intent: ManagerIntent;
 }
 
+export interface ManagerSnapshot {
+  today: number;
+  urgent: number;
+  overdue: number;
+  waiting: number;
+  replies: number;
+  approvals: number;
+  notifications: number;
+  signature: string;
+}
+
 function clean(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
-export function classifyManagerQuestion(raw: string): ManagerIntent {
+export function classifyManagerQuestion(raw: string, context: ManagerContext = {}): ManagerIntent {
   const q = clean(raw);
   const lower = q.toLowerCase();
+
+  if (/^(why|why\?|how come|what do you mean|explain that)[?.!]*$/i.test(q)) {
+    return context.lastIntent ? { kind: 'explain' } : { kind: 'help' };
+  }
+  if (/^(show me (those|them)|which ones|who\?|what ones\?|and those\?)[?.!]*$/i.test(q)) {
+    return context.lastIntent ? { kind: 'repeat' } : { kind: 'help' };
+  }
+
+  const relatedFollowup = q.match(/^(?:what about|how about)\s+(.+?)[?.!]*$/i);
+  if (relatedFollowup?.[1]) return { kind: 'search', phrase: clean(relatedFollowup[1]) };
 
   const related = q.match(/^(?:what(?:'s| is) going on with|show me everything related to|show me everything about|search for|search)\s+(.+?)[?.!]*$/i);
   if (related?.[1]) return { kind: 'search', phrase: clean(related[1]) };
@@ -25,6 +56,9 @@ export function classifyManagerQuestion(raw: string): ManagerIntent {
   const waitingOnPerson = q.match(/^(?:what am i waiting on from|what are we waiting on from|what does|what is)\s+(.+?)\s+(?:owe me|supposed to send|supposed to do)[?.!]*$/i);
   if (waitingOnPerson?.[1]) return { kind: 'ledger', view: 'waiting', person: clean(waitingOnPerson[1]) };
 
+  if (/\b(catch me up|brief me|briefing|what do i need to handle|what needs my attention|what should i handle|what should i know|what do i need to know)\b/i.test(lower)) {
+    return { kind: 'briefing' };
+  }
   if (/\b(which|what).*emails?.*(need|needs).*repl|\bemails? needing repl|\bneeds? repl/i.test(lower)) return { kind: 'emails' };
   if (/\bapproval|awaiting my approval|need my approval/i.test(lower)) return { kind: 'approvals' };
   if (/\bnotification|alerts?\b/i.test(lower)) return { kind: 'notifications' };
@@ -33,7 +67,7 @@ export function classifyManagerQuestion(raw: string): ManagerIntent {
   if (/\bwaiting on\b|\bwhat am i waiting\b|\bwho am i waiting\b/.test(lower)) return { kind: 'ledger', view: 'waiting' };
   if (/\bpromise|\bwhat did i promise|\bwhat have i promised/.test(lower)) return { kind: 'ledger', view: 'promises' };
   if (/\binbox\b|\bunprocessed tasks?\b/.test(lower)) return { kind: 'ledger', view: 'inbox' };
-  if (/\btoday\b|\bhandle\b|\bneed to do\b|\bneed to handle\b/.test(lower)) return { kind: 'ledger', view: 'today' };
+  if (/\btoday\b/.test(lower)) return { kind: 'ledger', view: 'today' };
 
   return { kind: 'help' };
 }
@@ -41,13 +75,7 @@ export function classifyManagerQuestion(raw: string): ManagerIntent {
 async function getJson(path: string): Promise<unknown> {
   const response = await fetch(path, { credentials: 'same-origin', headers: { accept: 'application/json' } });
   const body = await response.json().catch(() => null);
-  if (!response.ok) {
-    const message =
-      body && typeof body === 'object' && 'error' in body
-        ? JSON.stringify((body as { error: unknown }).error)
-        : `HTTP ${response.status}`;
-    throw new Error(message);
-  }
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return body;
 }
 
@@ -75,25 +103,104 @@ function summarizeActionItems(data: unknown[], label: string): string {
       .join(' · ');
     return `${index + 1}. ${title}${meta ? ` — ${meta}` : ''}`;
   });
-  const more = data.length > 8 ? `\n+${data.length - 8} more.` : '';
-  return `${label}: ${data.length}\n${lines.join('\n')}${more}`;
+  return `${label}: ${data.length}\n${lines.join('\n')}${data.length > 8 ? `\n+${data.length - 8} more.` : ''}`;
 }
 
-export async function askManager(raw: string): Promise<ManagerReply> {
-  const intent = classifyManagerQuestion(raw);
+async function ledger(view: LedgerView, person?: string): Promise<unknown[]> {
+  const params = person ? `?person=${encodeURIComponent(person)}` : '';
+  const body = obj(await getJson(`/api/communications/ledger/views/${view}${params}`));
+  return arr(body.data);
+}
 
+export async function getManagerSnapshot(): Promise<ManagerSnapshot> {
+  const [today, urgent, overdue, waiting, repliesBody, approvalsBody, notificationsBody] = await Promise.all([
+    ledger('today'),
+    ledger('urgent'),
+    ledger('overdue'),
+    ledger('waiting'),
+    getJson('/api/communications/emails/needs-reply'),
+    getJson('/api/communications/approvals/pending'),
+    getJson('/api/communications/notifications')
+  ]);
+
+  const replies = arr(obj(repliesBody).data).length;
+  const approvals = obj(obj(approvalsBody).data);
+  const approvalCount = arr(approvals.responseDrafts).length + arr(approvals.calendarProposals).length;
+  const notifications = arr(obj(notificationsBody).data).length;
+
+  const snapshot = {
+    today: today.length,
+    urgent: urgent.length,
+    overdue: overdue.length,
+    waiting: waiting.length,
+    replies,
+    approvals: approvalCount,
+    notifications,
+  };
+  return { ...snapshot, signature: JSON.stringify(snapshot) };
+}
+
+export function summarizeSnapshot(s: ManagerSnapshot): string {
+  const actionable = s.today + s.urgent + s.overdue + s.replies + s.approvals;
+  if (actionable === 0 && s.waiting === 0 && s.notifications === 0) {
+    return 'You are caught up. I do not see anything requiring attention in Communications right now.';
+  }
+
+  const parts = [
+    s.urgent ? `${s.urgent} urgent` : null,
+    s.overdue ? `${s.overdue} overdue` : null,
+    s.today ? `${s.today} due today` : null,
+    s.replies ? `${s.replies} email${s.replies === 1 ? '' : 's'} needing a reply` : null,
+    s.approvals ? `${s.approvals} pending approval${s.approvals === 1 ? '' : 's'}` : null,
+    s.waiting ? `${s.waiting} item${s.waiting === 1 ? '' : 's'} waiting on someone else` : null,
+  ].filter(Boolean);
+
+  return `Here’s your current catch-up: ${parts.join(', ')}.` +
+    (s.notifications ? ` There are also ${s.notifications} Communications notifications recorded.` : '');
+}
+
+function explanationFor(intent: ManagerIntent | undefined, lastReply?: string): string {
+  if (!intent) return 'I do not have enough prior context to explain that yet.';
+  if (intent.kind === 'briefing') {
+    return 'I build that catch-up from separate Communications queues: due-today items, urgent items, overdue items, emails needing replies, approvals, waiting items, and notifications. A zero in one queue does not mean you are fully caught up.';
+  }
+  if (intent.kind === 'ledger') {
+    return `That answer came from the Communications “${intent.view}” ledger view only. It does not automatically include the reply, approval, or notification queues.`;
+  }
+  if (intent.kind === 'emails') return 'That answer comes from messages the Communications workflow currently marks as needing a reply.';
+  if (intent.kind === 'approvals') return 'That answer comes from response drafts and calendar proposals currently waiting for approval.';
+  if (intent.kind === 'notifications') return 'That answer comes from the Communications notification queue.';
+  if (intent.kind === 'search') return `That answer was a literal search for “${intent.phrase}” across Communications records.`;
+  return lastReply ? `I was referring to my previous answer: ${lastReply}` : 'I do not have enough prior context to explain that yet.';
+}
+
+export async function askManager(raw: string, context: ManagerContext = {}): Promise<ManagerReply> {
+  const intent = classifyManagerQuestion(raw, context);
+
+  if (intent.kind === 'explain') {
+    return { intent, text: explanationFor(context.lastIntent, context.lastReply) };
+  }
+  if (intent.kind === 'repeat') {
+    if (!context.lastIntent || context.lastIntent.kind === 'help' || context.lastIntent.kind === 'explain' || context.lastIntent.kind === 'repeat') {
+      return { intent: { kind: 'help' }, text: 'Tell me which queue or person you want me to show.' };
+    }
+    return askManager(raw, { ...context, lastIntent: context.lastIntent });
+  }
+  if (intent.kind === 'briefing') {
+    const snapshot = await getManagerSnapshot();
+    return { intent, text: summarizeSnapshot(snapshot) };
+  }
   if (intent.kind === 'help') {
     return {
       intent,
       text:
-        'I can currently answer: what do I need to handle today, show urgent or overdue items, who am I waiting on, what did I promise, which emails need replies, what needs approval, show notifications, or what\'s going on with a person/project/company.'
+        'Ask me to catch you up, explain my last answer, show urgent or overdue work, who you are waiting on, which emails need replies, what needs approval, notifications, or what is going on with a person, company, or project.'
     };
   }
 
   if (intent.kind === 'ledger') {
-    const params = intent.person ? `?person=${encodeURIComponent(intent.person)}` : '';
-    const body = obj(await getJson(`/api/communications/ledger/views/${intent.view}${params}`));
-    const labels: Record<typeof intent.view, string> = {
+    const data = await ledger(intent.view, intent.person);
+    const labels: Record<LedgerView, string> = {
       today: 'Today',
       urgent: 'Urgent',
       overdue: 'Overdue',
@@ -101,12 +208,11 @@ export async function askManager(raw: string): Promise<ManagerReply> {
       inbox: 'Inbox',
       promises: 'Your open promises'
     };
-    return { intent, text: summarizeActionItems(arr(body.data), labels[intent.view]) };
+    return { intent, text: summarizeActionItems(data, labels[intent.view]) };
   }
 
   if (intent.kind === 'emails') {
-    const body = obj(await getJson('/api/communications/emails/needs-reply'));
-    const data = arr(body.data);
+    const data = arr(obj(await getJson('/api/communications/emails/needs-reply')).data);
     if (data.length === 0) return { intent, text: 'No emails currently need a reply.' };
     const lines = data.slice(0, 8).map((entry, index) => {
       const message = obj(obj(entry).message);
@@ -118,8 +224,7 @@ export async function askManager(raw: string): Promise<ManagerReply> {
   }
 
   if (intent.kind === 'approvals') {
-    const body = obj(await getJson('/api/communications/approvals/pending'));
-    const data = obj(body.data);
+    const data = obj(obj(await getJson('/api/communications/approvals/pending')).data);
     const drafts = arr(data.responseDrafts);
     const calendar = arr(data.calendarProposals);
     return {
@@ -129,8 +234,7 @@ export async function askManager(raw: string): Promise<ManagerReply> {
   }
 
   if (intent.kind === 'notifications') {
-    const body = obj(await getJson('/api/communications/notifications'));
-    const data = arr(body.data);
+    const data = arr(obj(await getJson('/api/communications/notifications')).data);
     if (data.length === 0) return { intent, text: 'No Communications notifications are waiting.' };
     const lines = data.slice(0, 8).map((entry, index) => {
       const title = stringField(entry, 'title') ?? stringField(entry, 'kind') ?? 'Notification';
@@ -140,8 +244,7 @@ export async function askManager(raw: string): Promise<ManagerReply> {
     return { intent, text: `Notifications: ${data.length}\n${lines.join('\n')}${data.length > 8 ? `\n+${data.length - 8} more.` : ''}` };
   }
 
-  const body = obj(await getJson(`/api/communications/search?q=${encodeURIComponent(intent.phrase)}`));
-  const data = obj(body.data);
+  const data = obj(obj(await getJson(`/api/communications/search?q=${encodeURIComponent(intent.phrase)}`)).data);
   const actions = arr(data.actionItems);
   const emails = arr(data.emails);
   const responses = arr(data.responseProposals);
