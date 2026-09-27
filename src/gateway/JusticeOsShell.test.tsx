@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import fs from 'node:fs';
 import { __setBuildMode } from './buildMode';
 import { JusticeOsShell } from './JusticeOsShell';
 import { I18nProvider } from '../i18n/context';
@@ -68,6 +69,12 @@ describe('JusticeOsShell (gateway build): JusticeOS dashboard + rail', () => {
     expect(markup).toContain('gw-dashboard');
     expect(markup).toContain('JusticeOS');
     expect(markup).not.toContain('the real app');
+  });
+
+  it('keeps the Justice Manager mounted globally instead of gating it to the dashboard view', () => {
+    const source = fs.readFileSync(new URL('./JusticeOsShell.tsx', import.meta.url), 'utf8');
+    expect(source).toContain('<ManagerChat />');
+    expect(source).not.toContain("view === 'dashboard' && <ManagerChat");
   });
 
   it('renders the floating Justice Manager button on the dashboard', () => {
