@@ -147,6 +147,7 @@ export function ManagerChat() {
     if (!question || busy) return;
     setInput('');
     setMessages((current) => [...current, { role: 'user', text: question }]);
+    void persistTurn('user', question, null);
     setBusy(true);
     try {
       const reply = await askManager(question, contextRef.current);
@@ -154,6 +155,7 @@ export function ManagerChat() {
         contextRef.current = { lastIntent: reply.intent, lastReply: reply.text };
       }
       setMessages((current) => [...current, { role: 'manager', text: reply.text }]);
+      void persistTurn('manager', reply.text, reply.intent);
     } catch {
       setMessages((current) => [...current, { role: 'manager', text: t('manager.error') }]);
     } finally {
