@@ -59,7 +59,53 @@ export function ManagerChat() {
     { role: 'manager', text: t('manager.readyBody') }
   ]);
   const contextRef = useRef<ManagerContext>({});
+  const conversationIdRef = useRef<string | null>(null);
   const lastSnapshotRef = useRef<ManagerSnapshot | null>(readStoredSnapshot());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const conversationId = await openManagerConversation();
+        if (cancelled) return;
+        conversationIdRef.current = conversationId;
+
+        const turns = await loadManagerTurns(conversationId);
+        if (cancelled || turns.length === 0) return;
+
+        const restored = turns
+          .filter((turn) => turn.role === 'user' || turn.role === 'manager')
+          .map((turn) => ({ role: turn.role as 'user' | 'manager', text: turn.content }));
+
+        if (restored.length > 0) setMessages(restored);
+
+        const lastManager = [...turns].reverse().find((turn) => turn.role === 'manager' && turn.intent);
+        if (lastManager?.intent) {
+          contextRef.current = {
+            lastIntent: lastManager.intent as ManagerIntent,
+            lastReply: lastManager.content
+          };
+        }
+      } catch {
+        // Persistent manager storage is additive; live chat still works without it.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function persistTurn(role: 'user' | 'manager', content: string, intent?: ManagerIntent | null) {
+    const conversationId = conversationIdRef.current;
+    if (!conversationId) return;
+    try {
+      await appendManagerTurn(conversationId, { role, content, intent });
+    } catch {
+      // Do not break the live manager conversation if durable storage is unavailable.
+    }
+  }
 
   async function refreshCatchUp({ announce }: { announce: boolean }) {
     try {
