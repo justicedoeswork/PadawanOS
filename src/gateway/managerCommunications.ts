@@ -205,7 +205,7 @@ export async function getManagerSnapshot(): Promise<ManagerSnapshot> {
 
 export function summarizeSnapshot(s: ManagerSnapshot): string {
   const actionable = s.today + s.urgent + s.overdue + s.replies + s.approvals;
-  if (actionable === 0 && s.waiting === 0 && s.notifications === 0) {
+  if (actionable === 0 && s.waiting === 0 && s.notifications === 0 && s.calendarToday === 0) {
     return 'You are caught up. I do not see anything requiring attention in Communications right now.';
   }
 
