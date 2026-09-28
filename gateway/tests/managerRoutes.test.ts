@@ -92,6 +92,67 @@ describe('persistent manager gateway bridge', () => {
     });
   });
 
+  it('injects the configured owner identity into push subscription writes', async () => {
+    const fake = fakeClient();
+    const { port, close } = await startTestGateway({
+      allowedUserId: TEST_USER_ID,
+      managerApiUrl: 'https://manager.example.test',
+      managerServiceKey: 'x'.repeat(32),
+      managerApiClient: fake.client
+    });
+    cleanups.push(close);
+    const cookie = await loginForTestCookie(port);
+
+    const res = await fetch(`http://127.0.0.1:${port}/api/manager/push/subscriptions`, {
+      method: 'POST',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: 'attacker-selected-user',
+        endpoint: 'https://push.example.test/subscription',
+        p256dh: 'p256dh-value',
+        auth: 'auth-value',
+        ignored: 'not-forwarded'
+      })
+    });
+
+    expect(res.status).toBe(201);
+    expect(fake.calls.at(-1)).toEqual({
+      method: 'POST',
+      path: '/push/subscriptions',
+      body: {
+        userId: TEST_USER_ID,
+        endpoint: 'https://push.example.test/subscription',
+        p256dh: 'p256dh-value',
+        auth: 'auth-value'
+      }
+    });
+  });
+
+  it('injects the configured owner identity when claiming push-worthy events', async () => {
+    const fake = fakeClient();
+    const { port, close } = await startTestGateway({
+      allowedUserId: TEST_USER_ID,
+      managerApiUrl: 'https://manager.example.test',
+      managerServiceKey: 'x'.repeat(32),
+      managerApiClient: fake.client
+    });
+    cleanups.push(close);
+    const cookie = await loginForTestCookie(port);
+
+    const res = await fetch(`http://127.0.0.1:${port}/api/manager/events/push/claim`, {
+      method: 'POST',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: 'attacker-selected-user', limit: 999 })
+    });
+
+    expect(res.status).toBe(201);
+    expect(fake.calls.at(-1)).toEqual({
+      method: 'POST',
+      path: '/events/push/claim',
+      body: { userId: TEST_USER_ID, limit: 20 }
+    });
+  });
+
   it('forwards only bounded manager-turn fields, never browser credentials', async () => {
     const fake = fakeClient();
     const { port, close } = await startTestGateway({
