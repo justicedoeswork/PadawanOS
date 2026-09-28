@@ -114,6 +114,81 @@ export function createManagerRouter(options: ManagerRoutesOptions): Router {
     sendResult(res, await client.request('GET', `/events/pending?userId=${encodeURIComponent(options.userId)}`));
   });
 
+  router.post(`${PREFIX}/push/subscriptions`, async (req, res) => {
+    if (!client || !options.userId) {
+      notConfigured(res);
+      return;
+    }
+    const endpoint = req.body?.endpoint;
+    const p256dh = req.body?.p256dh;
+    const auth = req.body?.auth;
+    if (
+      typeof endpoint !== 'string' ||
+      typeof p256dh !== 'string' ||
+      typeof auth !== 'string' ||
+      endpoint.length === 0 ||
+      p256dh.length === 0 ||
+      auth.length === 0
+    ) {
+      res.status(400).json({ error: { code: 'INVALID_REQUEST', message: 'Invalid push subscription.', details: {} } });
+      return;
+    }
+    sendResult(
+      res,
+      await client.request('POST', '/push/subscriptions', {
+        userId: options.userId,
+        endpoint,
+        p256dh,
+        auth
+      })
+    );
+  });
+
+  router.get(`${PREFIX}/push/subscriptions`, async (_req, res) => {
+    if (!client || !options.userId) {
+      notConfigured(res);
+      return;
+    }
+    sendResult(res, await client.request('GET', `/push/subscriptions?userId=${encodeURIComponent(options.userId)}`));
+  });
+
+  router.post(`${PREFIX}/push/subscriptions/:id/disable`, async (req, res) => {
+    if (!client || !options.userId) {
+      notConfigured(res);
+      return;
+    }
+    const id = encodeURIComponent(String(req.params.id ?? ''));
+    sendResult(res, await client.request('POST', `/push/subscriptions/${id}/disable`, { userId: options.userId }));
+  });
+
+  router.post(`${PREFIX}/events/push/claim`, async (req, res) => {
+    if (!client || !options.userId) {
+      notConfigured(res);
+      return;
+    }
+    const requestedLimit = Number(req.body?.limit ?? 10);
+    const limit = Number.isInteger(requestedLimit) ? Math.max(1, Math.min(20, requestedLimit)) : 10;
+    sendResult(res, await client.request('POST', '/events/push/claim', { userId: options.userId, limit }));
+  });
+
+  router.post(`${PREFIX}/events/:id/push-complete`, async (req, res) => {
+    if (!client || !options.userId) {
+      notConfigured(res);
+      return;
+    }
+    const id = encodeURIComponent(String(req.params.id ?? ''));
+    sendResult(res, await client.request('POST', `/events/${id}/push-complete`, { userId: options.userId }));
+  });
+
+  router.post(`${PREFIX}/events/:id/push-release`, async (req, res) => {
+    if (!client || !options.userId) {
+      notConfigured(res);
+      return;
+    }
+    const id = encodeURIComponent(String(req.params.id ?? ''));
+    sendResult(res, await client.request('POST', `/events/${id}/push-release`, { userId: options.userId }));
+  });
+
   router.post(`${PREFIX}/events/:id/surface`, async (req, res) => {
     if (!client || !options.userId) {
       notConfigured(res);
