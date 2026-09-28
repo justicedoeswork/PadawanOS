@@ -8,6 +8,8 @@ import { createAcpApiFallbackRouter } from './acpApiFallback.js';
 import { createMarketingRouter } from './marketingRoutes.js';
 import { createCommunicationsRouter } from './communicationsRoutes.js';
 import { createManagerRouter } from './managerRoutes.js';
+import { createManagerApiClient } from './managerApiClient.js';
+import { PushDispatcher } from './pushDispatcher.js';
 import { createStaticSiteRouter } from './staticSite.js';
 import { attachAcpProxy, type AcpProxyHandle } from './acpProxy.js';
 import { assertProductionConfigIsValid } from './configValidation.js';
@@ -44,6 +46,10 @@ export interface GatewayOverrides {
   managerServiceKey?: string | null;
   managerTimeoutMs?: number;
   managerApiClient?: ManagerApiClient;
+  vapidPublicKey?: string | null;
+  vapidPrivateKey?: string | null;
+  vapidSubject?: string | null;
+  pushDispatchIntervalMs?: number;
 }
 
 export interface GatewayInstance {
@@ -77,6 +83,9 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   const communicationsReadKey = overrides.communicationsApiReadKey ?? config.communicationsApiReadKey;
   const managerApiUrl = overrides.managerApiUrl ?? config.managerApiUrl;
   const managerServiceKey = overrides.managerServiceKey ?? config.managerServiceKey;
+  const vapidPublicKey = overrides.vapidPublicKey ?? config.vapidPublicKey;
+  const vapidPrivateKey = overrides.vapidPrivateKey ?? config.vapidPrivateKey;
+  const vapidSubject = overrides.vapidSubject ?? config.vapidSubject;
 
   const acpUpstreamUrl = overrides.insuranceAgentAcpUrl ?? config.insuranceAgentAcpUrl;
   const serviceKey = overrides.acpGatewayServiceKey ?? config.acpGatewayServiceKey;
@@ -162,16 +171,39 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
     })
   );
 
+  const managerClient =
+    overrides.managerApiClient ??
+    (managerApiUrl && managerServiceKey
+      ? createManagerApiClient({
+          baseUrl: managerApiUrl,
+          serviceKey: managerServiceKey,
+          ...(overrides.managerTimeoutMs !== undefined ? { timeoutMs: overrides.managerTimeoutMs } : {})
+        })
+      : null);
+
   app.use(
     createManagerRouter({
       sessionSecret,
       baseUrl: managerApiUrl,
       serviceKey: managerServiceKey,
       userId,
+      vapidPublicKey,
       ...(overrides.managerTimeoutMs !== undefined ? { timeoutMs: overrides.managerTimeoutMs } : {}),
-      ...(overrides.managerApiClient ? { client: overrides.managerApiClient } : {})
+      ...(managerClient ? { client: managerClient } : {})
     })
   );
+
+  const pushDispatcher =
+    managerClient && userId && vapidPublicKey && vapidPrivateKey && vapidSubject
+      ? new PushDispatcher({
+          manager: managerClient,
+          userId,
+          publicKey: vapidPublicKey,
+          privateKey: vapidPrivateKey,
+          subject: vapidSubject,
+          intervalMs: overrides.pushDispatchIntervalMs ?? config.pushDispatchIntervalMs
+        })
+      : null;
 
   const server = http.createServer(app);
 
@@ -213,12 +245,14 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
         server.listen(port, '0.0.0.0', () => {
           const boundPort = (server.address() as { port: number }).port;
           logInfo(`JusticeOS gateway listening on port ${boundPort}`);
+          pushDispatcher?.start();
           resolve({ port: boundPort });
         });
       });
     },
     close(): Promise<void> {
       acpProxy?.closeAll();
+      pushDispatcher?.stop();
 
       return new Promise((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
