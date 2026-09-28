@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { classifyManagerQuestion } from './managerCommunications';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { askManager, classifyManagerQuestion } from './managerCommunications';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('classifyManagerQuestion', () => {
   it('routes core operational questions deterministically', () => {
@@ -59,5 +63,52 @@ describe('classifyManagerQuestion', () => {
 
   it('falls back to help for unsupported questions rather than inventing an answer', () => {
     expect(classifyManagerQuestion('Tell me a joke')).toEqual({ kind: 'help' });
+  });
+});
+
+
+describe('call-memory answers', () => {
+  it('surfaces the matching call excerpt, person, and date from Communications search evidence', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        expect(String(input)).toContain('/api/communications/search?q=bronze%20gutters');
+        return new Response(
+          JSON.stringify({
+            data: {
+              actionItems: [],
+              emails: [],
+              communications: [
+                {
+                  id: 'call-1',
+                  provider: 'call_transcription',
+                  sender: { displayName: 'John Smith', phone: '+18645551212' },
+                  recipients: [{ displayName: 'Austin' }],
+                  occurredAt: '2026-09-28T18:00:00.000Z',
+                  source: {
+                    provider: 'call_transcription',
+                    sourceAccount: 'android:pixel-primary',
+                    externalId: 'pixel-call-1'
+                  },
+                  matchedExcerpt: 'John approved the bronze gutters and asked about the final walkthrough.'
+                }
+              ],
+              responseProposals: [],
+              calendarProposals: [],
+              conversationTurns: []
+            }
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        );
+      })
+    );
+
+    const result = await askManager('Did we talk about bronze gutters?');
+
+    expect(result.intent).toEqual({ kind: 'search', phrase: 'bronze gutters' });
+    expect(result.text).toContain('1 communication(s)');
+    expect(result.text).toContain('Call · John Smith');
+    expect(result.text).toContain('bronze gutters');
+    expect(result.text).toContain('final walkthrough');
   });
 });
