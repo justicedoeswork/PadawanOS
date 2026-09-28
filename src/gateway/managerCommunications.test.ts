@@ -22,6 +22,29 @@ describe('classifyManagerQuestion', () => {
     expect(classifyManagerQuestion('Show me everything related to Otis St')).toEqual({ kind: 'search', phrase: 'Otis St' });
   });
 
+  it('routes natural conversation-memory questions to Communications search', () => {
+    expect(classifyManagerQuestion('Did we talk about bronze gutters?')).toEqual({
+      kind: 'search',
+      phrase: 'bronze gutters'
+    });
+    expect(classifyManagerQuestion('Have I ever discussed the final walkthrough?')).toEqual({
+      kind: 'search',
+      phrase: 'the final walkthrough'
+    });
+    expect(classifyManagerQuestion('What did we say about the supplement?')).toEqual({
+      kind: 'search',
+      phrase: 'the supplement'
+    });
+    expect(classifyManagerQuestion('When did I talk about Kevin Walsh?')).toEqual({
+      kind: 'search',
+      phrase: 'Kevin Walsh'
+    });
+    expect(classifyManagerQuestion('What did I talk with John Smith about bronze gutters?')).toEqual({
+      kind: 'search',
+      phrase: 'John Smith bronze gutters'
+    });
+  });
+
   it('uses prior context for conversational follow-ups', () => {
     const prior = { lastIntent: { kind: 'briefing' } as const, lastReply: 'A prior briefing.' };
     expect(classifyManagerQuestion('why?', prior)).toEqual({ kind: 'explain' });
