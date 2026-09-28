@@ -809,6 +809,9 @@ export const messages = {
   'manager.placeholder': { en: 'Ask Padawan…', zh: '问 Padawan…' },
   'manager.send': { en: 'Send', zh: '发送' },
   'manager.newUpdate': { en: 'Padawan has a new update', zh: 'Padawan 有新动态' },
+  'manager.enableAlerts': { en: 'Enable alerts', zh: '启用提醒' },
+  'manager.alertsOn': { en: 'Alerts on', zh: '提醒已开启' },
+  'manager.alertsDenied': { en: 'Alerts blocked', zh: '提醒已阻止' },
   'manager.working': { en: 'Checking Communications…', zh: '正在查询 Communications…' },
   'manager.error': {
     en: 'I could not read Communications right now. Nothing was changed.',
