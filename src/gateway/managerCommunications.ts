@@ -52,6 +52,19 @@ export function classifyManagerQuestion(raw: string, context: ManagerContext = {
   const relatedFollowup = q.match(/^(?:what about|how about)\s+(.+?)[?.!]*$/i);
   if (relatedFollowup?.[1]) return { kind: 'search', phrase: clean(relatedFollowup[1]) };
 
+  const conversationMemory = q.match(
+    /^(?:did (?:we|i) (?:ever )?(?:talk|speak|discuss) about|have (?:we|i) (?:ever )?(?:talked|spoken|discussed) about|what did (?:we|i) (?:talk|speak|discuss) about|what did (?:we|i) say about|when did (?:we|i) (?:talk|speak|discuss) about)\s+(.+?)[?.!]*$/i
+  );
+  if (conversationMemory?.[1]) return { kind: 'search', phrase: clean(conversationMemory[1]) };
+
+  const personConversationMemory = q.match(
+    /^(?:what did i (?:talk|speak|discuss) (?:with|to)|did i (?:talk|speak) (?:with|to)|have i (?:talked|spoken) (?:with|to))\s+(.+?)(?:\s+about\s+(.+?))?[?.!]*$/i
+  );
+  if (personConversationMemory?.[1]) {
+    const phrase = clean(personConversationMemory[2] ? `${personConversationMemory[1]} ${personConversationMemory[2]}` : personConversationMemory[1]);
+    return { kind: 'search', phrase };
+  }
+
   const related = q.match(/^(?:what(?:'s| is) going on with|show me everything related to|show me everything about|search for|search)\s+(.+?)[?.!]*$/i);
   if (related?.[1]) return { kind: 'search', phrase: clean(related[1]) };
 
@@ -350,27 +363,51 @@ export async function askManager(raw: string, context: ManagerContext = {}): Pro
   const data = obj(obj(await getJson(`/api/communications/search?q=${encodeURIComponent(intent.phrase)}`)).data);
   const actions = arr(data.actionItems);
   const emails = arr(data.emails);
+  const communications = arr(data.communications);
   const responses = arr(data.responseProposals);
   const calendar = arr(data.calendarProposals);
   const turns = arr(data.conversationTurns);
-  const total = actions.length + emails.length + responses.length + calendar.length + turns.length;
+  const communicationCount = communications.length || emails.length;
+  const total = actions.length + communicationCount + responses.length + calendar.length + turns.length;
   if (total === 0) return { intent, text: `I found nothing related to “${intent.phrase}”.` };
 
   const highlights: string[] = [];
-  for (const item of actions.slice(0, 4)) {
+  for (const communication of communications.slice(0, 5)) {
+    const provider = stringField(communication, 'provider') ?? 'communication';
+    const occurredAt = stringField(communication, 'occurredAt');
+    const excerpt = stringField(communication, 'matchedExcerpt');
+    const subject = stringField(communication, 'subject');
+    const senderObject = obj(obj(communication).sender);
+    const sender =
+      typeof senderObject.displayName === 'string'
+        ? senderObject.displayName
+        : typeof senderObject.email === 'string'
+          ? senderObject.email
+          : typeof senderObject.phone === 'string'
+            ? senderObject.phone
+            : undefined;
+    const when = occurredAt ? new Date(occurredAt).toLocaleString() : null;
+    const sourceLabel = provider === 'call_transcription' ? 'Call' : provider === 'outlook' ? 'Email' : 'Communication';
+    const heading = [sourceLabel, sender, when].filter(Boolean).join(' · ');
+    highlights.push(
+      `${heading || sourceLabel}: ${excerpt ?? subject ?? 'Matching communication'}`
+    );
+  }
+  for (const item of actions.slice(0, Math.max(0, 5 - highlights.length))) {
     const title = stringField(item, 'title') ?? stringField(item, 'description');
     if (title) highlights.push(`Task: ${title}`);
   }
-  for (const email of emails.slice(0, 4)) {
-    const subject = stringField(email, 'subject') ?? '(no subject)';
-    const sender = stringField(email, 'sender');
-    highlights.push(`Email: ${subject}${sender ? ` — ${sender}` : ''}`);
+  if (communications.length === 0) {
+    for (const email of emails.slice(0, Math.max(0, 5 - highlights.length))) {
+      const subject = stringField(email, 'subject') ?? '(no subject)';
+      highlights.push(`Email: ${subject}`);
+    }
   }
 
   return {
     intent,
     text:
-      `Related to “${intent.phrase}”: ${actions.length} action item(s), ${emails.length} email(s), ${responses.length} response draft(s), ${calendar.length} calendar proposal(s), and ${turns.length} conversation turn(s).` +
+      `Related to “${intent.phrase}”: ${communicationCount} communication(s), ${actions.length} action item(s), ${responses.length} response draft(s), ${calendar.length} calendar proposal(s), and ${turns.length} conversation turn(s).` +
       (highlights.length ? `\n${highlights.join('\n')}` : '')
   };
 }
