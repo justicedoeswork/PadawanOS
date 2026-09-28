@@ -47,6 +47,9 @@ primary_region = "iad"
   # for this app. gateway/src/configValidation.ts refuses to start
   # production without at least one exact HTTPS entry here; this is it.
   JUSTICEOS_ALLOWED_ORIGINS = "https://justiceos.fly.dev"
+  # Server-side browser push dispatcher. One resident machine is required
+  # below so important/urgent events can be pushed while JusticeOS is closed.
+  JUSTICEOS_PUSH_DISPATCH_INTERVAL_MS = "60000"
 
 # No secret ever belongs in this file. JUSTICEOS_GATEWAY_PASSWORD_HASH,
 # JUSTICEOS_SESSION_SECRET, ACP_GATEWAY_SERVICE_KEY, ACP_ALLOWED_USER_ID,
@@ -61,17 +64,12 @@ primary_region = "iad"
   # port (see gateway/src/acpProxy.ts); it is not a separate service.
   internal_port = 4600
   force_https = true
-  # Cost-safe defaults for a single-owner tool with intermittent use --
-  # the same pattern already reviewed and running for the Insurance
-  # Agent's own Fly service. Trade-off, stated plainly: a fully scaled-
-  # to-zero machine adds cold-start latency to the first request after
-  # idle, and would drop an open /acp/insurance WebSocket if Fly stops
-  # the machine out from under it -- acceptable for how this tool is
-  # actually used, but reconsider min_machines_running if long-lived
-  # idle connections turn out to matter in practice.
+  # Keep one machine resident. Padawan now owns a server-side push dispatcher
+  # for important/urgent Manager events, so scale-to-zero would suspend push
+  # delivery whenever the browser is closed.
   auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ["app"]
 
   [[http_service.checks]]

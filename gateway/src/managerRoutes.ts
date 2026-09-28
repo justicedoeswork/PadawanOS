@@ -10,6 +10,7 @@ export interface ManagerRoutesOptions {
   serviceKey: string | null;
   userId: string | null;
   timeoutMs?: number;
+  vapidPublicKey?: string | null;
   client?: ManagerApiClient;
 }
 
@@ -112,6 +113,13 @@ export function createManagerRouter(options: ManagerRoutesOptions): Router {
       return;
     }
     sendResult(res, await client.request('GET', `/events/pending?userId=${encodeURIComponent(options.userId)}`));
+  });
+
+  router.get(`${PREFIX}/push/config`, (_req, res) => {
+    res.status(200).json({
+      enabled: Boolean(options.vapidPublicKey),
+      publicKey: options.vapidPublicKey ?? null
+    });
   });
 
   router.post(`${PREFIX}/push/subscriptions`, async (req, res) => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Send, X } from 'lucide-react';
+import { Bell, BellRing, Send, X } from 'lucide-react';
 import justiceOsMark from '../assets/brand/justiceos-mark.png';
 import { useI18n } from '../i18n/context';
 import {
@@ -18,6 +18,7 @@ import {
   surfaceManagerEvent,
   type PendingManagerEvent
 } from './managerPersistence';
+import { enablePushNotifications, getPushNotificationState, type PushNotificationState } from './pushNotifications';
 import './ManagerChat.css';
 
 type ChatMessage = { role: 'user' | 'manager'; text: string };
@@ -84,6 +85,8 @@ export function ManagerChat() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [unreadUpdate, setUnreadUpdate] = useState(false);
+  const [pushState, setPushState] = useState<PushNotificationState>('idle');
+  const [pushBusy, setPushBusy] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'manager', text: t('manager.readyBody') }
   ]);
@@ -196,11 +199,29 @@ export function ManagerChat() {
   }, []);
 
   useEffect(() => {
+    void getPushNotificationState()
+      .then(setPushState)
+      .catch(() => setPushState('idle'));
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     setUnreadUpdate(false);
     void refreshCatchUp({ announce: true });
     void refreshServerEvents({ announce: true });
   }, [open]);
+
+  async function enableAlerts() {
+    if (pushBusy) return;
+    setPushBusy(true);
+    try {
+      setPushState(await enablePushNotifications());
+    } catch {
+      setPushState('idle');
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -243,7 +264,21 @@ export function ManagerChat() {
         <div className="gw-manager-panel" role="dialog" aria-modal="true" aria-label={t('manager.panelTitle')}>
           <div className="gw-manager-panel-header">
             <span className="gw-manager-panel-title">{t('manager.panelTitle')}</span>
-            <button
+            <div className="gw-manager-panel-actions">
+              {pushState !== 'unsupported' && (
+                <button
+                  type="button"
+                  className={`gw-manager-alerts ${pushState === 'enabled' ? 'gw-manager-alerts-enabled' : ''}`}
+                  onClick={() => void enableAlerts()}
+                  disabled={pushBusy || pushState === 'denied' || pushState === 'enabled'}
+                  title={pushState === 'enabled' ? t('manager.alertsOn') : t('manager.enableAlerts')}
+                  aria-label={pushState === 'enabled' ? t('manager.alertsOn') : t('manager.enableAlerts')}
+                >
+                  {pushState === 'enabled' ? <BellRing size={15} /> : <Bell size={15} />}
+                  <span>{pushState === 'enabled' ? t('manager.alertsOn') : pushState === 'denied' ? t('manager.alertsDenied') : t('manager.enableAlerts')}</span>
+                </button>
+              )}
+              <button
               type="button"
               className="gw-manager-panel-close"
               aria-label={t('manager.panelClose')}
@@ -251,6 +286,7 @@ export function ManagerChat() {
             >
               <X size={16} />
             </button>
+            </div>
           </div>
 
           <div className="gw-manager-transcript" aria-live="polite">
