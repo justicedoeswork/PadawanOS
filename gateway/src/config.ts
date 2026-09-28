@@ -108,6 +108,12 @@ export const config = {
   managerApiUrl: requireEnv('JUSTICEOS_MANAGER_API_URL'),
   managerServiceKey: requireEnv('JUSTICEOS_MANAGER_SERVICE_KEY'),
 
+  /** Browser Web Push VAPID credentials. Public key is safe to return to an authenticated browser; private key never leaves the gateway. */
+  vapidPublicKey: requireEnv('JUSTICEOS_VAPID_PUBLIC_KEY'),
+  vapidPrivateKey: requireEnv('JUSTICEOS_VAPID_PRIVATE_KEY'),
+  vapidSubject: requireEnv('JUSTICEOS_VAPID_SUBJECT') || 'mailto:admin@justiceexteriors.com',
+  pushDispatchIntervalMs: Number(process.env.JUSTICEOS_PUSH_DISPATCH_INTERVAL_MS || 60_000),
+
   /**
    * Exact-match allowlist for both the WebSocket upgrade's Origin
    * header and (if the gateway is ever run split from its own
@@ -147,5 +153,17 @@ export function isAcpUpstreamConfigured(): boolean {
       config.acpGatewayServiceKey &&
       config.allowedUserId &&
       config.allowedRealmId
+  );
+}
+
+
+export function isPushConfigured(): boolean {
+  return Boolean(
+    config.managerApiUrl &&
+      config.managerServiceKey &&
+      config.allowedUserId &&
+      config.vapidPublicKey &&
+      config.vapidPrivateKey &&
+      config.vapidSubject
   );
 }
