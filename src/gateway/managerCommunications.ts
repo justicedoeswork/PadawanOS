@@ -49,7 +49,7 @@ export function classifyManagerQuestion(raw: string, context: ManagerContext = {
   if ((match=callQuestion.match(/^(?:tell me (?:the )?|what was (?:the )?)last (?:thing i (?:spoke|talked) about with|call with|conversation with) (.{1,160})$/i))) return { kind:'calls', participant:clean(match[1]!), latest:true };
   if ((match=callQuestion.match(/^when did (?:me and|i and) (.{1,160}?) (?:talk|speak|discuss)(?: about)? (.{1,200})$/i))) return { kind:'calls', participant:clean(match[1]!), topic:clean(match[2]!) };
   if ((match=callQuestion.match(/^what colou?r (.{1,100}?) did (.{1,100}?) say (?:he|she|they) wants?(?: .*)?$/i))) return { kind:'call_facts', subject:clean(match[2]!), topic:clean(match[1]!).replace(/shingles/i,'shingle') };
-  if ((match=callQuestion.match(/^what did (.{1,100}?) say about (.{1,150})$/i))) return { kind:'call_facts', subject:clean(match[1]!), topic:clean(match[2]!) };
+  if ((match=callQuestion.match(/^what did ((?!(?:we|i)\s).{1,100}?) say about (.{1,150})$/i))) return { kind:'call_facts', subject:clean(match[1]!), topic:clean(match[2]!) };
 
 
   if (/^(why|why\?|how come|what do you mean|explain that)[?.!]*$/i.test(q)) {
