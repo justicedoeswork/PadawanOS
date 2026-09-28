@@ -27,6 +27,9 @@ async function startBridge(
 }
 
 const READ_PATHS = [
+  '/api/communications/call-memory?range=today',
+  '/api/communications/call-memory/facts?subject=Peter',
+  '/api/communications/call-memory/jobs',
   '/api/communications/ledger/views/today',
   '/api/communications/ledger/views/waiting',
   '/api/communications/ledger/items',
@@ -68,6 +71,19 @@ describe('Communications read bridge', () => {
     expect(upstream.requests.at(-1)?.url).toBe(
       '/api/v1/calendar/events?start=2026-09-28T00%3A00%3A00.000Z&end=2026-09-29T00%3A00%3A00.000Z'
     );
+  });
+
+  it('forwards call memory reads and refuses extraction writes', async () => {
+    const { port, upstream, cookie } = await startBridge();
+    for (const suffix of ['?range=today', '/facts?subject=Peter&topic=shingle', '/jobs']) {
+      const res = await fetch(`http://127.0.0.1:${port}/api/communications/call-memory${suffix}`, { headers: { Cookie: cookie } });
+      expect(res.status).toBe(200);
+      expect(upstream.requests.at(-1)?.url).toBe('/api/v1/call-memory' + suffix);
+    }
+    const count = upstream.requests.length;
+    const res = await fetch(`http://127.0.0.1:${port}/api/communications/call-memory/message-1`, {method:'POST',headers:{Cookie:cookie}});
+    expect(res.status).toBe(404);
+    expect(upstream.requests).toHaveLength(count);
   });
 
   it('attaches the read key upstream and never forwards browser credentials', async () => {
@@ -173,3 +189,4 @@ describe('Communications read bridge', () => {
     expect(upstream.requests).toEqual([]);
   });
 });
+

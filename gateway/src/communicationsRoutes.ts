@@ -106,6 +106,9 @@ export function createCommunicationsRouter(options: CommunicationsRoutesOptions)
   read(`${GATEWAY_PREFIX}/approvals/pending`, () => `${UPSTREAM_PREFIX}/approvals/pending`);
   read(`${GATEWAY_PREFIX}/notifications`, () => `${UPSTREAM_PREFIX}/notifications`);
   read(`${GATEWAY_PREFIX}/calendar/events`, () => `${UPSTREAM_PREFIX}/calendar/events`);
+  read(`${GATEWAY_PREFIX}/call-memory`, () => `${UPSTREAM_PREFIX}/call-memory`);
+  read(`${GATEWAY_PREFIX}/call-memory/facts`, () => `${UPSTREAM_PREFIX}/call-memory/facts`);
+  read(`${GATEWAY_PREFIX}/call-memory/jobs`, () => `${UPSTREAM_PREFIX}/call-memory/jobs`);
   read(`${GATEWAY_PREFIX}/search`, () => `${UPSTREAM_PREFIX}/search`);
 
   router.use(GATEWAY_PREFIX, (_req, res) => {
@@ -120,3 +123,4 @@ export function createCommunicationsRouter(options: CommunicationsRoutesOptions)
 
   return router;
 }
+
