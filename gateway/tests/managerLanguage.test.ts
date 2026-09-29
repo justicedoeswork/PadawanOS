@@ -1,12 +1,24 @@
 import {describe,expect,it,vi} from 'vitest';
-import {interpretLanguage,parseLanguageInput,parseLanguagePlan} from '../src/managerLanguage.js';
-const intent={kind:'calls',participant:'Chase',topic:null,subject:null,phrase:null,view:null,range:null,today:null,latest:true};
+import {interpretLanguage,parseLanguageInput,parseLanguagePlan,languageSchema,languageInstructions} from '../src/managerLanguage.js';
+const intent={kind:'calls',participant:'Chase',topic:null,today:null,latest:true};
 const plan={action:'read',question:null,intents:[intent]};
 const input={question:'whats the last thing me and chase spoke about',turns:[]};
-const envelope=(value:unknown)=>new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(value)}]}]}));
+const envelope=(value:unknown)=>new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({decision:value})}]}]}));
 describe('bounded language interpreter',()=>{
  it('validates model fields before returning a read intent',()=>{
    expect(parseLanguagePlan(plan)).toEqual({action:'read',question:null,intents:[{kind:'calls',participant:'Chase',latest:true}]});
+ });
+ it('accepts the email read without a view and rejects the observed invalid shape',()=>{
+   expect(parseLanguagePlan({...plan,intents:[{kind:'emails'}]})).toEqual({...plan,intents:[{kind:'emails'}]});
+   expect(()=>parseLanguagePlan({...plan,intents:[{kind:'emails',view:'inbox'}]})).toThrow('invalid_language_plan');
+ });
+ it('constrains email output to its real fields at generation time',()=>{
+   const root=languageSchema as any;
+   const alternatives=root.properties.decision.anyOf[0].properties.intents.items.anyOf;
+   const emails=alternatives.find((s:any)=>s.properties.kind.enum[0]==='emails');
+   expect(emails.required).toEqual(['kind']);
+   expect(Object.keys(emails.properties)).toEqual(['kind']);
+   expect(emails.additionalProperties).toBe(false);
  });
  it.each([
    {...plan,intents:[{...intent,kind:'send_email'}]},
@@ -29,6 +41,16 @@ describe('bounded language interpreter',()=>{
    await expect(interpretLanguage(input,{apiKey:'synthetic',model:'test',fetchImpl:vi.fn(async()=>response)})).rejects.toThrow();
  });
  it('rejects oversized provider responses',async()=>{
-   await expect(interpretLanguage(input,{apiKey:'synthetic',model:'test',fetchImpl:vi.fn(async()=>new Response('x'.repeat(33000)))})).rejects.toThrow();
+   await expect(interpretLanguage(input,{apiKey:'synthetic',model:'test',fetchImpl:vi.fn(async()=>new Response('x'.repeat(128001)))})).rejects.toThrow();
+ });
+ it('accepts a complete response with echoed schema metadata above the old transport cap',async()=>{
+   const body=JSON.stringify({status:'completed',instructions:languageInstructions,
+     text:{format:{type:'json_schema',name:'padawan_read_intent',strict:true,schema:languageSchema}},
+     output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({decision:plan})}]}]},null,2);
+   expect(Buffer.byteLength(body)).toBeGreaterThan(32000);
+   await expect(interpretLanguage(input,{apiKey:'synthetic',model:'test',fetchImpl:async()=>new Response(body)})).resolves.toMatchObject({action:'read'});
+ });
+ it('still rejects oversized generated text inside an allowed transport envelope',async()=>{
+   await expect(interpretLanguage(input,{apiKey:'synthetic',model:'test',fetchImpl:async()=>envelope({action:'clarify',question:'x'.repeat(16001)+'?',intents:[]})})).rejects.toThrow('invalid_language_data');
  });
 });

@@ -22,8 +22,9 @@ eight recent turns, 1,500 characters per turn, and a 2,000-character question.
 Context survives reload through the existing manager turn store when that backend
 is available; this is not unlimited model memory. The interpreter sees recent chat
 text, which may include snippets of private records, but never receives service keys.
-Responses use store:false, a 20-second deadline, 1,600 output tokens, and a 32KB body
-limit. The single-owner gateway caps concurrent requests at two and submissions at
+Responses use store:false, a 20-second deadline, 1,600 output tokens, and a 128KB body
+limit to accommodate echoed schema/instruction metadata. Generated text retains its
+separate 16,000-character limit and strict plan validation. The single-owner gateway caps concurrent requests at two and submissions at
 20/minute per process. Replicas each have their own cap, not a global spending limit.
 
 ## Interpretation and execution
