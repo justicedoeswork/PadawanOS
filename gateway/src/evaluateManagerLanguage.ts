@@ -20,9 +20,15 @@ async function main(){
  const apiKey=process.env.PADAWAN_OPENAI_API_KEY,model=process.env.PADAWAN_LANGUAGE_MODEL;
  if(!apiKey||!model)throw Error('Configure PADAWAN_OPENAI_API_KEY and PADAWAN_LANGUAGE_MODEL.');
  let failed=0;
- for(const test of cases){let pass=false;try{pass=test.accept(await interpretLanguage(test.input,{apiKey,model}));}catch{/* no sensitive provider details */}
-  console.log(`${pass?'PASS':'FAIL'}: ${test.name}`);if(!pass)failed++;
+ for(const test of cases){let pass=false,detail='';try{
+    const result=await interpretLanguage(test.input,{apiKey,model});pass=test.accept(result);
+    detail=`action=${result.action}; kinds=${result.intents.map(i=>i.kind).join(',')||'none'}`;
+  }catch(error){
+    const message=error instanceof Error?error.message:'';
+    detail=['invalid_language_plan','invalid_language_data','language_unavailable'].includes(message)?message:'provider_or_transport_error';
+  }
+  console.log(`${pass?'PASS':'FAIL'}: ${test.name}${pass?'':` (${detail})`}`);if(!pass)failed++;
  }
  console.log(`${cases.length-failed}/${cases.length} passed`);if(failed)process.exitCode=1;
 }
-void main().catch(()=>{console.error('Evaluation unavailable; check opt-in flag and server configuration.');process.exitCode=1;});
+await main().catch(()=>{console.error('Evaluation unavailable; check opt-in flag and server configuration.');process.exitCode=1;});

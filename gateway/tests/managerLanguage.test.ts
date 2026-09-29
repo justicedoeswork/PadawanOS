@@ -1,12 +1,24 @@
 import {describe,expect,it,vi} from 'vitest';
-import {interpretLanguage,parseLanguageInput,parseLanguagePlan} from '../src/managerLanguage.js';
-const intent={kind:'calls',participant:'Chase',topic:null,subject:null,phrase:null,view:null,range:null,today:null,latest:true};
+import {interpretLanguage,parseLanguageInput,parseLanguagePlan,languageSchema} from '../src/managerLanguage.js';
+const intent={kind:'calls',participant:'Chase',topic:null,today:null,latest:true};
 const plan={action:'read',question:null,intents:[intent]};
 const input={question:'whats the last thing me and chase spoke about',turns:[]};
-const envelope=(value:unknown)=>new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(value)}]}]}));
+const envelope=(value:unknown)=>new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({decision:value})}]}]}));
 describe('bounded language interpreter',()=>{
  it('validates model fields before returning a read intent',()=>{
    expect(parseLanguagePlan(plan)).toEqual({action:'read',question:null,intents:[{kind:'calls',participant:'Chase',latest:true}]});
+ });
+ it('accepts the email read without a view and rejects the observed invalid shape',()=>{
+   expect(parseLanguagePlan({...plan,intents:[{kind:'emails'}]})).toEqual({...plan,intents:[{kind:'emails'}]});
+   expect(()=>parseLanguagePlan({...plan,intents:[{kind:'emails',view:'inbox'}]})).toThrow('invalid_language_plan');
+ });
+ it('constrains email output to its real fields at generation time',()=>{
+   const root=languageSchema as any;
+   const alternatives=root.properties.decision.anyOf[0].properties.intents.items.anyOf;
+   const emails=alternatives.find((s:any)=>s.properties.kind.enum[0]==='emails');
+   expect(emails.required).toEqual(['kind']);
+   expect(Object.keys(emails.properties)).toEqual(['kind']);
+   expect(emails.additionalProperties).toBe(false);
  });
  it.each([
    {...plan,intents:[{...intent,kind:'send_email'}]},

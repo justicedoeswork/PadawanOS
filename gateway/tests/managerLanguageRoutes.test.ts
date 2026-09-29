@@ -16,7 +16,7 @@ async function setup(fetchImpl:typeof fetch,configured=true){
  return {url,headers};
 }
 const body=JSON.stringify({question:'What needs my attention?',turns:[]});
-const ok=()=>new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({action:'greeting',question:null,intents:[]})}]}]}));
+const ok=()=>new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({decision:{action:'greeting',question:null,intents:[]}})}]}]}));
 describe('authenticated language route',()=>{
  it('requires a session and approved origin before calling the provider',async()=>{
   const provider=vi.fn(async()=>ok()),{url,headers}=await setup(provider);
