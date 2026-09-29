@@ -20,8 +20,9 @@ import {
 import { enablePushNotifications, getPushNotificationState, type PushNotificationState } from './pushNotifications';
 import './ManagerChat.css';
 import { askConversationalManager } from './conversationalManager';
+import { persistableAnswer, restoreAnswer } from './managerEvidence';
 
-type ChatMessage = { role: 'user' | 'manager'; text: string };
+type ChatMessage = { role: 'user' | 'manager'; text: string; evidence?: string };
 
 const SNAPSHOT_STORAGE_KEY = 'justiceos.manager.lastSnapshot';
 const POLL_INTERVAL_MS = 60_000;
@@ -108,17 +109,18 @@ export function ManagerChat() {
 
         const restored = turns
           .filter((turn) => turn.role === 'user' || turn.role === 'manager')
-          .map((turn) => ({ role: turn.role as 'user' | 'manager', text: turn.content }));
+          .map((turn) => ({ role: turn.role as 'user' | 'manager', ...(turn.role==='manager'?restoreAnswer(turn.content):{text:turn.content}) }));
 
         if (restored.length > 0) setMessages(restored);
-        contextRef.current.turns = restored.slice(-8).map(turn=>({...turn,text:turn.text.slice(0,1500)}));
+        contextRef.current.turns = restored.slice(-8).map(turn=>({role:turn.role,text:turn.text.slice(0,1500)}));
 
-        const lastManager = [...turns].reverse().find((turn) => turn.role === 'manager' && turn.intent);
+        const lastManager = [...turns].reverse().find((turn) => turn.role === 'manager' && turn.intent && !['help','explain','repeat'].includes(turn.intent.kind));
         if (lastManager?.intent) {
           contextRef.current = {
             turns: contextRef.current.turns,
             lastIntent: lastManager.intent as ManagerIntent,
-            lastReply: lastManager.content
+            lastReply: restoreAnswer(lastManager.content).text,
+            lastEvidence: restoreAnswer(lastManager.content).evidence
           };
         }
       } catch {
@@ -240,10 +242,10 @@ export function ManagerChat() {
         {role:'manager' as const,text:reply.text.slice(0,1500)}].slice(-8);
       contextRef.current = {...contextRef.current,turns};
       if (reply.intent.kind !== 'explain' && reply.intent.kind !== 'repeat' && reply.intent.kind !== 'help') {
-        contextRef.current = { turns, lastIntent: reply.intent, lastReply: reply.text };
+        contextRef.current = { turns, lastIntent: reply.intent, lastReply: reply.text, lastEvidence: reply.evidence };
       }
-      setMessages((current) => [...current, { role: 'manager', text: reply.text }]);
-      void persistTurn('manager', reply.text, reply.intent);
+      setMessages((current) => [...current, { role: 'manager', text: reply.text, evidence: reply.evidence }]);
+      void persistTurn('manager', persistableAnswer(reply.text,reply.evidence), reply.intent);
     } catch {
       setMessages((current) => [...current, { role: 'manager', text: t('manager.error') }]);
     } finally {
@@ -304,6 +306,12 @@ export function ManagerChat() {
                     {lineIndex < message.text.split('\n').length - 1 ? <br /> : null}
                   </span>
                 ))}
+                {message.evidence && message.evidence!==message.text && (
+                  <details className="gw-manager-evidence">
+                    <summary>View evidence</summary>
+                    <div style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{message.evidence}</div>
+                  </details>
+                )}
               </div>
             ))}
             {busy && <div className="gw-manager-message gw-manager-message-manager">{t('manager.working')}</div>}
@@ -328,4 +336,3 @@ export function ManagerChat() {
     </>
   );
 }
-

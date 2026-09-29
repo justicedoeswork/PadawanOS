@@ -1,6 +1,12 @@
 /** Explicit opt-in evaluation. Synthetic data only; incurs model usage. */
 import {interpretLanguage,type LanguageInput,type LanguagePlan} from './managerLanguage.js';
-const read=(kind:string,fields:Record<string,unknown>={})=>(plan:LanguagePlan)=>plan.action==='read'&&plan.intents.length===1&&plan.intents[0]?.kind===kind&&Object.entries(fields).every(([k,v])=>(plan.intents[0] as unknown as Record<string,unknown>)[k]===v);
+const read=(kind:string,fields:Record<string,unknown>={})=>(plan:LanguagePlan)=>plan.action==='read'&&plan.intents.length===1&&plan.intents[0]?.kind===kind&&Object.entries(fields).every(([k,v])=>{
+  const actual=(plan.intents[0] as unknown as Record<string,unknown>)[k];
+  // Participant/subject searches ignore case; today:false and omission both mean no date filter.
+  if((k==='participant'||k==='subject')&&typeof actual==='string'&&typeof v==='string')return actual.toLowerCase()===v.toLowerCase();
+  if(k==='today'&&v===undefined)return actual===undefined||actual===false;
+  return actual===v;
+});
 const cases:{name:string;input:LanguageInput;accept:(plan:LanguagePlan)=>boolean}[]=[
  {name:'casual latest call',input:{question:'uh whats the last thing me and Morgan spoke about',turns:[]},accept:read('calls',{participant:'Morgan',latest:true})},
  {name:'latest call about',input:{question:'what was my last call with peter about?',turns:[]},accept:read('calls',{participant:'Peter',latest:true,topic:undefined,today:undefined})},
@@ -8,6 +14,7 @@ const cases:{name:string;input:LanguageInput;accept:(plan:LanguagePlan)=>boolean
  {name:'person correction after empty result',input:{question:'i meant peter',turns:[{role:'user',text:'What was my last call with Chase about?'},{role:'manager',text:'No saved evidence matched that question. Notes may still be processing, or the wording may differ.'}]},accept:read('calls',{participant:'Peter',latest:true,topic:undefined,today:undefined})},
  {name:'conversation recap paraphrase',input:{question:'Remind me what we discussed the most recent time I talked to Taylor',turns:[]},accept:read('calls',{participant:'Taylor',latest:true,topic:undefined,today:undefined})},
  {name:'specific fact correction',input:{question:'No I meant Peter',turns:[{role:'user',text:'What color shingles did Chase want?'},{role:'manager',text:'No saved evidence matched that question.'}]},accept:p=>read('call_facts',{subject:'Peter'})(p)&&/shingle/i.test(p.intents[0]?.topic??'')},
+ {name:'expand call evidence',input:{question:'Show me exactly what he said',turns:[{role:'user',text:'What was my last call with Taylor about?'},{role:'manager',text:'Your latest call covered the roof schedule. Delivery was still unconfirmed.'}]},accept:read('repeat')},
  {name:'tomorrow calendar',input:{question:'What have I got lined up tomorrow?',turns:[]},accept:read('calendar',{range:'tomorrow'})},
  {name:'reply queue',input:{question:'Who do I still need to email back?',turns:[]},accept:read('emails')},
  {name:'overdue work',input:{question:'Anything past due that I forgot about?',turns:[]},accept:read('ledger',{view:'overdue'})},
@@ -27,7 +34,8 @@ async function main(){
  let failed=0;
  for(const test of cases){let pass=false,detail='';try{
     const result=await interpretLanguage(test.input,{apiKey,model});pass=test.accept(result);
-    detail=`action=${result.action}; kinds=${result.intents.map(i=>i.kind).join(',')||'none'}`;
+    // These cases contain only the synthetic prompts above, never live records.
+    detail=JSON.stringify(result);
   }catch(error){
     const message=error instanceof Error?error.message:'';
     detail=['invalid_language_plan','invalid_language_data','language_unavailable'].includes(message)?message:'provider_or_transport_error';

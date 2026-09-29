@@ -17,11 +17,13 @@ export type ManagerIntent =
 export interface ManagerContext {
   lastIntent?: ManagerIntent;
   lastReply?: string;
+  lastEvidence?: string;
   turns?: {role:'user'|'manager';text:string}[];
 }
 
 export interface ManagerReply {
   text: string;
+  evidence?: string;
   intent: ManagerIntent;
 }
 
@@ -286,14 +288,14 @@ export async function askManager(raw: string, context: ManagerContext = {}): Pro
 
 export async function executeManagerIntent(intent: ManagerIntent, context: ManagerContext = {}): Promise<ManagerReply> {
   if (intent.kind === 'explain') {
-    return { intent, text: explanationFor(context.lastIntent, context.lastReply) };
+    return { intent, text: context.lastEvidence ?? explanationFor(context.lastIntent, context.lastReply) };
   }
   if (intent.kind === 'repeat') {
     const previous = context.lastIntent;
     if (!previous || previous.kind === 'help' || previous.kind === 'explain' || previous.kind === 'repeat') {
       return { intent: { kind: 'help' }, text: 'Tell me which queue or person you want me to show.' };
     }
-    if (previous.kind === 'calls' || previous.kind === 'call_facts') return { intent:previous, text:await readCallMemory(previous) };
+    if (previous.kind === 'calls' || previous.kind === 'call_facts') return context.lastEvidence ? {intent,text:context.lastEvidence} : readCallMemory(previous, true);
     const replay =
       previous.kind === 'briefing'
         ? 'catch me up'
@@ -340,7 +342,7 @@ export async function executeManagerIntent(intent: ManagerIntent, context: Manag
     };
   }
 
-  if (intent.kind === 'calls' || intent.kind === 'call_facts') return { intent, text:await readCallMemory(intent) };
+  if (intent.kind === 'calls' || intent.kind === 'call_facts') return readCallMemory(intent);
 
   if (intent.kind === 'ledger') {
     const data = await ledger(intent.view, intent.person);
@@ -455,7 +457,7 @@ function callTime(value: unknown): string {
   return new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York',year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(date);
 }
 
-async function readCallMemory(intent: Extract<ManagerIntent,{kind:'calls'|'call_facts'}>): Promise<string> {
+async function readCallMemory(intent: Extract<ManagerIntent,{kind:'calls'|'call_facts'}>, expanded=false): Promise<ManagerReply> {
   const params=new URLSearchParams();
   params.set('limit',intent.kind==='calls' && intent.latest ? '1' : '10');
   if(intent.kind==='call_facts') params.set('subject',intent.subject);
@@ -470,16 +472,16 @@ async function readCallMemory(intent: Extract<ManagerIntent,{kind:'calls'|'call_
     +(typeof data.invalidNotes==='number' && data.invalidNotes>0 ? '\nSome earlier or invalid notes were withheld from this answer.' : '');
   if(intent.kind==='call_facts') {
     const rows=arr(data.results);
-    if(!rows.length) return 'No saved evidence matched that question. Notes may still be processing, or the wording may differ.'+extra;
-    return 'Saved interpretations, newest calls first. Reported statements are not direct confirmation from that person:\n'+rows.map(row=>{
+    if(!rows.length) return {intent,text:'I couldn’t find a saved note that answers that. The notes may still be processing, or the wording may differ.'+extra};
+    return {intent,text:'Here’s what the saved notes say. Reported statements are not direct confirmation from that person:\n'+rows.map(row=>{
       const r=obj(row),f=obj(r.fact);
       const attribution=f.attribution==='reported' ? `Reported source: ${String(f.attributedTo)}.` : f.attribution==='speaker_label' ? `Transcript speaker label: ${String(f.attributedTo)}.` : 'Speaker identity is unknown.';
       return `- ${callTime(r.occurredAt)}: ${String(f.statement)}\n${attribution} Evidence: “${String(f.quote)}”\nSource call: ${String(r.messageId)}`;
-    }).join('\n')+extra;
+    }).join('\n')+extra};
   }
   const calls=arr(data.calls);
-  if(!calls.length) return 'No stored call transcripts match that request.';
-  return (intent.latest ? 'Latest call matching participant metadata:' : intent.today ? "Today's calls:" : 'Matching calls:')+'\n'+calls.map((value,index)=>{
+  if(!calls.length) return {intent,text:'I couldn’t find a stored call matching that request.'};
+  const evidence=(intent.latest ? 'Latest call matching participant metadata:' : intent.today ? "Today's calls:" : 'Matching calls:')+'\n'+calls.map((value,index)=>{
     const call=obj(value),memory=obj(arr(call.memories)[0]),extraction=obj(memory.extraction);
     const summary=arr(extraction.summary);
     const parties=arr(call.participants).map(p=>stringField(p,'displayName') ?? stringField(p,'phone') ?? stringField(p,'email') ?? 'unknown').join(', ');
@@ -490,5 +492,18 @@ async function readCallMemory(intent: Extract<ManagerIntent,{kind:'calls'|'call_
     const unresolved=arr(extraction.unresolved).filter((v):v is string=>typeof v==='string');
     if(unresolved.length) details+='\nUnresolved: '+unresolved.join(' ');
     return `${index+1}. ${callTime(call.occurredAt)} — participants from call metadata: ${parties}\n${details}\nSource call: ${String(call.messageId)}`;
-  }).join('\n\n')+(intent.latest?'':extra);
+  }).join('\n\n')+extra;
+  if(expanded) return {intent,text:evidence,evidence};
+  const recaps=calls.slice(0,3).map(value=>{
+    const call=obj(value),memory=obj(arr(call.memories)[0]),extraction=obj(memory.extraction);
+    const notes=arr(extraction.summary).map(s=>stringField(s,'text')).filter((s):s is string=>Boolean(s));
+    const label=intent.latest?'Your latest call':arr(call.participants).map(p=>stringField(p,'displayName')??stringField(p,'phone')??'Unknown contact').join(', ')||'Call';
+    const when=callTime(call.occurredAt);
+    if(call.callKind==='automated_greeting')return `${label} (${when}) only reached an automated greeting; there wasn’t a substantive conversation.`;
+    if(!notes.length)return `${label} was on ${when}. ${arr(call.memories).length?'I don’t have a supported summary for it.':'Its summary isn’t ready yet.'} You can open the evidence to read the available transcript excerpt.${typeof call.withheldMemories==='number'&&call.withheldMemories>0?' Earlier notes are being withheld pending review.':''}`;
+    const recap=notes.slice(0,3).map(note=>/[.!?]$/.test(note.trim())?note.trim():note.trim()+'.').join(' ');
+    const caution=arr(extraction.unresolved).length?' Some details remain uncertain; those are listed with the evidence.':'';
+    return `${label} (${when}): From the saved notes, ${recap}${notes.length>3?' There’s more detail in the evidence.':''}${caution}`;
+  });
+  return {intent,text:recaps.join('\n\n')+(calls.length>3?`\nI found ${calls.length} matching calls; these are the first three. Open the evidence for the rest.`:'')+extra,evidence};
 }

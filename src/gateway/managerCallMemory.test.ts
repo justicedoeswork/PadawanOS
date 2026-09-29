@@ -1,7 +1,20 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
-import {askManager,classifyManagerQuestion} from './managerCommunications';
+import {askManager,classifyManagerQuestion,executeManagerIntent} from './managerCommunications';
 afterEach(()=>vi.unstubAllGlobals());
 describe('call memory routing',()=>{
+  it('answers with a recap and retains exact evidence for expansion without re-fetching a newer call',async()=>{
+    const fake=vi.fn(async()=>new Response(JSON.stringify({data:{calls:[{
+      messageId:'original-call',occurredAt:'2026-09-28T12:00:00Z',participants:[{displayName:'Chase'}],
+      memories:[{extraction:{summary:[{text:'Discussed the roof schedule.',quote:'We talked about the roof schedule.'},{text:'Delivery is still unconfirmed.',quote:'We do not know delivery yet.'}],unresolved:[]}}]
+    }],hasMore:false}})));
+    vi.stubGlobal('fetch',fake);
+    const reply=await executeManagerIntent({kind:'calls',participant:'Chase',latest:true});
+    expect(reply.text).toContain('Discussed the roof schedule. Delivery is still unconfirmed.');
+    expect(reply.text).not.toContain('Evidence:');expect(reply.text).not.toContain('original-call');
+    expect(reply.evidence).toContain('Evidence: “We do not know delivery yet.”');
+    const more=await executeManagerIntent({kind:'repeat'},{lastIntent:reply.intent,lastReply:reply.text,lastEvidence:reply.evidence});
+    expect(more.text).toContain('original-call');expect(fake).toHaveBeenCalledTimes(1);
+  });
   it('routes call questions before the generic today ledger',()=>{
     expect(classifyManagerQuestion('summarize my calls from today')).toEqual({kind:'calls',today:true});
     expect(classifyManagerQuestion('tell me the last thing i spoke about with Chase')).toEqual({kind:'calls',participant:'Chase',latest:true});
@@ -43,7 +56,7 @@ describe('call memory routing',()=>{
     vi.stubGlobal('fetch',fetcher);
     const reply=await askManager('summarize my calls from today');
     expect(fetcher.mock.calls[0]?.[0]).toBe('/api/communications/call-memory?limit=10&range=today');
-    expect(reply.text).toContain('summary not yet saved');expect(reply.text).toContain('Roof conversation.');expect(reply.text).not.toContain('due');
+    expect(reply.text).toContain('summary isn’t ready');expect(reply.text).not.toContain('Roof conversation.');expect(reply.evidence).toContain('summary not yet saved');expect(reply.evidence).toContain('Roof conversation.');expect(reply.text).not.toContain('due');
   });
   it('shows partial extraction warnings beside saved notes',async()=>{
     vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({data:{calls:[{
@@ -51,7 +64,7 @@ describe('call memory routing',()=>{
       memories:[{extraction:{summary:[{text:'Roof discussion',quote:'Roof.'}],unresolved:['Partial extraction: omitted 2 items.']}}]
     }],hasMore:false}}))));
     const reply=await askManager('summarize my calls from today');
-    expect(reply.text).toContain('Unresolved: Partial extraction: omitted 2 items.');
+    expect(reply.text).toContain('Some details remain uncertain');expect(reply.evidence).toContain('Unresolved: Partial extraction: omitted 2 items.');
   });
   it('keeps reported attribution and quotes in the answer and repeats through the same read path',async()=>{
     const fetcher=vi.fn(async(_path:string)=>new Response(JSON.stringify({data:{results:[{messageId:'call-1',occurredAt:'2026-09-28T12:00:00Z',fact:{statement:'Peter wants charcoal shingles.',attribution:'reported',attributedTo:'Chase',quote:'Chase said Peter wants charcoal shingles.'}}],hasMore:false}})));
@@ -68,7 +81,7 @@ describe('call memory routing',()=>{
     }],hasMore:false}}))));
     const reply=await askManager('summarize my calls from today');
     expect(reply.text).toContain('Sep 28, 2026'); expect(reply.text).toContain('9:08 PM EDT');
-    expect(reply.text).toContain('reviewed; no supported summary retained');
+    expect(reply.text).toContain('don’t have a supported summary');expect(reply.evidence).toContain('reviewed; no supported summary retained');
     expect(reply.text).not.toContain('summary not yet saved');
   });
   it('labels known automated greetings and withheld earlier notes without inventing a conversation',async()=>{
@@ -77,8 +90,8 @@ describe('call memory routing',()=>{
       memories:[],callKind:'automated_greeting',withheldMemories:1
     }],hasMore:false}}))));
     const reply=await askManager('summarize my calls from today');
-    expect(reply.text).toContain('Automated greeting only');
-    expect(reply.text).toContain('Earlier notes withheld');
+    expect(reply.text).toContain('only reached an automated greeting');
+    expect(reply.evidence).toContain('Earlier notes withheld');
     expect(reply.text).not.toContain('Proposed note:');
   });
 
