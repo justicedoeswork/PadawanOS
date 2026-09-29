@@ -1,4 +1,204 @@
-undefined
+/* Floating Justice Manager button + placeholder panel (LAYOUT #3). Fixed
+ * to the viewport, not the scrolling dashboard column, so it stays put
+ * while the cards behind it scroll; safe-area-aware so it never sits
+ * under the iPhone home-indicator gesture zone. */
+
+/* Background is the "Ink" elevated surface, not the violet accent: the
+ * mark itself (justiceos-mark.png) is violet+aqua+moonlight on a
+ * transparent background, so a violet button behind it would wash the
+ * icon out. Matches how the brand's own app-icon renders the mark (dark
+ * neutral background, colorful mark on top). */
+.gw-manager-fab {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(20px, calc(12px + env(safe-area-inset-bottom)));
+  z-index: 30;
+  display: flex;
+  width: 56px;
+  height: 56px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-raised);
+  box-shadow: 0 6px 18px color-mix(in oklab, var(--color-fg) 30%, transparent);
+  transition: var(--panda-colors-transition);
+}
+.gw-manager-fab:hover {
+  background: var(--color-bg);
+}
+
+.gw-manager-fab-icon {
+  width: 34px;
+  height: 34px;
+  /* No object-fit:cover / forced aspect crop -- the mark is a full-bleed
+     square raster crop already; contain preserves it exactly as supplied. */
+  object-fit: contain;
+}
+
+.gw-manager-panel {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(88px, calc(80px + env(safe-area-inset-bottom)));
+  z-index: 31;
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-xl, var(--panda-radius-lg));
+  background: var(--color-raised);
+  padding: 14px;
+  box-shadow: 0 12px 32px color-mix(in oklab, var(--color-fg) 25%, transparent);
+}
+
+.gw-manager-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.gw-manager-panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.gw-manager-panel-close {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--panda-radius-md);
+  color: var(--color-muted);
+}
+.gw-manager-panel-close:hover {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.gw-manager-panel-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+
+.gw-manager-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  padding: 4px 2px 10px;
+}
+
+.gw-manager-message {
+  max-width: 88%;
+  border-radius: var(--panda-radius-lg);
+  padding: 9px 11px;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.gw-manager-message-manager {
+  align-self: flex-start;
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.gw-manager-message-user {
+  align-self: flex-end;
+  background: var(--color-accent, var(--color-fg));
+  color: var(--color-bg);
+}
+
+.gw-manager-form {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 10px;
+}
+
+.gw-manager-input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-md);
+  background: var(--color-bg);
+  color: var(--color-fg);
+  padding: 9px 10px;
+  font: inherit;
+}
+
+.gw-manager-send {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--panda-radius-md);
+  background: var(--color-fg);
+  color: var(--color-bg);
+}
+
+.gw-manager-send:disabled {
+  opacity: 0.45;
+}
+
+.gw-manager-readonly {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+
+.gw-manager-update-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--color-raised);
+  border-radius: 50%;
+  background: var(--color-fg);
+}
+
+
+.gw-manager-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gw-manager-alerts {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--panda-radius-md);
+  background: var(--color-bg);
+  color: var(--color-muted);
+  padding: 5px 8px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.gw-manager-alerts:hover:not(:disabled) {
+  color: var(--color-fg);
+}
+
+.gw-manager-alerts-enabled {
+  color: var(--color-fg);
+}
+
+.gw-manager-alerts:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
 .gw-manager-voice { margin: 8px 0; font-size: 12px; }
 .gw-manager-voice-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .gw-manager-voice button { min-height: 36px; padding: 6px 10px; border: 1px solid var(--color-border); border-radius: var(--panda-radius-md); color: var(--color-fg); background: var(--color-bg); }
@@ -9,4 +209,3 @@ undefined
 .gw-manager-voice small { color: var(--color-muted); }
 .gw-manager-evidence { margin-top: 8px; }
 .gw-manager-evidence summary { cursor: pointer; }
-
