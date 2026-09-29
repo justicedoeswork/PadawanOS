@@ -15,6 +15,14 @@ describe('call memory routing',()=>{
     expect(fetcher.mock.calls[0]?.[0]).toBe('/api/communications/call-memory?limit=10&range=today');
     expect(reply.text).toContain('summary not yet saved');expect(reply.text).toContain('Roof conversation.');expect(reply.text).not.toContain('due');
   });
+  it('shows partial extraction warnings beside saved notes',async()=>{
+    vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({data:{calls:[{
+      messageId:'call-1',occurredAt:'2026-09-28T12:00:00Z',participants:[],
+      memories:[{extraction:{summary:[{text:'Roof discussion',quote:'Roof.'}],unresolved:['Partial extraction: omitted 2 items.']}}]
+    }],hasMore:false}}))));
+    const reply=await askManager('summarize my calls from today');
+    expect(reply.text).toContain('Unresolved: Partial extraction: omitted 2 items.');
+  });
   it('keeps reported attribution and quotes in the answer and repeats through the same read path',async()=>{
     const fetcher=vi.fn(async(_path:string)=>new Response(JSON.stringify({data:{results:[{messageId:'call-1',occurredAt:'2026-09-28T12:00:00Z',fact:{statement:'Peter wants charcoal shingles.',attribution:'reported',attributedTo:'Chase',quote:'Chase said Peter wants charcoal shingles.'}}],hasMore:false}})));
     vi.stubGlobal('fetch',fetcher);

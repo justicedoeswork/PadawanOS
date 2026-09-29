@@ -454,7 +454,9 @@ async function readCallMemory(intent: Extract<ManagerIntent,{kind:'calls'|'call_
     const call=obj(value),memory=obj(arr(call.memories)[0]),extraction=obj(memory.extraction);
     const summary=arr(extraction.summary);
     const parties=arr(call.participants).map(p=>stringField(p,'displayName') ?? stringField(p,'phone') ?? stringField(p,'email') ?? 'unknown').join(', ');
-    const details=summary.length ? summary.map(s=>`Proposed note: ${stringField(s,'text') ?? ''}\nEvidence: “${stringField(s,'quote') ?? ''}”`).join('\n') : `Transcript excerpt (summary not yet saved): “${String(call.excerpt ?? '')}”`;
+    let details=summary.length ? summary.map(s=>`Proposed note: ${stringField(s,'text') ?? ''}\nEvidence: “${stringField(s,'quote') ?? ''}”`).join('\n') : `Transcript excerpt (summary not yet saved): “${String(call.excerpt ?? '')}”`;
+    const unresolved=arr(extraction.unresolved).filter((v):v is string=>typeof v==='string');
+    if(unresolved.length) details+='\nUnresolved: '+unresolved.join(' ');
     return `${index+1}. ${String(call.occurredAt)} — participants from call metadata: ${parties}\n${details}\nSource call: ${String(call.messageId)}`;
   }).join('\n\n')+(intent.latest?'':extra);
 }
