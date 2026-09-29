@@ -27,7 +27,35 @@ limit to accommodate echoed schema/instruction metadata. Generated text retains 
 separate 16,000-character limit and strict plan validation. The single-owner gateway caps concurrent requests at two and submissions at
 20/minute per process. Replicas each have their own cap, not a global spending limit.
 
-## Interpretation and execution
+## Voice interaction
+
+Talk to Padawan records a question only after a user click and browser microphone
+permission. Finish & ask uploads it, inserts the transcription as a normal user
+turn, and calls the same conversational manager handler used by typed questions.
+Recording stops at 60 seconds; Cancel, closing chat, hiding the page and unmounting
+release the microphone. Permission grants arriving after cancellation are also
+released. Transcription requests are aborted on cancellation; a read already
+submitted to the manager can still complete and be saved.
+
+The authenticated `/api/manager/transcribe` gateway requires an explicitly allowed
+Origin, accepts WebM/MP4 recordings up to 2,000,000 bytes, limits each process to two
+active requests and 20/minute, and uses the existing PADAWAN_OPENAI_API_KEY server
+secret. Audio is sent to OpenAI's `/v1/audio/transcriptions` with `gpt-transcribe`.
+The app does not write raw recordings to storage or log their content. This does
+not override the provider's data retention policy. Provider errors are sanitized;
+transcripts are limited to the same 2,000 characters as typed questions. No new
+credentials or model-selected tools are exposed to the browser.
+
+Spoken replies use native browser speech synthesis to read the displayed answer,
+with Stop speaking, Spoken replies and Read reply controls. Voice quality and
+automatic playback depend on the device/browser. Read reply is the explicit-click
+fallback. This is turn-based recording, not an always-listening or realtime voice
+session. Text chat remains usable when microphone or playback support is absent.
+Real device validation is required after deployment.
+
+API reference: https://developers.openai.com/api/docs/guides/speech-to-text
+
+## Call answer presentation
 
 Call recaps show up to three saved summary statements per call and up to three
 calls in the main answer. Quotes, source call IDs, remaining results and extraction
