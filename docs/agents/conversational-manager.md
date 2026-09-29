@@ -29,6 +29,20 @@ separate 16,000-character limit and strict plan validation. The single-owner gat
 
 ## Interpretation and execution
 
+Call recaps show up to three saved summary statements per call and up to three
+calls in the main answer. Quotes, source call IDs, remaining results and extraction
+warnings remain in a collapsed View evidence section. The response retains an
+uncertainty notice when extraction warnings exist. Missing summaries are stated
+plainly; transcript excerpts are not presented as summaries. Specific fact reads
+retain quotation and reported-speaker qualification.
+
+This presentation reuses stored evidence-reviewed summaries; it does not make an
+additional model call or invent a new summary from raw transcript text. Asking for
+more detail selects repeat and expands the original evidence when available,
+without re-fetching a potentially different latest call. Recap and evidence are
+stored together in the existing turn content using a readable separator and
+restored separately in chat. Only recap text enters the language history.
+
 The model selects at most three existing read operations: briefing, ledger views,
 needs-reply emails, pending approvals, notifications, supported calendar views,
 literal communications search, call lookup, saved call facts, explain, or repeat.

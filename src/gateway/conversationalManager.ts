@@ -44,5 +44,6 @@ export async function askConversationalManager(question:string,context:ManagerCo
   }catch{return help('I couldn’t reliably interpret that request. Could you tell me which person or work item you mean?');}
   const results=await Promise.allSettled(intents.map(intent=>executeManagerIntent(intent,context)));
   const replies=results.map((result,index)=>result.status==='fulfilled'?result.value:{intent:intents[index]!,text:'That part of the request could not be loaded. Please try again.'});
-  return {intent:replies.at(-1)!.intent,text:replies.map(r=>r.text).join('\n\n')};
+  const evidence=replies.map(r=>'evidence' in r?r.evidence:undefined).filter(Boolean).join('\n\n');
+  return {intent:replies.at(-1)!.intent,text:replies.map(r=>r.text).join('\n\n'),...(evidence?{evidence}:{})};
 }
