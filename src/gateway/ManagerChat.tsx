@@ -1,3 +1,4 @@
+import {loadChatSessionStart, currentSessionTurns} from './managerSession';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Bell, BellRing, Send, X } from 'lucide-react';
 import justiceOsMark from '../assets/brand/justiceos-mark.png';
@@ -87,12 +88,16 @@ export function ManagerChat() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
+  const [initializing, setInitializing] = useState(true);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+
   const [unreadUpdate, setUnreadUpdate] = useState(false);
   const [pushState, setPushState] = useState<PushNotificationState>('idle');
   const [pushBusy, setPushBusy] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'manager', text: t('manager.readyBody') }
   ]);
+  useEffect(() => { const node = transcriptRef.current; if (open && node) node.scrollTop = node.scrollHeight; }, [open, messages, busy]);
   const contextRef = useRef<ManagerContext>({});
   const conversationIdRef = useRef<string | null>(null);
   const lastSnapshotRef = useRef<ManagerSnapshot | null>(readStoredSnapshot());
@@ -106,7 +111,8 @@ export function ManagerChat() {
         if (cancelled) return;
         conversationIdRef.current = conversationId;
 
-        const turns = await loadManagerTurns(conversationId);
+        const startedAt = await loadChatSessionStart();
+        const turns = currentSessionTurns(await loadManagerTurns(conversationId), startedAt);
         if (cancelled || turns.length === 0) return;
 
         const restored = turns
@@ -127,7 +133,7 @@ export function ManagerChat() {
         }
       } catch {
         // Persistent manager storage is additive; live chat still works without it.
-      }
+      } finally { if (!cancelled) setInitializing(false); }
     })();
 
     return () => {
@@ -211,11 +217,11 @@ export function ManagerChat() {
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || initializing) return;
     setUnreadUpdate(false);
     void refreshCatchUp({ announce: true });
     void refreshServerEvents({ announce: true });
-  }, [open]);
+  }, [open, initializing]);
 
   async function enableAlerts() {
     if (pushBusy) return;
@@ -232,7 +238,7 @@ export function ManagerChat() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     const question = input.trim();
-    if (!question || busy || voiceBusy) return;
+    if (!question || initializing || busy || voiceBusy) return;
     setInput('');
     await askQuestion(question);
   }
@@ -305,7 +311,7 @@ export function ManagerChat() {
             </div>
           </div>
 
-          <div className="gw-manager-transcript" aria-live="polite">
+          <div ref={transcriptRef} className="gw-manager-transcript" aria-live="polite">
             {messages.map((message, index) => (
               <div key={index} className={`gw-manager-message gw-manager-message-${message.role}`}>
                 {message.text.split('\n').map((line, lineIndex) => (
@@ -325,7 +331,7 @@ export function ManagerChat() {
             {busy && <div className="gw-manager-message gw-manager-message-manager">{t('manager.working')}</div>}
           </div>
 
-          <ManagerVoice disabled={busy} onQuestion={askQuestion} onBusyChange={setVoiceBusy} lastReply={[...messages].reverse().find(message=>message.role==='manager')?.text} />
+          <ManagerVoice disabled={busy || initializing} onQuestion={askQuestion} onBusyChange={setVoiceBusy} lastReply={[...messages].reverse().find(message=>message.role==='manager')?.text} />
           <form className="gw-manager-form" onSubmit={submit}>
             <input
               className="gw-manager-input"
@@ -333,9 +339,9 @@ export function ManagerChat() {
               onChange={(event) => setInput(event.target.value)}
               placeholder={t('manager.placeholder')}
               aria-label={t('manager.placeholder')}
-              disabled={busy || voiceBusy}
+              disabled={initializing || busy || voiceBusy}
             />
-            <button className="gw-manager-send" type="submit" disabled={busy || voiceBusy || input.trim().length === 0} aria-label={t('manager.send')}>
+            <button className="gw-manager-send" type="submit" disabled={initializing || busy || voiceBusy || input.trim().length === 0} aria-label={t('manager.send')}>
               <Send size={16} />
             </button>
           </form>

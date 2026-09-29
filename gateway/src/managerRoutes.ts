@@ -1,3 +1,4 @@
+import {parseCookies, SESSION_COOKIE_NAME, SESSION_MAX_AGE_MS} from './cookies.js';
 import { Router, type Response } from 'express';
 import { createRequireSession } from './requireSession.js';
 import { createManagerApiClient, type ManagerApiClient, type ManagerApiResult } from './managerApiClient.js';
@@ -52,6 +53,14 @@ export function createManagerRouter(options: ManagerRoutesOptions): Router {
       : null);
 
   router.use(PREFIX, requireSession);
+  // requireSession verified this cookie before its timestamp is used.
+  router.get(`${PREFIX}/chat-session`, (req, res) => {
+    const token = parseCookies(req.headers.cookie)[SESSION_COOKIE_NAME];
+    const startedAt = Number(token?.split('.')[0]) - SESSION_MAX_AGE_MS;
+    if (!Number.isFinite(startedAt)) { res.status(401).json({error: 'Session unavailable'}); return; }
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({startedAt: new Date(startedAt).toISOString()});
+  });
 
   router.get(`${PREFIX}/status`, async (_req, res) => {
     if (!client) {
@@ -212,3 +221,4 @@ export function createManagerRouter(options: ManagerRoutesOptions): Router {
 
   return router;
 }
+
