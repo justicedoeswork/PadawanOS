@@ -19,6 +19,8 @@ const cases:{name:string;input:LanguageInput;accept:(plan:LanguagePlan)=>boolean
  {name:'reply queue',input:{question:'Who do I still need to email back?',turns:[]},accept:read('emails')},
  {name:'overdue work',input:{question:'Anything past due that I forgot about?',turns:[]},accept:read('ledger',{view:'overdue'})},
  {name:'calendar follow-up',input:{question:'And tomorrow?',turns:[{role:'user',text:'Show my calendar today'},{role:'manager',text:'Calendar today: no events.'}]},accept:read('calendar',{range:'tomorrow'})},
+ {name:'calendar today correction',input:{question:'No, today',turns:[{role:'user',text:'Show my calendar tomorrow'},{role:'manager',text:'Tomorrow: roof meeting.'}]},accept:read('calendar',{range:'today'})},
+ {name:'explicit today overrides tomorrow history',input:{question:'What do I have on my calendar today?',turns:[{role:'user',text:'What is scheduled tomorrow?'},{role:'manager',text:'Tomorrow: supplier visit.'}]},accept:read('calendar',{range:'today'})},
  {name:'person correction',input:{question:'No I meant Taylor',turns:[{role:'user',text:'Show my last call with Morgan'},{role:'manager',text:'Latest call with Morgan: discussed the roof.'}]},accept:read('calls',{participant:'Taylor',latest:true})},
  {name:'ambiguous pronoun',input:{question:'What did he say?',turns:[{role:'user',text:'Morgan and Taylor both called me.'}]},accept:p=>p.action==='clarify'},
  {name:'clarification response',input:{question:'Taylor',turns:[{role:'user',text:'Show my last call with him'},{role:'manager',text:'Do you mean Morgan or Taylor?'}]},accept:read('calls',{participant:'Taylor',latest:true})},
