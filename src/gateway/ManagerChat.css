@@ -37,6 +37,10 @@
 }
 
 .gw-manager-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 112px);
+  overflow-y: auto;
   position: fixed;
   right: max(16px, env(safe-area-inset-right));
   bottom: max(88px, calc(80px + env(safe-area-inset-bottom)));
@@ -86,6 +90,8 @@
 
 
 .gw-manager-transcript {
+  min-height: 80px;
+  flex-shrink: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
