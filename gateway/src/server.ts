@@ -1,3 +1,4 @@
+import { createManagerLanguageRouter } from './managerLanguageRoutes.js';
 import express from 'express';
 import http from 'node:http';
 import path from 'node:path';
@@ -42,6 +43,9 @@ export interface GatewayOverrides {
   communicationsAgentTimeoutMs?: number;
   /** Test seam for the read-only Communications bridge. */
   communicationsAgentClient?: CommunicationsAgentClient;
+  managerLanguageApiKey?: string | null;
+  managerLanguageModel?: string | null;
+  managerLanguageFetch?: typeof fetch;
   managerApiUrl?: string | null;
   managerServiceKey?: string | null;
   managerTimeoutMs?: number;
@@ -171,6 +175,11 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
     })
   );
 
+  app.use(createManagerLanguageRouter({sessionSecret,allowedOrigins,
+    apiKey:overrides.managerLanguageApiKey ?? config.managerLanguageApiKey,
+    model:overrides.managerLanguageModel ?? config.managerLanguageModel,
+    ...(overrides.managerLanguageFetch?{fetchImpl:overrides.managerLanguageFetch}:{})}));
+
   const managerClient =
     overrides.managerApiClient ??
     (managerApiUrl && managerServiceKey
@@ -260,3 +269,4 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
     }
   };
 }
+

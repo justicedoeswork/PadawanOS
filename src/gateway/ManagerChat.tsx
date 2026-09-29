@@ -3,7 +3,6 @@ import { Bell, BellRing, Send, X } from 'lucide-react';
 import justiceOsMark from '../assets/brand/justiceos-mark.png';
 import { useI18n } from '../i18n/context';
 import {
-  askManager,
   getManagerSnapshot,
   summarizeSnapshot,
   type ManagerContext,
@@ -20,6 +19,7 @@ import {
 } from './managerPersistence';
 import { enablePushNotifications, getPushNotificationState, type PushNotificationState } from './pushNotifications';
 import './ManagerChat.css';
+import { askConversationalManager } from './conversationalManager';
 
 type ChatMessage = { role: 'user' | 'manager'; text: string };
 
@@ -111,10 +111,12 @@ export function ManagerChat() {
           .map((turn) => ({ role: turn.role as 'user' | 'manager', text: turn.content }));
 
         if (restored.length > 0) setMessages(restored);
+        contextRef.current.turns = restored.slice(-8).map(turn=>({...turn,text:turn.text.slice(0,1500)}));
 
         const lastManager = [...turns].reverse().find((turn) => turn.role === 'manager' && turn.intent);
         if (lastManager?.intent) {
           contextRef.current = {
+            turns: contextRef.current.turns,
             lastIntent: lastManager.intent as ManagerIntent,
             lastReply: lastManager.content
           };
@@ -232,9 +234,13 @@ export function ManagerChat() {
     void persistTurn('user', question, null);
     setBusy(true);
     try {
-      const reply = await askManager(question, contextRef.current);
+      const reply = await askConversationalManager(question, contextRef.current);
+      const turns = [...(contextRef.current.turns ?? []),
+        {role:'user' as const,text:question.slice(0,1500)},
+        {role:'manager' as const,text:reply.text.slice(0,1500)}].slice(-8);
+      contextRef.current = {...contextRef.current,turns};
       if (reply.intent.kind !== 'explain' && reply.intent.kind !== 'repeat' && reply.intent.kind !== 'help') {
-        contextRef.current = { lastIntent: reply.intent, lastReply: reply.text };
+        contextRef.current = { turns, lastIntent: reply.intent, lastReply: reply.text };
       }
       setMessages((current) => [...current, { role: 'manager', text: reply.text }]);
       void persistTurn('manager', reply.text, reply.intent);
@@ -322,3 +328,4 @@ export function ManagerChat() {
     </>
   );
 }
+

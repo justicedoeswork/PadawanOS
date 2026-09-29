@@ -8,6 +8,36 @@ describe('call memory routing',()=>{
     expect(classifyManagerQuestion('when did me and Chase talk about shingles')).toEqual({kind:'calls',participant:'Chase',topic:'shingles'});
     expect(classifyManagerQuestion('what color shingles did Peter say he wants on his roof?')).toEqual({kind:'call_facts',subject:'Peter',topic:'shingle'});
   });
+  it.each([
+    'whats the last thing me and chase spoke about',
+    "what's the last thing me and Chase spoke about?",
+    'What’s the last thing Chase and I talked about?',
+    'what did me and Chase talk about last?',
+    'what did Chase and I discuss most recently?',
+    'what did I speak with Chase about last?',
+    'what did I discuss with Chase last?',
+    'show me the latest call with Chase',
+    'last conversation with Chase',
+    'what is the most recent call with Chase?',
+  ])('recognizes ordinary latest-call wording: %s',question=>{
+    const intent=classifyManagerQuestion(question);
+    expect(intent).toMatchObject({kind:'calls',latest:true});
+    expect('participant' in intent && intent.participant?.toLowerCase()).toBe('chase');
+  });
+  it('uses the established participant for we without changing ambiguous search',()=>{
+    const context={lastIntent:{kind:'calls' as const,participant:'Chase',latest:true}};
+    expect(classifyManagerQuestion('what about shingles?',context)).toEqual({kind:'search',phrase:'shingles'});
+    expect(classifyManagerQuestion('what did we talk about last?',context)).toEqual(context.lastIntent);
+    expect(classifyManagerQuestion('what about Peter?')).toEqual({kind:'search',phrase:'Peter'});
+    expect(classifyManagerQuestion('what did we talk about last?')).not.toMatchObject({kind:'calls'});
+  });
+  it('routes the reported failing phrase to the authenticated latest-call read',async()=>{
+    const fetcher=vi.fn(async()=>new Response(JSON.stringify({data:{calls:[],hasMore:false}})));
+    vi.stubGlobal('fetch',fetcher);
+    const reply=await askManager('whats the last thing me and chase spoke about');
+    expect(fetcher).toHaveBeenCalledWith('/api/communications/call-memory?limit=1&participant=chase',expect.anything());
+    expect(reply.text).not.toContain('Ask me to catch you up');
+  });
   it('uses server-side today and labels raw transcripts instead of fabricating summaries',async()=>{
     const fetcher=vi.fn(async(_path:string)=>new Response(JSON.stringify({data:{calls:[{messageId:'call-1',occurredAt:'2026-09-28T12:00:00Z',participants:[{displayName:'Chase'}],excerpt:'Roof conversation.',memories:[]}],hasMore:false}})));
     vi.stubGlobal('fetch',fetcher);

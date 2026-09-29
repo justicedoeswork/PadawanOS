@@ -17,6 +17,7 @@ export type ManagerIntent =
 export interface ManagerContext {
   lastIntent?: ManagerIntent;
   lastReply?: string;
+  turns?: {role:'user'|'manager';text:string}[];
 }
 
 export interface ManagerReply {
@@ -43,10 +44,26 @@ function clean(value: string): string {
 export function classifyManagerQuestion(raw: string, context: ManagerContext = {}): ManagerIntent {
   const q = clean(raw);
   const lower = q.toLowerCase();
-  const callQuestion = q.replace(/[?.!]+$/, '');
+  const callQuestion = q.replace(/[’‘]/g, "'").replace(/[?.!]+$/, '');
   let match: RegExpMatchArray | null;
   if (/^(?:(?:summarize|show|list)(?: me)? (?:my |the )?(?:phone )?calls (?:from |for )?today|(?:my )?today'?s calls)$/i.test(callQuestion)) return { kind: 'calls', today: true };
-  if ((match=callQuestion.match(/^(?:tell me (?:the )?|what was (?:the )?)last (?:thing i (?:spoke|talked) about with|call with|conversation with) (.{1,160})$/i))) return { kind:'calls', participant:clean(match[1]!), latest:true };
+  // Equivalent word orders belong to one bounded read intent. Do not require
+  // the user to memorize a command or infer a speaker identity from a name.
+  const latestCallPatterns = [
+    /^(?:tell me (?:the )?|what(?:'s|s| is| was) (?:the )?|show me (?:the )?|the )?(?:last|latest|most recent) (?:thing i (?:spoke|talked) about with|call with|conversation with) (.{1,160})$/i,
+    /^what(?:'s|s| is| was) (?:the )?last thing (?:me and|i and) (.{1,160}?) (?:spoke|talked) about$/i,
+    /^what(?:'s|s| is| was) (?:the )?last thing (.{1,160}?) and (?:i|me) (?:spoke|talked) about$/i,
+    /^what did (?:me and|i and) (.{1,160}?) (?:(?:talk|speak) about|discuss) (?:last|most recently)$/i,
+    /^what did (.{1,160}?) and (?:i|me) (?:(?:talk|speak) about|discuss) (?:last|most recently)$/i,
+    /^what did i (?:(?:talk|speak) (?:with|to) (.{1,160}?) about|discuss with (.{1,160}?)) (?:last|most recently)$/i,
+  ];
+  for (const pattern of latestCallPatterns) {
+    match=callQuestion.match(pattern);
+    if(match) return {kind:'calls',participant:clean(match[1] ?? match[2]!),latest:true};
+  }
+  if(context.lastIntent?.kind==='calls' && context.lastIntent.participant &&
+    /^what did we (?:(?:talk|speak) about|discuss) last$/i.test(callQuestion))
+    return {kind:'calls',participant:context.lastIntent.participant,latest:true};
   if ((match=callQuestion.match(/^when did (?:me and|i and) (.{1,160}?) (?:talk|speak|discuss)(?: about)? (.{1,200})$/i))) return { kind:'calls', participant:clean(match[1]!), topic:clean(match[2]!) };
   if ((match=callQuestion.match(/^what colou?r (.{1,100}?) did (.{1,100}?) say (?:he|she|they) wants?(?: .*)?$/i))) return { kind:'call_facts', subject:clean(match[2]!), topic:clean(match[1]!).replace(/shingles/i,'shingle') };
   if ((match=callQuestion.match(/^what did ((?!(?:we|i)\s).{1,100}?) say about (.{1,150})$/i))) return { kind:'call_facts', subject:clean(match[1]!), topic:clean(match[2]!) };
@@ -264,8 +281,10 @@ function explanationFor(intent: ManagerIntent | undefined, lastReply?: string): 
 }
 
 export async function askManager(raw: string, context: ManagerContext = {}): Promise<ManagerReply> {
-  const intent = classifyManagerQuestion(raw, context);
+  return executeManagerIntent(classifyManagerQuestion(raw, context), context);
+}
 
+export async function executeManagerIntent(intent: ManagerIntent, context: ManagerContext = {}): Promise<ManagerReply> {
   if (intent.kind === 'explain') {
     return { intent, text: explanationFor(context.lastIntent, context.lastReply) };
   }
