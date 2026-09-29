@@ -1,6 +1,8 @@
 export type LedgerView = 'today' | 'urgent' | 'overdue' | 'waiting' | 'inbox' | 'promises';
 
 export type ManagerIntent =
+  | { kind: 'calls'; today?: boolean; participant?: string; topic?: string; latest?: boolean }
+  | { kind: 'call_facts'; subject: string; topic?: string }
   | { kind: 'briefing' }
   | { kind: 'ledger'; view: LedgerView; person?: string }
   | { kind: 'emails' }
@@ -41,6 +43,14 @@ function clean(value: string): string {
 export function classifyManagerQuestion(raw: string, context: ManagerContext = {}): ManagerIntent {
   const q = clean(raw);
   const lower = q.toLowerCase();
+  const callQuestion = q.replace(/[?.!]+$/, '');
+  let match: RegExpMatchArray | null;
+  if (/^(?:(?:summarize|show|list)(?: me)? (?:my |the )?(?:phone )?calls (?:from |for )?today|(?:my )?today'?s calls)$/i.test(callQuestion)) return { kind: 'calls', today: true };
+  if ((match=callQuestion.match(/^(?:tell me (?:the )?|what was (?:the )?)last (?:thing i (?:spoke|talked) about with|call with|conversation with) (.{1,160})$/i))) return { kind:'calls', participant:clean(match[1]!), latest:true };
+  if ((match=callQuestion.match(/^when did (?:me and|i and) (.{1,160}?) (?:talk|speak|discuss)(?: about)? (.{1,200})$/i))) return { kind:'calls', participant:clean(match[1]!), topic:clean(match[2]!) };
+  if ((match=callQuestion.match(/^what colou?r (.{1,100}?) did (.{1,100}?) say (?:he|she|they) wants?(?: .*)?$/i))) return { kind:'call_facts', subject:clean(match[2]!), topic:clean(match[1]!).replace(/shingles/i,'shingle') };
+  if ((match=callQuestion.match(/^what did ((?!(?:we|i)\s).{1,100}?) say about (.{1,150})$/i))) return { kind:'call_facts', subject:clean(match[1]!), topic:clean(match[2]!) };
+
 
   if (/^(why|why\?|how come|what do you mean|explain that)[?.!]*$/i.test(q)) {
     return context.lastIntent ? { kind: 'explain' } : { kind: 'help' };
@@ -51,6 +61,19 @@ export function classifyManagerQuestion(raw: string, context: ManagerContext = {
 
   const relatedFollowup = q.match(/^(?:what about|how about)\s+(.+?)[?.!]*$/i);
   if (relatedFollowup?.[1]) return { kind: 'search', phrase: clean(relatedFollowup[1]) };
+
+  const conversationMemory = q.match(
+    /^(?:did (?:we|i) (?:ever )?(?:talk|speak|discuss) about|have (?:we|i) (?:ever )?(?:(?:talked|spoken) about|discussed(?: about)?)|what did (?:we|i) (?:talk|speak|discuss) about|what did (?:we|i) say about|when did (?:we|i) (?:talk|speak|discuss) about)\s+(.+?)[?.!]*$/i
+  );
+  if (conversationMemory?.[1]) return { kind: 'search', phrase: clean(conversationMemory[1]) };
+
+  const personConversationMemory = q.match(
+    /^(?:what did i (?:talk|speak|discuss) (?:with|to)|did i (?:talk|speak) (?:with|to)|have i (?:talked|spoken) (?:with|to))\s+(.+?)(?:\s+about\s+(.+?))?[?.!]*$/i
+  );
+  if (personConversationMemory?.[1]) {
+    const phrase = clean(personConversationMemory[2] ? `${personConversationMemory[1]} ${personConversationMemory[2]}` : personConversationMemory[1]);
+    return { kind: 'search', phrase };
+  }
 
   const related = q.match(/^(?:what(?:'s| is) going on with|show me everything related to|show me everything about|search for|search)\s+(.+?)[?.!]*$/i);
   if (related?.[1]) return { kind: 'search', phrase: clean(related[1]) };
@@ -225,6 +248,7 @@ export function summarizeSnapshot(s: ManagerSnapshot): string {
 
 function explanationFor(intent: ManagerIntent | undefined, lastReply?: string): string {
   if (!intent) return 'I do not have enough prior context to explain that yet.';
+  if (intent.kind === 'calls' || intent.kind === 'call_facts') return 'That answer comes from stored call transcripts and saved proposed notes. Each note keeps its source quotation. Call participants, people mentioned, and reported speakers are different; reported statements are not direct confirmation.';
   if (intent.kind === 'briefing') {
     return 'I build that catch-up from separate Communications queues: due-today items, urgent items, overdue items, emails needing replies, approvals, waiting items, and notifications. A zero in one queue does not mean you are fully caught up.';
   }
@@ -250,6 +274,7 @@ export async function askManager(raw: string, context: ManagerContext = {}): Pro
     if (!previous || previous.kind === 'help' || previous.kind === 'explain' || previous.kind === 'repeat') {
       return { intent: { kind: 'help' }, text: 'Tell me which queue or person you want me to show.' };
     }
+    if (previous.kind === 'calls' || previous.kind === 'call_facts') return { intent:previous, text:await readCallMemory(previous) };
     const replay =
       previous.kind === 'briefing'
         ? 'catch me up'
@@ -292,9 +317,11 @@ export async function askManager(raw: string, context: ManagerContext = {}): Pro
     return {
       intent,
       text:
-        'Ask me to catch you up, what is on your calendar today or tomorrow, your next appointment, urgent or overdue work, who you are waiting on, which emails need replies, what needs approval, notifications, or what is going on with a person, company, or project.'
+        'Ask me to catch you up, what is on your calendar today or tomorrow, your next appointment, urgent or overdue work, who you are waiting on, which emails need replies, what needs approval, notifications, calls from today, the last call with someone, saved call notes, or what is going on with a person, company, or project.'
     };
   }
+
+  if (intent.kind === 'calls' || intent.kind === 'call_facts') return { intent, text:await readCallMemory(intent) };
 
   if (intent.kind === 'ledger') {
     const data = await ledger(intent.view, intent.person);
@@ -350,27 +377,86 @@ export async function askManager(raw: string, context: ManagerContext = {}): Pro
   const data = obj(obj(await getJson(`/api/communications/search?q=${encodeURIComponent(intent.phrase)}`)).data);
   const actions = arr(data.actionItems);
   const emails = arr(data.emails);
+  const communications = arr(data.communications);
   const responses = arr(data.responseProposals);
   const calendar = arr(data.calendarProposals);
   const turns = arr(data.conversationTurns);
-  const total = actions.length + emails.length + responses.length + calendar.length + turns.length;
+  const communicationCount = communications.length || emails.length;
+  const total = actions.length + communicationCount + responses.length + calendar.length + turns.length;
   if (total === 0) return { intent, text: `I found nothing related to “${intent.phrase}”.` };
 
   const highlights: string[] = [];
-  for (const item of actions.slice(0, 4)) {
+  for (const communication of communications.slice(0, 5)) {
+    const provider = stringField(communication, 'provider') ?? 'communication';
+    const occurredAt = stringField(communication, 'occurredAt');
+    const excerpt = stringField(communication, 'matchedExcerpt');
+    const subject = stringField(communication, 'subject');
+    const senderObject = obj(obj(communication).sender);
+    const sender =
+      typeof senderObject.displayName === 'string'
+        ? senderObject.displayName
+        : typeof senderObject.email === 'string'
+          ? senderObject.email
+          : typeof senderObject.phone === 'string'
+            ? senderObject.phone
+            : undefined;
+    const when = occurredAt ? new Date(occurredAt).toLocaleString() : null;
+    const sourceLabel = provider === 'call_transcription' ? 'Call' : provider === 'outlook' ? 'Email' : 'Communication';
+    const heading = [sourceLabel, sender, when].filter(Boolean).join(' · ');
+    highlights.push(
+      `${heading || sourceLabel}: ${excerpt ?? subject ?? 'Matching communication'}`
+    );
+  }
+  for (const item of actions.slice(0, Math.max(0, 5 - highlights.length))) {
     const title = stringField(item, 'title') ?? stringField(item, 'description');
     if (title) highlights.push(`Task: ${title}`);
   }
-  for (const email of emails.slice(0, 4)) {
-    const subject = stringField(email, 'subject') ?? '(no subject)';
-    const sender = stringField(email, 'sender');
-    highlights.push(`Email: ${subject}${sender ? ` — ${sender}` : ''}`);
+  if (communications.length === 0) {
+    for (const email of emails.slice(0, Math.max(0, 5 - highlights.length))) {
+      const subject = stringField(email, 'subject') ?? '(no subject)';
+      highlights.push(`Email: ${subject}`);
+    }
   }
 
   return {
     intent,
     text:
-      `Related to “${intent.phrase}”: ${actions.length} action item(s), ${emails.length} email(s), ${responses.length} response draft(s), ${calendar.length} calendar proposal(s), and ${turns.length} conversation turn(s).` +
+      `Related to “${intent.phrase}”: ${communicationCount} communication(s), ${actions.length} action item(s), ${responses.length} response draft(s), ${calendar.length} calendar proposal(s), and ${turns.length} conversation turn(s).` +
       (highlights.length ? `\n${highlights.join('\n')}` : '')
   };
+}
+
+
+async function readCallMemory(intent: Extract<ManagerIntent,{kind:'calls'|'call_facts'}>): Promise<string> {
+  const params=new URLSearchParams();
+  params.set('limit',intent.kind==='calls' && intent.latest ? '1' : '10');
+  if(intent.kind==='call_facts') params.set('subject',intent.subject);
+  else {
+    if(intent.today) params.set('range','today'); // Service applies its business timezone.
+    if(intent.participant) params.set('participant',intent.participant);
+  }
+  if(intent.topic) params.set('topic',intent.topic);
+  const path=intent.kind==='call_facts' ? '/api/communications/call-memory/facts' : '/api/communications/call-memory';
+  const data=obj(obj(await getJson(`${path}?${params}`)).data);
+  const extra=data.hasMore===true ? '\nMore matching records are available; this answer is partial.' : '';
+  if(intent.kind==='call_facts') {
+    const rows=arr(data.results);
+    if(!rows.length) return 'No saved evidence matched that question. Notes may still be processing, or the wording may differ.'+extra;
+    return 'Saved interpretations, newest calls first. Reported statements are not direct confirmation from that person:\n'+rows.map(row=>{
+      const r=obj(row),f=obj(r.fact);
+      const attribution=f.attribution==='reported' ? `Reported source: ${String(f.attributedTo)}.` : f.attribution==='speaker_label' ? `Transcript speaker label: ${String(f.attributedTo)}.` : 'Speaker identity is unknown.';
+      return `- ${String(r.occurredAt)}: ${String(f.statement)}\n${attribution} Evidence: “${String(f.quote)}”\nSource call: ${String(r.messageId)}`;
+    }).join('\n')+extra;
+  }
+  const calls=arr(data.calls);
+  if(!calls.length) return 'No stored call transcripts match that request.';
+  return (intent.latest ? 'Latest call matching participant metadata:' : intent.today ? "Today's calls:" : 'Matching calls:')+'\n'+calls.map((value,index)=>{
+    const call=obj(value),memory=obj(arr(call.memories)[0]),extraction=obj(memory.extraction);
+    const summary=arr(extraction.summary);
+    const parties=arr(call.participants).map(p=>stringField(p,'displayName') ?? stringField(p,'phone') ?? stringField(p,'email') ?? 'unknown').join(', ');
+    let details=summary.length ? summary.map(s=>`Proposed note: ${stringField(s,'text') ?? ''}\nEvidence: “${stringField(s,'quote') ?? ''}”`).join('\n') : `Transcript excerpt (summary not yet saved): “${String(call.excerpt ?? '')}”`;
+    const unresolved=arr(extraction.unresolved).filter((v):v is string=>typeof v==='string');
+    if(unresolved.length) details+='\nUnresolved: '+unresolved.join(' ');
+    return `${index+1}. ${String(call.occurredAt)} — participants from call metadata: ${parties}\n${details}\nSource call: ${String(call.messageId)}`;
+  }).join('\n\n')+(intent.latest?'':extra);
 }
