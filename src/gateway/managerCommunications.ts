@@ -1,3 +1,4 @@
+import {calendarWindow,calendarDayLabel,calendarEventTime} from './calendarTime';
 export type LedgerView = 'today' | 'urgent' | 'overdue' | 'waiting' | 'inbox' | 'promises';
 
 export type ManagerIntent =
@@ -162,40 +163,17 @@ async function ledger(view: LedgerView, person?: string): Promise<unknown[]> {
   return arr(body.data);
 }
 
-function localDayWindow(offsetDays = 0): { start: string; end: string } {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() + offsetDays);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start: start.toISOString(), end: end.toISOString() };
-}
-
-function calendarWindow(range: 'today' | 'tomorrow' | 'week' | 'next'): { start: string; end: string } {
-  if (range === 'tomorrow') return localDayWindow(1);
-  if (range === 'week' || range === 'next') {
-    const start = new Date();
-    const end = new Date(start);
-    end.setDate(end.getDate() + 7);
-    return { start: start.toISOString(), end: end.toISOString() };
-  }
-  return localDayWindow(0);
-}
-
-async function calendarEvents(range: 'today' | 'tomorrow' | 'week' | 'next'): Promise<unknown[]> {
-  const { start, end } = calendarWindow(range);
+async function calendarEvents(range: 'today' | 'tomorrow' | 'week' | 'next', now=new Date()): Promise<unknown[]> {
+  const { start, end } = calendarWindow(range,now);
   const body = obj(await getJson(
     `/api/communications/calendar/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
   ));
   return arr(body.data).filter((event) => obj(event).isCancelled !== true);
 }
 
-function summarizeCalendar(data: unknown[], range: 'today' | 'tomorrow' | 'week' | 'next'): string {
-  if (data.length === 0) {
-    if (range === 'tomorrow') return 'Your Outlook calendar is clear tomorrow.';
-    if (range === 'week' || range === 'next') return 'I do not see any upcoming Outlook calendar events in the next 7 days.';
-    return 'Your Outlook calendar is clear today.';
-  }
+function summarizeCalendar(data: unknown[], range: 'today' | 'tomorrow' | 'week' | 'next', now=new Date()): string {
+  const label=calendarDayLabel(range,now);
+  if (data.length === 0) return `${label}: Your Outlook calendar is clear for this window.`;
 
   const chosen = range === 'next' ? data.slice(0, 1) : data.slice(0, 10);
   const lines = chosen.map((event, index) => {
@@ -204,14 +182,13 @@ function summarizeCalendar(data: unknown[], range: 'today' | 'tomorrow' | 'week'
     const endAt = stringField(event, 'endAt');
     const location = stringField(event, 'location');
     const timing = startAt
-      ? new Date(startAt).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+      ? calendarEventTime(startAt)
       : 'time unavailable';
-    const end = endAt ? new Date(endAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
+    const end = endAt ? calendarEventTime(endAt,true) : null;
     return `${index + 1}. ${title} — ${timing}${end ? `–${end}` : ''}${location ? ` · ${location}` : ''}`;
   });
 
   if (range === 'next') return `Your next calendar event:\n${lines[0]}`;
-  const label = range === 'tomorrow' ? 'Tomorrow' : range === 'week' ? 'Next 7 days' : 'Today';
   return `${label} on your Outlook calendar: ${data.length}\n${lines.join('\n')}${data.length > 10 ? `\n+${data.length - 10} more.` : ''}`;
 }
 
@@ -380,8 +357,9 @@ export async function executeManagerIntent(intent: ManagerIntent, context: Manag
   }
 
   if (intent.kind === 'calendar') {
-    const data = await calendarEvents(intent.range);
-    return { intent, text: summarizeCalendar(data, intent.range) };
+    const now=new Date();
+    const data = await calendarEvents(intent.range,now);
+    return { intent, text: summarizeCalendar(data, intent.range,now) };
   }
 
   if (intent.kind === 'notifications') {

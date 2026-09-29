@@ -57,6 +57,13 @@ API reference: https://developers.openai.com/api/docs/guides/speech-to-text
 
 ## Call answer presentation
 
+Calendar queries and displayed event times use America/New_York, matching the
+language interpreter. Today/tomorrow headers include the actual business date.
+Each day's boundaries are converted separately to UTC to handle daylight saving
+transitions. Request and answer labels use the same captured instant, even if
+the response arrives across midnight. The week/next window remains seven elapsed
+days from the current instant. Device clock accuracy is still required.
+
 Call recaps show up to three saved summary statements per call and up to three
 calls in the main answer. Quotes, source call IDs, remaining results and extraction
 warnings remain in a collapsed View evidence section. The response retains an
