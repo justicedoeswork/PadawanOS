@@ -199,3 +199,13 @@
   cursor: default;
   opacity: 0.72;
 }
+.gw-manager-voice { margin: 8px 0; font-size: 12px; }
+.gw-manager-voice-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gw-manager-voice button { min-height: 36px; padding: 6px 10px; border: 1px solid var(--color-border); border-radius: var(--panda-radius-md); color: var(--color-fg); background: var(--color-bg); }
+.gw-manager-voice button:disabled { opacity: .5; }
+.gw-manager-voice button[aria-pressed="true"] { border-color: var(--color-fg); }
+.gw-manager-voice label { display: flex; align-items: center; gap: 4px; }
+.gw-manager-voice p { margin: 6px 0; }
+.gw-manager-voice small { color: var(--color-muted); }
+.gw-manager-evidence { margin-top: 8px; }
+.gw-manager-evidence summary { cursor: pointer; }

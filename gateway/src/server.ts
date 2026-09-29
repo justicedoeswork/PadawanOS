@@ -1,4 +1,5 @@
 import { createManagerLanguageRouter } from './managerLanguageRoutes.js';
+import { createManagerVoiceRouter } from './managerVoiceRoutes.js';
 import express from 'express';
 import http from 'node:http';
 import path from 'node:path';
@@ -175,6 +176,9 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
     })
   );
 
+  app.use(createManagerVoiceRouter({sessionSecret,allowedOrigins,
+    apiKey:overrides.managerLanguageApiKey ?? config.managerLanguageApiKey,
+    ...(overrides.managerLanguageFetch?{fetchImpl:overrides.managerLanguageFetch}:{})}));
   app.use(createManagerLanguageRouter({sessionSecret,allowedOrigins,
     apiKey:overrides.managerLanguageApiKey ?? config.managerLanguageApiKey,
     model:overrides.managerLanguageModel ?? config.managerLanguageModel,
@@ -269,4 +273,3 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
     }
   };
 }
-

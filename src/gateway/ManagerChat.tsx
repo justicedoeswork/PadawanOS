@@ -21,6 +21,7 @@ import { enablePushNotifications, getPushNotificationState, type PushNotificatio
 import './ManagerChat.css';
 import { askConversationalManager } from './conversationalManager';
 import { persistableAnswer, restoreAnswer } from './managerEvidence';
+import { ManagerVoice } from './ManagerVoice';
 
 type ChatMessage = { role: 'user' | 'manager'; text: string; evidence?: string };
 
@@ -85,6 +86,7 @@ export function ManagerChat() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
   const [unreadUpdate, setUnreadUpdate] = useState(false);
   const [pushState, setPushState] = useState<PushNotificationState>('idle');
   const [pushBusy, setPushBusy] = useState(false);
@@ -230,8 +232,12 @@ export function ManagerChat() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     const question = input.trim();
-    if (!question || busy) return;
+    if (!question || busy || voiceBusy) return;
     setInput('');
+    await askQuestion(question);
+  }
+
+  async function askQuestion(question: string): Promise<string> {
     setMessages((current) => [...current, { role: 'user', text: question }]);
     void persistTurn('user', question, null);
     setBusy(true);
@@ -246,8 +252,10 @@ export function ManagerChat() {
       }
       setMessages((current) => [...current, { role: 'manager', text: reply.text, evidence: reply.evidence }]);
       void persistTurn('manager', persistableAnswer(reply.text,reply.evidence), reply.intent);
+      return reply.text;
     } catch {
       setMessages((current) => [...current, { role: 'manager', text: t('manager.error') }]);
+      return t('manager.error');
     } finally {
       setBusy(false);
     }
@@ -317,6 +325,7 @@ export function ManagerChat() {
             {busy && <div className="gw-manager-message gw-manager-message-manager">{t('manager.working')}</div>}
           </div>
 
+          <ManagerVoice disabled={busy} onQuestion={askQuestion} onBusyChange={setVoiceBusy} lastReply={[...messages].reverse().find(message=>message.role==='manager')?.text} />
           <form className="gw-manager-form" onSubmit={submit}>
             <input
               className="gw-manager-input"
@@ -324,9 +333,9 @@ export function ManagerChat() {
               onChange={(event) => setInput(event.target.value)}
               placeholder={t('manager.placeholder')}
               aria-label={t('manager.placeholder')}
-              disabled={busy}
+              disabled={busy || voiceBusy}
             />
-            <button className="gw-manager-send" type="submit" disabled={busy || input.trim().length === 0} aria-label={t('manager.send')}>
+            <button className="gw-manager-send" type="submit" disabled={busy || voiceBusy || input.trim().length === 0} aria-label={t('manager.send')}>
               <Send size={16} />
             </button>
           </form>
