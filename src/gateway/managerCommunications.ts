@@ -427,6 +427,15 @@ export async function askManager(raw: string, context: ManagerContext = {}): Pro
 }
 
 
+function callTime(value: unknown): string {
+  if (typeof value !== 'string') return 'Time unavailable';
+  // Accept both ISO and PostgreSQL timestamp strings without browser-dependent parsing.
+  const normalized=value.replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1').replace(/([+-]\d{2})$/, '$1:00');
+  const date=new Date(normalized);
+  if (!Number.isFinite(date.getTime())) return 'Time unavailable';
+  return new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York',year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(date);
+}
+
 async function readCallMemory(intent: Extract<ManagerIntent,{kind:'calls'|'call_facts'}>): Promise<string> {
   const params=new URLSearchParams();
   params.set('limit',intent.kind==='calls' && intent.latest ? '1' : '10');
@@ -438,14 +447,15 @@ async function readCallMemory(intent: Extract<ManagerIntent,{kind:'calls'|'call_
   if(intent.topic) params.set('topic',intent.topic);
   const path=intent.kind==='call_facts' ? '/api/communications/call-memory/facts' : '/api/communications/call-memory';
   const data=obj(obj(await getJson(`${path}?${params}`)).data);
-  const extra=data.hasMore===true ? '\nMore matching records are available; this answer is partial.' : '';
+  const extra=(data.hasMore===true ? '\nMore matching records are available; this answer is partial.' : '')
+    +(typeof data.invalidNotes==='number' && data.invalidNotes>0 ? '\nSome earlier or invalid notes were withheld from this answer.' : '');
   if(intent.kind==='call_facts') {
     const rows=arr(data.results);
     if(!rows.length) return 'No saved evidence matched that question. Notes may still be processing, or the wording may differ.'+extra;
     return 'Saved interpretations, newest calls first. Reported statements are not direct confirmation from that person:\n'+rows.map(row=>{
       const r=obj(row),f=obj(r.fact);
       const attribution=f.attribution==='reported' ? `Reported source: ${String(f.attributedTo)}.` : f.attribution==='speaker_label' ? `Transcript speaker label: ${String(f.attributedTo)}.` : 'Speaker identity is unknown.';
-      return `- ${String(r.occurredAt)}: ${String(f.statement)}\n${attribution} Evidence: “${String(f.quote)}”\nSource call: ${String(r.messageId)}`;
+      return `- ${callTime(r.occurredAt)}: ${String(f.statement)}\n${attribution} Evidence: “${String(f.quote)}”\nSource call: ${String(r.messageId)}`;
     }).join('\n')+extra;
   }
   const calls=arr(data.calls);
@@ -454,9 +464,12 @@ async function readCallMemory(intent: Extract<ManagerIntent,{kind:'calls'|'call_
     const call=obj(value),memory=obj(arr(call.memories)[0]),extraction=obj(memory.extraction);
     const summary=arr(extraction.summary);
     const parties=arr(call.participants).map(p=>stringField(p,'displayName') ?? stringField(p,'phone') ?? stringField(p,'email') ?? 'unknown').join(', ');
-    let details=summary.length ? summary.map(s=>`Proposed note: ${stringField(s,'text') ?? ''}\nEvidence: “${stringField(s,'quote') ?? ''}”`).join('\n') : `Transcript excerpt (summary not yet saved): “${String(call.excerpt ?? '')}”`;
+    const hasMemory=arr(call.memories).length>0;
+    let details=summary.length ? summary.map(s=>`Proposed note: ${stringField(s,'text') ?? ''}\nEvidence: “${stringField(s,'quote') ?? ''}”`).join('\n') : `Transcript excerpt (${hasMemory ? 'reviewed; no supported summary retained' : 'summary not yet saved'}): “${String(call.excerpt ?? '')}”`;
+    if(call.callKind==='automated_greeting') details=`Automated greeting only; no substantive conversation established.\nTranscript: “${String(call.excerpt ?? '')}”`;
+    if(typeof call.withheldMemories==='number' && call.withheldMemories>0 && !hasMemory) details+='\nEarlier notes withheld pending evidence review.';
     const unresolved=arr(extraction.unresolved).filter((v):v is string=>typeof v==='string');
     if(unresolved.length) details+='\nUnresolved: '+unresolved.join(' ');
-    return `${index+1}. ${String(call.occurredAt)} — participants from call metadata: ${parties}\n${details}\nSource call: ${String(call.messageId)}`;
+    return `${index+1}. ${callTime(call.occurredAt)} — participants from call metadata: ${parties}\n${details}\nSource call: ${String(call.messageId)}`;
   }).join('\n\n')+(intent.latest?'':extra);
 }

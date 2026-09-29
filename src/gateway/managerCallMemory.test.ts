@@ -31,4 +31,25 @@ describe('call memory routing',()=>{
     expect(reply.text).toContain('not direct confirmation');
     await askManager('show me those',{lastIntent:reply.intent,lastReply:reply.text});expect(fetcher).toHaveBeenCalledTimes(2);
   });
+  it('shows Eastern time across UTC midnight and distinguishes reviewed empty notes from pending notes',async()=>{
+    vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({data:{calls:[{
+      messageId:'call-1',occurredAt:'2026-09-29 01:08:13.913971+00',participants:[],excerpt:'Unclear conversation.',
+      memories:[{extraction:{summary:[],unresolved:['No supported business summary or facts were retained.']}}]
+    }],hasMore:false}}))));
+    const reply=await askManager('summarize my calls from today');
+    expect(reply.text).toContain('Sep 28, 2026'); expect(reply.text).toContain('9:08 PM EDT');
+    expect(reply.text).toContain('reviewed; no supported summary retained');
+    expect(reply.text).not.toContain('summary not yet saved');
+  });
+  it('labels known automated greetings and withheld earlier notes without inventing a conversation',async()=>{
+    vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({data:{calls:[{
+      messageId:'call-1',occurredAt:'2026-09-28T12:00:00Z',participants:[],excerpt:'Your call has been forwarded.',
+      memories:[],callKind:'automated_greeting',withheldMemories:1
+    }],hasMore:false}}))));
+    const reply=await askManager('summarize my calls from today');
+    expect(reply.text).toContain('Automated greeting only');
+    expect(reply.text).toContain('Earlier notes withheld');
+    expect(reply.text).not.toContain('Proposed note:');
+  });
+
 });
