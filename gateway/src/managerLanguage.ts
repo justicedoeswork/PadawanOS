@@ -79,7 +79,9 @@ export async function interpretLanguage(input:LanguageInput, options:{apiKey:str
     if(!response.ok){await response.body?.cancel();throw Error('language_unavailable');}
     const reader=response.body?.getReader();if(!reader)throw Error('language_unavailable');
     const chunks:Uint8Array[]=[];let length=0;
-    try{for(;;){const part=await reader.read();if(part.done)break;length+=part.value.byteLength;if(length>32_000)throw Error('language_unavailable');chunks.push(part.value);}}finally{await reader.cancel();}
+    // The Responses envelope includes the echoed schema and instructions, not
+    // just generated text. Keep a separate transport cap from the 16k text cap.
+    try{for(;;){const part=await reader.read();if(part.done)break;length+=part.value.byteLength;if(length>128_000)throw Error('language_unavailable');chunks.push(part.value);}}finally{await reader.cancel();}
     const envelope=obj(JSON.parse(Buffer.concat(chunks).toString('utf8')));
     if(envelope.status!=='completed'||!Array.isArray(envelope.output))throw Error('language_unavailable');
     const parts=envelope.output.flatMap(raw=>{const item=obj(raw);return item.type==='message'&&Array.isArray(item.content)?item.content:[];}).map(obj);

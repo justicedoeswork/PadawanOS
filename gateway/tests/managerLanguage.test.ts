@@ -1,5 +1,5 @@
 import {describe,expect,it,vi} from 'vitest';
-import {interpretLanguage,parseLanguageInput,parseLanguagePlan,languageSchema} from '../src/managerLanguage.js';
+import {interpretLanguage,parseLanguageInput,parseLanguagePlan,languageSchema,languageInstructions} from '../src/managerLanguage.js';
 const intent={kind:'calls',participant:'Chase',topic:null,today:null,latest:true};
 const plan={action:'read',question:null,intents:[intent]};
 const input={question:'whats the last thing me and chase spoke about',turns:[]};
@@ -41,6 +41,16 @@ describe('bounded language interpreter',()=>{
    await expect(interpretLanguage(input,{apiKey:'synthetic',model:'test',fetchImpl:vi.fn(async()=>response)})).rejects.toThrow();
  });
  it('rejects oversized provider responses',async()=>{
-   await expect(interpretLanguage(input,{apiKey:'synthetic',model:'test',fetchImpl:vi.fn(async()=>new Response('x'.repeat(33000)))})).rejects.toThrow();
+   await expect(interpretLanguage(input,{apiKey:'synthetic',model:'test',fetchImpl:vi.fn(async()=>new Response('x'.repeat(128001)))})).rejects.toThrow();
+ });
+ it('accepts a complete response with echoed schema metadata above the old transport cap',async()=>{
+   const body=JSON.stringify({status:'completed',instructions:languageInstructions,
+     text:{format:{type:'json_schema',name:'padawan_read_intent',strict:true,schema:languageSchema}},
+     output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({decision:plan})}]}]},null,2);
+   expect(Buffer.byteLength(body)).toBeGreaterThan(32000);
+   await expect(interpretLanguage(input,{apiKey:'synthetic',model:'test',fetchImpl:async()=>new Response(body)})).resolves.toMatchObject({action:'read'});
+ });
+ it('still rejects oversized generated text inside an allowed transport envelope',async()=>{
+   await expect(interpretLanguage(input,{apiKey:'synthetic',model:'test',fetchImpl:async()=>envelope({action:'clarify',question:'x'.repeat(16001)+'?',intents:[]})})).rejects.toThrow('invalid_language_data');
  });
 });
