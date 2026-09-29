@@ -105,6 +105,10 @@ export const config = {
    * The browser authenticates to this gateway with its JusticeOS session;
    * only the gateway presents JUSTICEOS_MANAGER_SERVICE_KEY upstream.
    */
+  /** Optional conversational read router. Credentials never enter the frontend. */
+  managerLanguageApiKey: requireEnv('PADAWAN_OPENAI_API_KEY'),
+  managerLanguageModel: requireEnv('PADAWAN_LANGUAGE_MODEL'),
+
   managerApiUrl: requireEnv('JUSTICEOS_MANAGER_API_URL'),
   managerServiceKey: requireEnv('JUSTICEOS_MANAGER_SERVICE_KEY'),
 
@@ -167,3 +171,4 @@ export function isPushConfigured(): boolean {
       config.vapidSubject
   );
 }
+

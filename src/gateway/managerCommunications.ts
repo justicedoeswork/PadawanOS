@@ -17,6 +17,7 @@ export type ManagerIntent =
 export interface ManagerContext {
   lastIntent?: ManagerIntent;
   lastReply?: string;
+  turns?: {role:'user'|'manager';text:string}[];
 }
 
 export interface ManagerReply {
@@ -280,8 +281,10 @@ function explanationFor(intent: ManagerIntent | undefined, lastReply?: string): 
 }
 
 export async function askManager(raw: string, context: ManagerContext = {}): Promise<ManagerReply> {
-  const intent = classifyManagerQuestion(raw, context);
+  return executeManagerIntent(classifyManagerQuestion(raw, context), context);
+}
 
+export async function executeManagerIntent(intent: ManagerIntent, context: ManagerContext = {}): Promise<ManagerReply> {
   if (intent.kind === 'explain') {
     return { intent, text: explanationFor(context.lastIntent, context.lastReply) };
   }
