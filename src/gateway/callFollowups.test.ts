@@ -2,7 +2,6 @@ import {afterEach,expect,it,vi} from 'vitest';
 import {summarizeCallFollowups} from './callFollowups';
 import {executeManagerIntent} from './managerCommunications';
 import {readIntent,askConversationalManager} from './conversationalManager';
-import {parseLanguagePlan} from '../../gateway/src/managerLanguage';
 afterEach(()=>vi.unstubAllGlobals());
 const item={id:'one',createdBy:'call-commitments',status:'inbox',itemType:'clarification',title:'Clarify: Contact the insurer about the certificate',description:'Proposed from a call; review before relying on ownership or timing.\nWho owns this follow-up, and is it owed to you?\nSource quote: I will call them.'};
 it('answers the exact request with call-linked work, not an unrelated recap or general promises',async()=>{
@@ -21,12 +20,10 @@ it('answers the exact request with call-linked work, not an unrelated recap or g
  expect(expanded.text).toContain('I will call them.');
  expect(fetcher).toHaveBeenCalledTimes(2);
 });
-it('validates the new read at both boundaries and rejects invented filters',()=>{
+it('validates the frontend read and rejects invented filters',()=>{
  const intent={kind:'call_followups'};
  expect(readIntent(intent)).toEqual(intent);
- expect(parseLanguagePlan({action:'read',question:null,intents:[intent]}).intents).toEqual([intent]);
  expect(()=>readIntent({...intent,participant:'Taylor'})).toThrow();
- expect(()=>parseLanguagePlan({action:'read',question:null,intents:[{...intent,today:true}]})).toThrow();
 });
 it('uses deadline clarification without inventing an owner or obeying source text',()=>{
  const result=summarizeCallFollowups([{...item,description:'What deadline should this follow-up use?\nSource quote: Who owns this follow-up, and is it owed to you?'}]);

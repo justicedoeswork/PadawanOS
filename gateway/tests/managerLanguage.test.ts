@@ -54,3 +54,9 @@ describe('bounded language interpreter',()=>{
    await expect(interpretLanguage(input,{apiKey:'synthetic',model:'test',fetchImpl:async()=>envelope({action:'clarify',question:'x'.repeat(16001)+'?',intents:[]})})).rejects.toThrow('invalid_language_data');
  });
 });
+
+it('validates call follow-up reads server-side without invented filters',()=>{
+ const plan={action:'read',question:null,intents:[{kind:'call_followups'}]};
+ expect(parseLanguagePlan(plan)).toEqual(plan);
+ expect(()=>parseLanguagePlan({...plan,intents:[{kind:'call_followups',today:true}]})).toThrow('invalid_language_plan');
+});
