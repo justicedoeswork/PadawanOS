@@ -8,6 +8,8 @@ const read=(kind:string,fields:Record<string,unknown>={})=>(plan:LanguagePlan)=>
   return actual===v;
 });
 const cases:{name:string;input:LanguageInput;accept:(plan:LanguagePlan)=>boolean}[]=[
+ {name:'call follow-ups and clarifications',input:{question:'What follow-ups came from my calls, and what do you need me to clarify?',turns:[]},accept:read('call_followups')},
+ {name:'call actions after unrelated recap',input:{question:'What do I need to do after my calls?',turns:[{role:'manager',text:'Your latest call covered a casual conversation.'}]},accept:read('call_followups')},
  {name:'casual latest call',input:{question:'uh whats the last thing me and Morgan spoke about',turns:[]},accept:read('calls',{participant:'Morgan',latest:true})},
  {name:'latest call about',input:{question:'what was my last call with peter about?',turns:[]},accept:read('calls',{participant:'Peter',latest:true,topic:undefined,today:undefined})},
  {name:'latest call after failed fact search',input:{question:'what was my last call with peter about?',turns:[{role:'user',text:'What color shingles did Peter want?'},{role:'manager',text:'No saved evidence matched that question. Notes may still be processing, or the wording may differ.'}]},accept:read('calls',{participant:'Peter',latest:true,topic:undefined,today:undefined})},
