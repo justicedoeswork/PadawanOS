@@ -5,6 +5,13 @@ const plan={action:'read',question:null,intents:[intent]};
 const input={question:'whats the last thing me and chase spoke about',turns:[]};
 const envelope=(value:unknown)=>new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({decision:value})}]}]}));
 describe('bounded language interpreter',()=>{
+ it('accepts bounded insurance questions without endpoints, recipients or action fields',()=>{
+   const insurance={action:'read',question:null,intents:[{kind:'insurance',question:'Which contractors have active GL but no verified waiver?'}]};
+   expect(parseLanguagePlan(insurance)).toEqual(insurance);
+   for(const fields of [{url:'/admin'},{send:true},{realmId:'other'},{question:''},{question:'x'.repeat(2001)}]){
+     expect(()=>parseLanguagePlan({...insurance,intents:[{...insurance.intents[0],...fields}]})).toThrow();
+   }
+ });
  it('validates model fields before returning a read intent',()=>{
    expect(parseLanguagePlan(plan)).toEqual({action:'read',question:null,intents:[{kind:'calls',participant:'Chase',latest:true}]});
  });

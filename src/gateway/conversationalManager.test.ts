@@ -1,8 +1,26 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {askConversationalManager,readIntent} from './conversationalManager';
+import {askInsuranceRead} from './insuranceRead';
+vi.mock('./insuranceRead',()=>({askInsuranceRead:vi.fn()}));
 afterEach(()=>vi.unstubAllGlobals());
 const plan=(intents:unknown[])=>({action:'read',question:null,intents});
 describe('conversational manager read routing',()=>{
+  it('routes an insurance question to the insurance bridge',async()=>{
+    const question='Does Acme have active GL, and is its waiver verified?';
+    vi.mocked(askInsuranceRead).mockResolvedValueOnce('Active GL through October 7; waiver unverified.');
+    const fetcher=vi.fn(async()=>new Response(JSON.stringify(plan([{kind:'insurance',question}]))));
+    vi.stubGlobal('fetch',fetcher);
+    const reply=await askConversationalManager(question);
+    expect(askInsuranceRead).toHaveBeenCalledWith(question);
+    expect(reply.text).toBe('Active GL through October 7; waiver unverified.');
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it('rejects insurance intent fields that could select an endpoint or send mail',()=>{
+    for(const intent of [{kind:'insurance'},{kind:'insurance',question:'x',url:'/admin'},
+      {kind:'insurance',question:'x',send:true},{kind:'insurance',question:'x'.repeat(2001)}]){
+      expect(()=>readIntent(intent)).toThrow();
+    }
+  });
   it('uses structured meaning rather than requiring a recognized command',async()=>{
     const fetcher=vi.fn(async(path:unknown)=>String(path)==='/api/manager/interpret'
       ?new Response(JSON.stringify(plan([{kind:'calls',participant:'Chase',latest:true}])))
