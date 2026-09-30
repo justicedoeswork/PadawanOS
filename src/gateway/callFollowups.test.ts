@@ -84,3 +84,14 @@ it('reads a persisted owner on a fresh query without repeating the ownership que
  expect(result.text).not.toContain('Who is responsible');
  expect(result.text).not.toContain('speaker');
 });
+
+it('separates current ownership from historical extraction without modifying source quotes',()=>{
+ const quote='The note says Owner: unresolved. Who owns this follow-up, and is it owed to you?';
+ const result=summarizeCallFollowups([{...item,responsibleParty:'austin',description:'Who owns this follow-up, and is it owed to you?\nOwner: unresolved\nOwed to: unspecified\nSource quote: '+quote}]);
+ expect(result.evidence).toContain('Current task owner: Austin (you)');
+ expect(result.evidence).toContain('Original extracted note (historical):');
+ expect(result.evidence).toContain('Owner at extraction: unresolved');
+ expect(result.evidence).toContain('Question raised at extraction: Who owns');
+ expect(result.evidence?.split('\nSource quote: ')[1]?.split('\nLedger item:')[0]).toBe(quote);
+ expect(result.text).not.toContain('Who is responsible');
+});

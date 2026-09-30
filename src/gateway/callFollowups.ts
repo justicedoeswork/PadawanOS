@@ -15,6 +15,18 @@ function callLabel(context:CallContext|undefined):string {
   const when=date&&Number.isFinite(date.getTime())?new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(date):'an unconfirmed time';
   return 'From your call with '+(names.join(' / ')||'an unnamed contact')+' on '+when+' (phone contact record).';
 }
+/** Relabel only extraction metadata. Never rewrite words inside the source quote. */
+function historicalExtraction(description:string):string {
+  const quoteAt=description.indexOf('\nSource quote:');
+  const header=quoteAt<0?description:description.slice(0,quoteAt);
+  const quote=quoteAt<0?'':description.slice(quoteAt);
+  const historical=header.split('\n').map(line=>{
+    if(line.startsWith('Owner: '))return 'Owner at extraction: '+line.slice('Owner: '.length);
+    if(line==='Who owns this follow-up, and is it owed to you?'||line==='What deadline should this follow-up use?')return 'Question raised at extraction: '+line;
+    return line;
+  }).join('\n');
+  return 'Original extracted note (historical):\n'+historical+quote;
+}
 export type FollowupSelection={ref:string;id:string;version:number;title:string;callId:string};
 export function summarizeCallFollowups(values: unknown[], contexts:Map<string,CallContext>=new Map()): {text:string;evidence?:string;followupSelection?:FollowupSelection[]} {
   const items=openCallFollowups(values);
@@ -36,7 +48,7 @@ export function summarizeCallFollowups(values: unknown[], contexts:Map<string,Ca
       if(!owner)needsOwner=true;
       if(item.itemType==='clarification'&&header.split('\n').includes('What deadline should this follow-up use?'))needsDeadline=true;
       const due=header.split('\n').find(line=>line.startsWith('Deadline wording: '))?.slice('Deadline wording: '.length);
-      evidence.push(label+'\n'+ref+'. '+action+'\nRecorded owner: '+(owner??'unresolved')+'\n'+description+'\nLedger item: '+String(item.id??'unavailable'));
+      evidence.push(label+'\n'+ref+'. '+action+'\nCurrent task owner: '+(owner==='austin'?'Austin (you)':owner??'unresolved')+'\n'+historicalExtraction(description)+'\nLedger item: '+String(item.id??'unavailable'));
       if(typeof item.id==='string'&&Number.isSafeInteger(item.version)&&Number(item.version)>0)followupSelection.push({ref,id:item.id,version:Number(item.version),title:action,callId});
       return ref+' '+action+(owner?' — recorded owner: '+(owner==='austin'?'you':owner):'')+(due&&due!=='none stated'?' (timing mentioned: “'+due+'”)':'')+'.';
     });
