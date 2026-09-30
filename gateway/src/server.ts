@@ -1,3 +1,4 @@
+import { createCallOwnerRouter } from './callOwnerRoutes.js';
 import { createManagerLanguageRouter } from './managerLanguageRoutes.js';
 import { createManagerVoiceRouter } from './managerVoiceRoutes.js';
 import express from 'express';
@@ -41,6 +42,7 @@ export interface GatewayOverrides {
   marketingAgentClient?: MarketingAgentClient;
   communicationsAgentBaseUrl?: string | null;
   communicationsApiReadKey?: string | null;
+  communicationsOwnerWriteKey?: string | null;
   communicationsAgentTimeoutMs?: number;
   /** Test seam for the read-only Communications bridge. */
   communicationsAgentClient?: CommunicationsAgentClient;
@@ -175,6 +177,10 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
       ...(overrides.communicationsAgentClient ? { client: overrides.communicationsAgentClient } : {})
     })
   );
+
+  app.use(createCallOwnerRouter({sessionSecret,allowedOrigins,baseUrl:communicationsBaseUrl,readKey:communicationsReadKey,
+    writeKey:overrides.communicationsOwnerWriteKey ?? config.communicationsOwnerWriteKey,
+    ...(overrides.communicationsAgentClient?{client:overrides.communicationsAgentClient}:{})}));
 
   app.use(createManagerVoiceRouter({sessionSecret,allowedOrigins,
     apiKey:overrides.managerLanguageApiKey ?? config.managerLanguageApiKey,
