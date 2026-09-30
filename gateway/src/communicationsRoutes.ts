@@ -1,3 +1,4 @@
+import {callContext} from './callContext.js';
 import { Router, type Request, type Response } from 'express';
 import { createRequireSession } from './requireSession.js';
 import {
@@ -95,6 +96,23 @@ export function createCommunicationsRouter(options: CommunicationsRoutesOptions)
       sendResult(res, await client.get(upstreamPath(req), queryOf(req)));
     });
   }
+
+  router.get(`${GATEWAY_PREFIX}/calls/:id/context`, async (req,res) => {
+    res.setHeader('Cache-Control','no-store');
+    const id=String(req.params.id ?? '');
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)){
+      res.status(400).json({error:{code:'INVALID_CALL_ID'}});return;
+    }
+    if(!client){notConfigured(res);return;}
+    try{
+      const result=await client.get(`${UPSTREAM_PREFIX}/communications/${id}`);
+      if(result.kind==='unavailable'){unavailable(res,result.reason);return;}
+      if(result.status!==200){res.status(result.status===404?404:502).json({error:{code:'CALL_CONTEXT_UNAVAILABLE'}});return;}
+      const data=callContext(result.body,id);
+      if(!data){res.status(404).json({error:{code:'CALL_CONTEXT_UNAVAILABLE'}});return;}
+      res.json({data});
+    }catch{unavailable(res,'network');}
+  });
 
   const view = (req: Request): string => encodeURIComponent(String(req.params.view ?? ''));
   const itemId = (req: Request): string => encodeURIComponent(String(req.params.id ?? ''));

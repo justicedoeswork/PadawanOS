@@ -27,6 +27,7 @@ async function startBridge(
 }
 
 const READ_PATHS = [
+  '/api/communications/calls/00000000-0000-4000-8000-000000000001/context',
   '/api/communications/call-memory?range=today',
   '/api/communications/call-memory/facts?subject=Peter',
   '/api/communications/call-memory/jobs',
@@ -190,3 +191,17 @@ describe('Communications read bridge', () => {
   });
 });
 
+
+it('serves authenticated call context without exposing the source body or forwarding query overrides', async()=>{
+ const {port,upstream,cookie}=await startBridge();
+ const id='00000000-0000-4000-8000-000000000001';
+ const url=`http://127.0.0.1:${port}/api/communications/calls/${id}/context`;
+ expect((await fetch(url)).status).toBe(401);
+ expect(upstream.requests).toHaveLength(0);
+ upstream.respondWith({status:200,body:{data:{message:{id,provider:'call_transcription',sender:{displayName:'Austin'},recipients:[{displayName:'Taylor'}],bodyText:'secret call text'}}}});
+ const response=await fetch(url+'?organizationId=other',{headers:{Cookie:cookie}});
+ expect(response.status).toBe(200);
+ expect(JSON.stringify(await response.json())).not.toContain('secret call text');
+ expect(upstream.requests.at(-1)?.url).toBe('/api/v1/communications/'+id);
+ expect((await fetch(url,{method:'POST',headers:{Cookie:cookie}})).status).toBe(404);
+});
