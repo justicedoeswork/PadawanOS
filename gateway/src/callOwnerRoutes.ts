@@ -43,7 +43,8 @@ export function createCallOwnerRouter(options:OwnerRouteOptions){
   if(new Set(selections.map(i=>i.id)).size!==selections.length){res.status(400).json({error:{code:'INVALID_OWNER_REVIEW'}});return;}
   try{
    const items:ReviewedItem[]=[];
-   for(const selected of selections){const item=await load(selected.id);if(item.version!==selected.version){res.status(409).json({error:{code:'REVIEW_CHANGED'}});return;}items.push({...selected,callId:String(item.originMessageId),title:String(item.title)});}
+   const currentItems=await Promise.all(selections.map(selected=>load(selected.id)));
+   for(const [index,selected] of selections.entries()){const item=currentItems[index]!;if(item.version!==selected.version){res.status(409).json({error:{code:'REVIEW_CHANGED'}});return;}items.push({...selected,callId:String(item.originMessageId),title:String(item.title)});}
    const review:Review={items,owner:/^(me|myself|austin|austin justice)$/i.test(owner)?'austin':owner,expires:now()+10*60_000};
    const payload=Buffer.from(JSON.stringify(review)).toString('base64url');
    const session=parseCookies(req.headers.cookie)[SESSION_COOKIE_NAME]!;
@@ -58,19 +59,21 @@ export function createCallOwnerRouter(options:OwnerRouteOptions){
   if(!payload||!signature||extra.length||!/^[0-9a-f]{64}$/.test(signature)||!timingSafeEqual(Buffer.from(signature),Buffer.from(sign(payload,session)))){res.status(400).json({error:{code:'INVALID_OWNER_REVIEW'}});return;}
   let review:Review;
   try{review=JSON.parse(Buffer.from(payload,'base64url').toString('utf8')) as Review;if(review.expires<now())throw Error('expired');}catch{res.status(409).json({error:{code:'REVIEW_EXPIRED'}});return;}
-  const saved:string[]=[];
+  const saved:string[]=[],deadline=now()+25_000;
   try{
    // Preflight the entire selection. Per-item CAS below still protects races.
    const pending:ReviewedItem[]=[];
-   for(const entry of review.items){const current=await load(entry.id);
+   const currentItems=await Promise.all(review.items.map(entry=>load(entry.id)));
+   for(const [index,entry] of review.items.entries()){const current=currentItems[index]!;
     if(current.originMessageId!==entry.callId||current.title!==entry.title){res.status(409).json({error:{code:'REVIEW_CHANGED'},saved});return;}
     if(current.version===entry.version+1&&current.responsibleParty===review.owner){saved.push(entry.id);continue;}
     if(current.version!==entry.version){res.status(409).json({error:{code:'REVIEW_CHANGED'},saved});return;}
     pending.push(entry);
    }
    for(const entry of pending){
+    const remaining=deadline-now();if(remaining<=0)throw Error('timeout');
     const response=await (options.fetchImpl??fetch)(options.baseUrl!.replace(/\/+$/,'')+'/api/v1/ledger/items/'+entry.id,{
-     method:'PATCH',redirect:'error',headers:{authorization:'Bearer '+options.writeKey,'content-type':'application/json'},signal:AbortSignal.timeout(10_000),
+     method:'PATCH',redirect:'error',headers:{authorization:'Bearer '+options.writeKey,'content-type':'application/json'},signal:AbortSignal.timeout(Math.min(10_000,remaining)),
      body:JSON.stringify({expectedVersion:entry.version,changes:{responsibleParty:review.owner},reason:'Owner confirmed by Austin through Padawan review. This corrects task ownership, not transcript speaker identity.'})});
     const data=object(object(await response.json()).data);
     if(!response.ok||data.id!==entry.id||data.responsibleParty!==review.owner||data.version!==entry.version+1){res.status(response.status===409?409:502).json({error:{code:'OWNER_SAVE_INCOMPLETE'},saved});return;}

@@ -264,6 +264,7 @@ export function ManagerChat() {
       void persistTurn('manager', persistableAnswer(reply.text,reply.evidence), reply.intent);
       return reply.text;
     } catch {
+      contextRef.current.pendingOwnerReview = undefined;
       setMessages((current) => [...current, { role: 'manager', text: t('manager.error') }]);
       return t('manager.error');
     } finally {

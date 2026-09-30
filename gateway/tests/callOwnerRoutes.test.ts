@@ -66,3 +66,17 @@ it('reports uncertain writes without claiming success',async()=>{
  const result=await s.post('confirm',{token});expect(result.status).toBe(502);
  expect(await result.json()).toEqual({error:{code:'OWNER_SAVE_UNCERTAIN'},saved:[]});
 });
+it('reports exactly the persisted subset if a later item fails',async()=>{
+ const other='00000000-0000-4000-8000-000000000003';
+ const rows=new Map([id,other].map(itemId=>[itemId,{id:itemId,originMessageId:callId,title:'Task '+itemId,createdBy:'call-commitments',status:'inbox',version:1,responsibleParty:null as string|null}]));
+ const patch=vi.fn(async(url:unknown,init?:RequestInit)=>{
+  if(String(url).endsWith(other))return new Response('{}',{status:409});
+  const row=rows.get(id)!;row.responsibleParty=JSON.parse(String(init?.body)).changes.responsibleParty;row.version++;
+  return new Response(JSON.stringify({data:row}));
+ });
+ const s=await setup({client:{get:async(path)=>({kind:'response',status:200,body:{data:{item:rows.get(path.split('/').at(-1)!)}}}),probe:async()=> 'REACHABLE'},fetchImpl:patch as typeof fetch});
+ const {token}=await (await s.post('preview',{owner:'me',items:[{id,version:1},{id:other,version:1}]})).json();
+ const result=await s.post('confirm',{token});expect(result.status).toBe(409);
+ expect(await result.json()).toEqual({error:{code:'OWNER_SAVE_INCOMPLETE'},saved:[id]});
+ expect(rows.get(id)?.responsibleParty).toBe('austin');expect(rows.get(other)?.responsibleParty).toBeNull();
+});

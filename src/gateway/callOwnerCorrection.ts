@@ -1,7 +1,7 @@
 import type {ManagerContext,ManagerIntent,ManagerReply} from './managerCommunications';
 const help=(text:string):ManagerReply=>({intent:{kind:'help'},text});
 async function post(path:string,body:unknown){
- const response=await fetch('/api/call-followup-owner/'+path,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20_000)});
+ const response=await fetch('/api/call-followup-owner/'+path,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(35_000)});
  return {ok:response.ok,status:response.status,body:await response.json()};
 }
 export async function previewCallOwner(intent:Extract<ManagerIntent,{kind:'call_followup_owner'}>,context:ManagerContext):Promise<ManagerReply>{
