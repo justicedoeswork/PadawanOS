@@ -60,3 +60,11 @@ it('validates call follow-up reads server-side without invented filters',()=>{
  expect(parseLanguagePlan(plan)).toEqual(plan);
  expect(()=>parseLanguagePlan({...plan,intents:[{kind:'call_followups',today:true}]})).toThrow('invalid_language_plan');
 });
+
+it('allows only a standalone ownership preview with bounded displayed task references',()=>{
+ const plan={action:'read',question:null,intents:[{kind:'call_followup_owner',items:'2.1,2.2',owner:'me'}]};
+ expect(parseLanguagePlan(plan)).toEqual(plan);
+ expect(()=>parseLanguagePlan({...plan,intents:[...plan.intents,{kind:'emails'}]})).toThrow();
+ expect(()=>parseLanguagePlan({...plan,intents:[{kind:'call_followup_owner',items:'https://evil.test',owner:'me'}]})).toThrow();
+ expect(()=>parseLanguagePlan({...plan,intents:[{kind:'call_followup_owner',items:'2.1',owner:'me',save:true}]})).toThrow();
+});

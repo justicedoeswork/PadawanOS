@@ -1,9 +1,10 @@
-import {summarizeCallFollowups,openCallFollowups,type CallContext} from './callFollowups';
+import {summarizeCallFollowups,openCallFollowups,type CallContext,type FollowupSelection} from './callFollowups';
 import {calendarWindow,calendarDayLabel,calendarEventTime} from './calendarTime';
 export type LedgerView = 'today' | 'urgent' | 'overdue' | 'waiting' | 'inbox' | 'promises';
 
 export type ManagerIntent =
   | { kind: 'call_followups' }
+  | { kind: 'call_followup_owner'; items:string; owner:string }
   | { kind: 'calls'; today?: boolean; participant?: string; topic?: string; latest?: boolean }
   | { kind: 'call_facts'; subject: string; topic?: string }
   | { kind: 'briefing' }
@@ -18,6 +19,8 @@ export type ManagerIntent =
   | { kind: 'help' };
 
 export interface ManagerContext {
+  followupSelection?: FollowupSelection[];
+  pendingOwnerReview?: {token:string;text:string};
   lastIntent?: ManagerIntent;
   lastReply?: string;
   lastEvidence?: string;
@@ -25,6 +28,8 @@ export interface ManagerContext {
 }
 
 export interface ManagerReply {
+  followupSelection?: FollowupSelection[];
+  pendingOwnerReview?: {token:string;text:string};
   text: string;
   evidence?: string;
   intent: ManagerIntent;
@@ -272,6 +277,7 @@ export async function executeManagerIntent(intent: ManagerIntent, context: Manag
   }
   if (intent.kind === 'repeat') {
     const previous = context.lastIntent;
+    if (previous?.kind === 'call_followup_owner') return {intent,text:context.lastReply??'Ask for your call follow-ups to prepare a new ownership correction.'};
     if (previous?.kind === 'call_followups') return context.lastEvidence ? {intent,text:context.lastEvidence} : executeManagerIntent(previous,context);
     if (!previous || previous.kind === 'help' || previous.kind === 'explain' || previous.kind === 'repeat') {
       return { intent: { kind: 'help' }, text: 'Tell me which queue or person you want me to show.' };
@@ -323,6 +329,7 @@ export async function executeManagerIntent(intent: ManagerIntent, context: Manag
     };
   }
 
+  if (intent.kind === 'call_followup_owner') return {intent,text:'Please review the ownership correction in conversational chat before saving.'};
   if (intent.kind === 'call_followups') {
     const body = obj(await getJson('/api/communications/ledger/items?limit=500'));
     if (!Array.isArray(body.data)) throw Error('Invalid follow-up response');

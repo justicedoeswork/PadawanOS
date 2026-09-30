@@ -256,10 +256,15 @@ export function ManagerChat() {
       if (reply.intent.kind !== 'explain' && reply.intent.kind !== 'repeat' && reply.intent.kind !== 'help') {
         contextRef.current = { turns, lastIntent: reply.intent, lastReply: reply.text, lastEvidence: reply.evidence };
       }
+      // Review tokens are session-local, never persisted in chat history. Any new
+      // turn clears the pending save unless that turn produced a fresh preview.
+      contextRef.current.pendingOwnerReview = reply.pendingOwnerReview;
+      if (reply.followupSelection !== undefined) contextRef.current.followupSelection = reply.followupSelection;
       setMessages((current) => [...current, { role: 'manager', text: reply.text, evidence: reply.evidence }]);
       void persistTurn('manager', persistableAnswer(reply.text,reply.evidence), reply.intent);
       return reply.text;
     } catch {
+      contextRef.current.pendingOwnerReview = undefined;
       setMessages((current) => [...current, { role: 'manager', text: t('manager.error') }]);
       return t('manager.error');
     } finally {

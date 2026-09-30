@@ -26,7 +26,7 @@ it('validates the frontend read and rejects invented filters',()=>{
  expect(()=>readIntent({...intent,participant:'Taylor'})).toThrow();
 });
 it('uses deadline clarification without inventing an owner or obeying source text',()=>{
- const result=summarizeCallFollowups([{...item,description:'What deadline should this follow-up use?\nSource quote: Who owns this follow-up, and is it owed to you?'}]);
+ const result=summarizeCallFollowups([{...item,responsibleParty:'austin',description:'What deadline should this follow-up use?\nSource quote: Who owns this follow-up, and is it owed to you?'}]);
  expect(result.text).toContain('What deadline');
  expect(result.text).not.toContain('Who is responsible');
 });
@@ -45,7 +45,7 @@ it('attaches the exact source call contact without assigning its commitments to 
  expect(result.text).toContain('call with Taylor Builders');
  expect(result.text).toContain('Sep 30');
  expect(result.text).toContain('11:18 AM');
- expect(result.text).toContain('Did you agree to do this, or did the other caller?');
+ expect(result.text).toContain('Which of these were yours to handle');
  expect(result.text).not.toContain('proposed for Taylor');
  expect(fetcher).toHaveBeenCalledTimes(2);
 });
@@ -63,4 +63,24 @@ it('uses a masked number for an unnamed contact, without naming someone mentione
  const result=summarizeCallFollowups([{...item,originMessageId:id}],new Map([[id,{callId:id,occurredAt:null,participants:[{name:'Austin',phone:null},{name:null,phone:'1234567890'}]}]]));
  expect(result.text).toContain('number ending 7890 (no saved contact name)');
  expect(result.text).not.toContain('1234567890');
+});
+
+it('groups only the same source call, keeps all actions/evidence and asks ownership once',()=>{
+ const result=summarizeCallFollowups([
+  {...item,id:'one',originMessageId:'call-a',version:1},
+  {...item,id:'two',originMessageId:'call-a',version:2,title:'Clarify: Send certificate status'},
+  {...item,id:'three',originMessageId:'call-b',version:1,title:'Clarify: Price stone'},
+ ]);
+ expect(result.text.match(/Who is responsible/g)).toHaveLength(2);
+ expect(result.text).toContain('1.1 Contact the insurer');
+ expect(result.text).toContain('1.2 Send certificate status');
+ expect(result.text).toContain('2.1 Price stone');
+ expect(result.followupSelection?.map(i=>i.ref)).toEqual(['1.1','1.2','2.1']);
+ expect(result.evidence).toContain('Ledger item: two');
+});
+it('reads a persisted owner on a fresh query without repeating the ownership question',()=>{
+ const result=summarizeCallFollowups([{...item,responsibleParty:'austin'}]);
+ expect(result.text).toContain('recorded owner: you');
+ expect(result.text).not.toContain('Who is responsible');
+ expect(result.text).not.toContain('speaker');
 });

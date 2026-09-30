@@ -93,12 +93,15 @@ export const config = {
 
   /**
    * Communications Agent REST API root. This integration is deliberately
-   * read-only: the gateway receives only COMMUNICATIONS_API_READ_KEY and
+   * read-only by default: the gateway uses COMMUNICATIONS_API_READ_KEY and
    * exposes a narrow GET allowlist to the signed-in JusticeOS browser.
-   * No write/approval/send credential is accepted here.
+   * A separately configured owner-update credential enables only reviewed
+   * internal task ownership changes, never approval or sending.
    */
   communicationsAgentBaseUrl: requireEnv('COMMUNICATIONS_AGENT_BASE_URL'),
   communicationsApiReadKey: requireEnv('COMMUNICATIONS_API_READ_KEY'),
+  // Optional, server-only credential for reviewed call-task ownership changes.
+  communicationsOwnerWriteKey: requireEnv('COMMUNICATIONS_OWNER_WRITE_KEY'),
 
   /**
    * Persistent Padawan Manager backend. Both values remain server-side.
