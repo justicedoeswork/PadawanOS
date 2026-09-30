@@ -4,16 +4,17 @@ function object(value:unknown):Record<string,unknown>{if(!value||typeof value!==
 /** Validate the read allowlist again at the UI boundary. No model-selected URLs. */
 export function readIntent(value:unknown):ManagerIntent{
   const v=object(value),kind=String(v.kind);
-  const fields:Record<string,string[]>={call_followup_owner:['items','owner'],call_followups:[],calls:['participant','topic','today','latest'],call_facts:['subject','topic'],ledger:['view','participant'],calendar:['range'],search:['phrase'],briefing:[],emails:[],approvals:[],notifications:[],explain:[],repeat:[]};
+  const fields:Record<string,string[]>={insurance:['question'],call_followup_owner:['items','owner'],call_followups:[],calls:['participant','topic','today','latest'],call_facts:['subject','topic'],ledger:['view','participant'],calendar:['range'],search:['phrase'],briefing:[],emails:[],approvals:[],notifications:[],explain:[],repeat:[]};
   if(!Object.hasOwn(fields,kind)||Object.keys(v).some(k=>k!=='kind'&&!fields[kind]!.includes(k)))throw Error('Invalid interpretation');
   for(const [key,value] of Object.entries(v)){
     if(key==='today'||key==='latest'){if(typeof value!=='boolean')throw Error('Invalid interpretation');}
-    else if(typeof value!=='string'||!value.trim()||value.length>200)throw Error('Invalid interpretation');
+    else if(typeof value!=='string'||!value.trim()||value.length>(key==='question'?2000:200))throw Error('Invalid interpretation');
   }
   if(kind==='call_followup_owner'&&(!/^[1-8]\.[1-8](?:,[1-8]\.[1-8]){0,7}$/.test(String(v.items))||!v.owner))throw Error('Invalid interpretation');
   if(kind==='calendar'&&!['today','tomorrow','week','next'].includes(String(v.range)))throw Error('Invalid interpretation');
   if(kind==='ledger'&&!['today','urgent','overdue','waiting','inbox','promises'].includes(String(v.view)))throw Error('Invalid interpretation');
   if(kind==='call_facts'&&!v.subject||kind==='search'&&!v.phrase)throw Error('Invalid interpretation');
+  if(kind==='insurance'&&!v.question)throw Error('Invalid interpretation');
   if(kind==='ledger'){const {participant,...rest}=v;return {...rest,...(participant?{person:participant}:{})} as ManagerIntent;}
   return v as ManagerIntent;
 }
