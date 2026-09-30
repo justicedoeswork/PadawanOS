@@ -8,7 +8,11 @@ $reader = $null
 $writer = $null
 $payload = $null
 $bytes = $null
+$previousInputEncoding = [Console]::InputEncoding
 try {
+    # .NET Framework creates the stdin StreamWriter at Process.Start and can
+    # flush a preamble before BaseStream is available. Set the encoding first.
+    [Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false)
     $readInfo = New-Object System.Diagnostics.ProcessStartInfo
     $readInfo.FileName = $fly
     $readInfo.Arguments = 'ssh console --app justice-exteriors-communications-nonprod -C "node -e process.stdout.write(JSON.stringify({key:process.env.COMMUNICATIONS_API_WRITE_KEY}))"'
@@ -45,12 +49,17 @@ try {
     $writer.StandardInput.BaseStream.Flush()
     $writer.StandardInput.BaseStream.Close()
     $writer.WaitForExit()
-    $null = $writeOut.GetAwaiter().GetResult()
-    $null = $writeErr.GetAwaiter().GetResult()
-    if ($writer.ExitCode -ne 0) { throw 'Owner-update credential import failed.' }
+    $importOutput = $writeOut.GetAwaiter().GetResult()
+    $importError = $writeErr.GetAwaiter().GetResult()
+    if ($writer.ExitCode -ne 0) {
+        $details = ($importError + "`n" + $importOutput).Replace($credential, '[REDACTED]')
+        $details = [regex]::Replace($details, '[A-Za-z0-9+/_=-]{24,}', '[REDACTED]')
+        throw ('Owner-update credential import failed. Sanitized Fly output: ' + $details)
+    }
     Write-Host 'Owner-update credential staged for justiceos. Deploy the reviewed Padawan revision to enable it.'
 }
 finally {
+    [Console]::InputEncoding = $previousInputEncoding
     if ($bytes) { [Array]::Clear($bytes, 0, $bytes.Length) }
     $credential = $null
     $captured = $null
