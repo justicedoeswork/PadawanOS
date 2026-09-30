@@ -1,4 +1,4 @@
-import {summarizeCallFollowups} from './callFollowups';
+import {summarizeCallFollowups,openCallFollowups,type CallContext} from './callFollowups';
 import {calendarWindow,calendarDayLabel,calendarEventTime} from './calendarTime';
 export type LedgerView = 'today' | 'urgent' | 'overdue' | 'waiting' | 'inbox' | 'promises';
 
@@ -326,7 +326,19 @@ export async function executeManagerIntent(intent: ManagerIntent, context: Manag
   if (intent.kind === 'call_followups') {
     const body = obj(await getJson('/api/communications/ledger/items?limit=500'));
     if (!Array.isArray(body.data)) throw Error('Invalid follow-up response');
-    return {intent, ...summarizeCallFollowups(body.data)};
+    const ids=[...new Set(openCallFollowups(body.data).slice(0,8).map(item=>String(item.originMessageId??'')))].filter(id=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+    const contexts=new Map<string,CallContext>();
+    await Promise.all(ids.map(async id=>{
+      try {
+        const value=obj(obj(await getJson('/api/communications/calls/'+encodeURIComponent(id)+'/context')).data);
+        if(value.callId!==id||value.identityBasis!=='call_metadata_not_verified_speaker_identity'||!Array.isArray(value.participants))return;
+        const participants=value.participants.map(p=>obj(p)).map(p=>({
+          name:typeof p.name==='string'?p.name:null,phone:typeof p.phone==='string'?p.phone:null
+        }));
+        contexts.set(id,{callId:id,occurredAt:typeof value.occurredAt==='string'?value.occurredAt:null,participants});
+      } catch { /* Preserve actionable items when contact enrichment is unavailable. */ }
+    }));
+    return {intent, ...summarizeCallFollowups(body.data,contexts)};
   }
   if (intent.kind === 'calls' || intent.kind === 'call_facts') return readCallMemory(intent);
 
