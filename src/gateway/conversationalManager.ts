@@ -3,7 +3,7 @@ function object(value:unknown):Record<string,unknown>{if(!value||typeof value!==
 /** Validate the read allowlist again at the UI boundary. No model-selected URLs. */
 export function readIntent(value:unknown):ManagerIntent{
   const v=object(value),kind=String(v.kind);
-  const fields:Record<string,string[]>={calls:['participant','topic','today','latest'],call_facts:['subject','topic'],ledger:['view','participant'],calendar:['range'],search:['phrase'],briefing:[],emails:[],approvals:[],notifications:[],explain:[],repeat:[]};
+  const fields:Record<string,string[]>={call_followups:[],calls:['participant','topic','today','latest'],call_facts:['subject','topic'],ledger:['view','participant'],calendar:['range'],search:['phrase'],briefing:[],emails:[],approvals:[],notifications:[],explain:[],repeat:[]};
   if(!Object.hasOwn(fields,kind)||Object.keys(v).some(k=>k!=='kind'&&!fields[kind]!.includes(k)))throw Error('Invalid interpretation');
   for(const [key,value] of Object.entries(v)){
     if(key==='today'||key==='latest'){if(typeof value!=='boolean')throw Error('Invalid interpretation');}

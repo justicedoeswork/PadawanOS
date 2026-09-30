@@ -1,7 +1,9 @@
+import {summarizeCallFollowups} from './callFollowups';
 import {calendarWindow,calendarDayLabel,calendarEventTime} from './calendarTime';
 export type LedgerView = 'today' | 'urgent' | 'overdue' | 'waiting' | 'inbox' | 'promises';
 
 export type ManagerIntent =
+  | { kind: 'call_followups' }
   | { kind: 'calls'; today?: boolean; participant?: string; topic?: string; latest?: boolean }
   | { kind: 'call_facts'; subject: string; topic?: string }
   | { kind: 'briefing' }
@@ -243,6 +245,7 @@ export function summarizeSnapshot(s: ManagerSnapshot): string {
 }
 
 function explanationFor(intent: ManagerIntent | undefined, lastReply?: string): string {
+  if (intent?.kind === 'call_followups') return 'These are saved call-linked follow-ups awaiting review. The evidence includes the source call and the recorded clarification question; no external action has been taken.';
   if (!intent) return 'I do not have enough prior context to explain that yet.';
   if (intent.kind === 'calls' || intent.kind === 'call_facts') return 'That answer comes from stored call transcripts and saved proposed notes. Each note keeps its source quotation. Call participants, people mentioned, and reported speakers are different; reported statements are not direct confirmation.';
   if (intent.kind === 'briefing') {
@@ -269,6 +272,7 @@ export async function executeManagerIntent(intent: ManagerIntent, context: Manag
   }
   if (intent.kind === 'repeat') {
     const previous = context.lastIntent;
+    if (previous?.kind === 'call_followups') return context.lastEvidence ? {intent,text:context.lastEvidence} : executeManagerIntent(previous,context);
     if (!previous || previous.kind === 'help' || previous.kind === 'explain' || previous.kind === 'repeat') {
       return { intent: { kind: 'help' }, text: 'Tell me which queue or person you want me to show.' };
     }
@@ -319,6 +323,11 @@ export async function executeManagerIntent(intent: ManagerIntent, context: Manag
     };
   }
 
+  if (intent.kind === 'call_followups') {
+    const body = obj(await getJson('/api/communications/ledger/items?limit=500'));
+    if (!Array.isArray(body.data)) throw Error('Invalid follow-up response');
+    return {intent, ...summarizeCallFollowups(body.data)};
+  }
   if (intent.kind === 'calls' || intent.kind === 'call_facts') return readCallMemory(intent);
 
   if (intent.kind === 'ledger') {
