@@ -1,4 +1,5 @@
 import { createCallOwnerRouter } from './callOwnerRoutes.js';
+import { createInsuranceReportRouter } from './insuranceReportRoutes.js';
 import { createManagerLanguageRouter } from './managerLanguageRoutes.js';
 import { createManagerVoiceRouter } from './managerVoiceRoutes.js';
 import express from 'express';
@@ -49,6 +50,7 @@ export interface GatewayOverrides {
   managerLanguageApiKey?: string | null;
   managerLanguageModel?: string | null;
   managerLanguageFetch?: typeof fetch;
+  insuranceReportFetch?: typeof fetch;
   managerApiUrl?: string | null;
   managerServiceKey?: string | null;
   managerTimeoutMs?: number;
@@ -185,6 +187,8 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   app.use(createManagerVoiceRouter({sessionSecret,allowedOrigins,
     apiKey:overrides.managerLanguageApiKey ?? config.managerLanguageApiKey,
     ...(overrides.managerLanguageFetch?{fetchImpl:overrides.managerLanguageFetch}:{})}));
+  app.use(createInsuranceReportRouter({sessionSecret,allowedOrigins,acpUrl:acpUpstreamUrl,serviceKey,userId,realmId,
+    ...(overrides.insuranceReportFetch?{fetchImpl:overrides.insuranceReportFetch}:{})}));
   app.use(createManagerLanguageRouter({sessionSecret,allowedOrigins,
     apiKey:overrides.managerLanguageApiKey ?? config.managerLanguageApiKey,
     model:overrides.managerLanguageModel ?? config.managerLanguageModel,
