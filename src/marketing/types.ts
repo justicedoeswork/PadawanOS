@@ -207,6 +207,11 @@ export interface CreativeCandidateReview {
   readonly history: readonly { readonly from: string | null; readonly to: string; readonly actor: string; readonly reason: string; readonly at: string }[];
   readonly publication: { readonly scheduled: false; readonly published: false; readonly livePublishing: 'DISABLED' };
 }
+export interface CreativeCandidateReviewQueue {
+  readonly items: readonly CreativeCandidateReview[];
+  readonly generatedAt: string;
+}
+
 export interface MarketingIntegrationStatus {
   readonly gateway: string;
   readonly marketing: {
