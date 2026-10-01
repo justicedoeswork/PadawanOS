@@ -54,8 +54,24 @@ export type MarketingAgentResult =
   | { readonly kind: 'response'; readonly status: number; readonly body: unknown }
   | { readonly kind: 'unavailable'; readonly reason: 'timeout' | 'network' | 'malformed-response' };
 
+export type MarketingAgentPreviewResult =
+  | { readonly kind: 'response'; readonly status: number; readonly contentType: string; readonly body: Uint8Array; readonly sha256?: string }
+  | { readonly kind: 'unavailable'; readonly reason: 'timeout' | 'network' | 'malformed-response' };
+
+export interface MarketingAgentPreviewRequest {
+  readonly path: string;
+  readonly query?: string;
+  readonly timeoutMs?: number;
+}
+
+const MAX_MARKETING_PREVIEW_BYTES = 50 * 1024 * 1024;
+const MAX_MARKETING_PREVIEW_ERROR_BYTES = 64 * 1024;
+const ALLOWED_MARKETING_PREVIEW_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'video/mp4', 'video/quicktime']);
+
 export interface MarketingAgentClient {
   request(input: MarketingAgentRequest): Promise<MarketingAgentResult>;
+  /** Authenticated, size-bounded media response; never exposes the server credential. */
+  preview?(input: MarketingAgentPreviewRequest): Promise<MarketingAgentPreviewResult>;
   /** Cheap reachability probe against the Marketing Agent's own liveness endpoint. */
   probe(): Promise<'REACHABLE' | 'UNREACHABLE'>;
 }
@@ -132,6 +148,56 @@ export function createMarketingAgentClient(options: MarketingAgentClientOptions)
     return { kind: 'response', status: response.status, body };
   }
 
+  async function preview(input: MarketingAgentPreviewRequest): Promise<MarketingAgentPreviewResult> {
+    const url = joinUrl(options.baseUrl, input.path, input.query);
+    const startedAt = Date.now();
+    let response: Response;
+    try {
+      response = await doFetch(url, {
+        method: 'GET',
+        headers: { authorization: `Bearer ${options.apiKey}`, accept: [...ALLOWED_MARKETING_PREVIEW_TYPES].join(',') },
+        signal: AbortSignal.timeout(input.timeoutMs ?? defaultTimeoutMs)
+      });
+    } catch (error) {
+      const timedOut = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
+      logError('marketing agent media preview failed', { url: redactedUrl(url), method: 'GET', reason: timedOut ? 'timeout' : 'network', durationMs: Date.now() - startedAt });
+      return { kind: 'unavailable', reason: timedOut ? 'timeout' : 'network' };
+    }
+
+    const contentType = (response.headers.get('content-type') ?? '').split(';', 1)[0].trim().toLowerCase();
+    const isSuccess = response.status >= 200 && response.status < 300;
+    const maxBytes = isSuccess ? MAX_MARKETING_PREVIEW_BYTES : MAX_MARKETING_PREVIEW_ERROR_BYTES;
+    const declaredLength = Number(response.headers.get('content-length') ?? 0);
+    if (isSuccess && !ALLOWED_MARKETING_PREVIEW_TYPES.has(contentType)) {
+      await response.body?.cancel();
+      logError('marketing agent returned an unsupported preview type', { url: redactedUrl(url), status: response.status });
+      return { kind: 'unavailable', reason: 'malformed-response' };
+    }
+    if (declaredLength > maxBytes) {
+      await response.body?.cancel();
+      logError('marketing agent preview exceeded the size limit', { url: redactedUrl(url), status: response.status });
+      return { kind: 'unavailable', reason: 'malformed-response' };
+    }
+    const reader = response.body?.getReader();
+    if (!reader) return { kind: 'response', status: response.status, contentType, body: new Uint8Array(0) };
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxBytes) { await reader.cancel(); return { kind: 'unavailable', reason: 'malformed-response' }; }
+        chunks.push(value);
+      }
+    } catch { return { kind: 'unavailable', reason: 'network' }; }
+    const body = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
+    const sha256 = response.headers.get('x-content-sha256') ?? undefined;
+    logInfo('marketing agent media preview', { url: redactedUrl(url), method: 'GET', status: response.status, durationMs: Date.now() - startedAt, bytes: total });
+    return { kind: 'response', status: response.status, contentType, body, ...(sha256 ? { sha256 } : {}) };
+  }
   return {
     request: call,
     preview,
