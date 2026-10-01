@@ -36,6 +36,8 @@ describe('authenticated insurance report gateway',()=>{
   expect(response.status).toBe(202);expect(await response.text()).not.toContain('private-service-key');
   expect(fake.mock.calls[0]?.[0]).toBe('http://insurance-audit-agent.internal:3001/manager/insurance/report');
   expect(fake.mock.calls[0]?.[1]).toMatchObject({redirect:'error',headers:{authorization:'Bearer private-service-key','x-acp-user-id':'austin','x-acp-realm-id':'realm'}});
+  await fetch(url+'/status',{method:'POST',headers,body:JSON.stringify(request)});
+  expect(fake.mock.calls[1]?.[0]).toBe('http://insurance-audit-agent.internal:3001/manager/insurance/report/status');
  });
  it('does not leak provider failures or accept a mismatched request response',async()=>{
   for(const output of [new Response('secret provider diagnostic',{status:500}),new Response(JSON.stringify({requestId:'other',status:'completed'})),new Response('x'.repeat(33_000))]){

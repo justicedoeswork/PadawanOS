@@ -23,7 +23,7 @@ export function reportUpstream(acpUrl:string|null):string|null {
 export function createInsuranceReportRouter(options:{sessionSecret:string|null;allowedOrigins:string[];
   acpUrl:string|null;serviceKey:string|null;userId:string|null;realmId:string|null;fetchImpl?:typeof fetch}) {
   const router=Router();const upstream=reportUpstream(options.acpUrl);let active=0;
-  router.post('/api/insurance/report',createRequireSession(options.sessionSecret),async(req,res)=>{
+  router.post(['/api/insurance/report','/api/insurance/report/status'],createRequireSession(options.sessionSecret),async(req,res)=>{
     res.setHeader('Cache-Control','no-store');
     if(!req.headers.origin||!options.allowedOrigins.includes(req.headers.origin)){res.status(403).json({error:{code:'ORIGIN_REJECTED'}});return;}
     if(!req.is('application/json')){res.status(415).json({error:{code:'JSON_REQUIRED'}});return;}
@@ -32,7 +32,7 @@ export function createInsuranceReportRouter(options:{sessionSecret:string|null;a
     if(active>=2){res.status(429).json({error:{code:'REPORT_BUSY'}});return;}
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),180_000);active++;
     try{
-      const response=await (options.fetchImpl??fetch)(upstream,{method:'POST',redirect:'error',signal:controller.signal,
+      const response=await (options.fetchImpl??fetch)(upstream+(req.path.endsWith('/status')?'/status':''),{method:'POST',redirect:'error',signal:controller.signal,
         headers:{authorization:`Bearer ${options.serviceKey}`,'content-type':'application/json',
           'x-acp-user-id':options.userId,'x-acp-realm-id':options.realmId},body:JSON.stringify(request)});
       if(!response.ok){await response.body?.cancel();res.status(response.status===429?429:502).json({error:{code:'REPORT_STATUS_UNCONFIRMED'}});return;}
@@ -41,7 +41,7 @@ export function createInsuranceReportRouter(options:{sessionSecret:string|null;a
       try{for(;;){const p=await reader.read();if(p.done)break;length+=p.value.byteLength;if(length>32_768)throw Error('large_response');chunks.push(p.value);}}finally{await reader.cancel();}
       const result=JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string,unknown>;
       if(!result||typeof result!=='object'||result.requestId!==request.requestId||
-        !['working','completed','partially_completed','failed','needs_review'].includes(String(result.status)))throw Error('invalid_response');
+        !['not_started','working','completed','partially_completed','failed','needs_review'].includes(String(result.status)))throw Error('invalid_response');
       res.status(response.status===202?202:200).json(result);
     }catch{res.status(502).json({error:{code:'REPORT_STATUS_UNCONFIRMED'}});}
     finally{clearTimeout(timer);active--;}

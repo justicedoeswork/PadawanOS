@@ -34,7 +34,9 @@ disabled. Other mixed read/write requests must not silently drop the action.
 
 Before posting, the browser retains the UUID and exact request in sessionStorage.
 On uncertainty it keeps that ID. “Check report status” bypasses interpretation
-and reads the same durable backend request; repeated network requests do not
+and uses the separate `/api/insurance/report/status` read-only route. If the
+original request never arrived, status returns `not_started` without claiming
+or starting work. It reads the same durable backend request; repeated requests do not
 regenerate the PDF or resend email. An ordinary repeat/explain also cannot
 execute the action again. Interrupted backend tasks stay held for review.
 The response distinguishes the saved PDF, Outlook acceptance, partial completion

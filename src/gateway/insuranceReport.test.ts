@@ -48,5 +48,15 @@ describe('durable manager report actions',()=>{
   await askConversationalManager(question);await askConversationalManager('check report status');
   expect(requests).toHaveLength(2);expect(requests[0]).toEqual(requests[1]);expect(requests[0].requestText).toBe(question);
   expect(fetcher.mock.calls.filter(c=>c[0]==='/api/manager/interpret')).toHaveLength(1);
+  expect(fetcher.mock.calls.at(-1)?.[0]).toBe('/api/insurance/report/status');
+ });
+ it('reports an unrecorded request without starting it during a status check',async()=>{
+  const fake=vi.fn(async(url:unknown,options:RequestInit)=>{
+   if(url==='/api/insurance/report')throw Error('request never reached server');
+   return new Response(JSON.stringify({requestId:JSON.parse(String(options.body)).requestId,status:'not_started'}));
+  });vi.stubGlobal('fetch',fake);
+  await requestInsuranceReport(intent,question);
+  expect((await checkInsuranceReport()).text).toContain('did not start it or send email');
+  expect(fake.mock.calls.filter(c=>c[0]==='/api/insurance/report')).toHaveLength(1);
  });
 });

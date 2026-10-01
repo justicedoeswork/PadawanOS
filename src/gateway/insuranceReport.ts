@@ -26,15 +26,16 @@ function readSaved():Saved[] {
     return v;
   });
 }
-async function submit(saved:Saved):Promise<ManagerReply> {
+async function submit(saved:Saved,statusOnly=false):Promise<ManagerReply> {
   const intent=reportIntent({kind:'insurance_report',search:saved.request.search,activeOnly:saved.request.activeOnly,email:saved.request.email});
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),190_000);
   const unknown=`I couldn’t confirm this report’s status. Say “check report status” to check the same request without creating or emailing another copy. Request: ${saved.request.requestId}.`;
   try{
-    const response=await fetch('/api/insurance/report',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},signal:controller.signal,body:JSON.stringify(saved.request)});
+    const response=await fetch('/api/insurance/report'+(statusOnly?'/status':''),{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},signal:controller.signal,body:JSON.stringify(saved.request)});
     if(!response.ok)return reply(unknown,intent);
     const result=await response.json() as Record<string,unknown>;
-    if(!result||result.requestId!==saved.request.requestId||!['working','completed','partially_completed','failed','needs_review'].includes(String(result.status)))return reply(unknown,intent);
+    if(!result||result.requestId!==saved.request.requestId||!['not_started','working','completed','partially_completed','failed','needs_review'].includes(String(result.status)))return reply(unknown,intent);
+    if(result.status==='not_started')return reply('That request was not recorded by the insurance service. This status check did not start it or send email. Ask explicitly for the report again if you still want it.',intent);
     const records=readSaved(),record=records.find(r=>r.request.requestId===saved.request.requestId);
     if(record){record.status=result.status==='completed'?'completed':result.status==='working'?'pending':'review';sessionStorage.setItem(KEY,JSON.stringify(records));}
     const report=result.report as Record<string,unknown>|null,delivery=result.delivery as Record<string,unknown>|null;
@@ -73,6 +74,6 @@ export async function requestInsuranceReport(intent:InsuranceReportIntent,questi
   return submit(saved);
 }
 export async function checkInsuranceReport():Promise<ManagerReply> {
-  try{const saved=readSaved().at(-1);if(saved)return submit(saved);}catch{/* no action without a saved request */}
+  try{const saved=readSaved().at(-1);if(saved)return submit(saved,true);}catch{/* no action without a saved request */}
   return {intent:{kind:'help'},text:'There is no saved report request in this tab. You can ask me to create a new current insurance summary PDF.'};
 }
