@@ -32,7 +32,7 @@ export function CreativeMediaReview() {
   const refresh = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     const result = await getCreativeCandidateReviews(signal, ['READY_FOR_CAMPAIGN']);
-    if (result.ok) { setItems(result.data.items); setError(null); }
+    if (result.ok) { setItems(result.data.items.filter((item) => item.status === 'READY_FOR_CAMPAIGN')); setError(null); }
     else setError(result.error);
     setLoading(false);
   }, []);
