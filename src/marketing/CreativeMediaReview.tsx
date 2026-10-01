@@ -31,8 +31,8 @@ export function CreativeMediaReview() {
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
-    const result = await getCreativeCandidateReviews(signal, ['READY_FOR_CAMPAIGN']);
-    if (result.ok) { setItems(result.data.items.filter((item) => item.status === 'READY_FOR_CAMPAIGN')); setError(null); }
+    const result = await getCreativeCandidateReviews(signal, ['READY_FOR_CAMPAIGN', 'NEEDS_REVIEW']);
+    if (result.ok) { setItems(result.data.items.filter((item) => item.status === 'READY_FOR_CAMPAIGN' || item.status === 'NEEDS_REVIEW')); setError(null); }
     else setError(result.error);
     setLoading(false);
   }, []);
@@ -114,9 +114,10 @@ export function CreativeMediaReview() {
               <option value="runway">Runway</option><option value="higgsfield">Higgsfield.ai</option>
             </select></label>
             <footer>
-              {item.status !== 'REJECTED' && <Button variant="secondary" size="sm" label={busyId === item.candidateId ? 'Working…' : 'Reject'} isDisabled={Boolean(busyId)} clickAction={() => void decide(item, 'REJECTED')} />}
               <Button variant="secondary" size="sm" label={busyId === item.candidateId ? 'Working…' : `Redo with ${redoProviders[item.candidateId] ?? (item.transformation?.provider === 'runway' ? 'Higgsfield' : 'Runway')}`} isDisabled={Boolean(busyId)} clickAction={() => void redo(item)} />
-              {item.status !== 'REJECTED' && <Button variant="primary" size="sm" label={busyId === item.candidateId ? 'Working…' : 'Approve item'} isDisabled={Boolean(busyId)} clickAction={() => void decide(item, 'APPROVED')} />}
+              {item.status === 'READY_FOR_CAMPAIGN' && <Button variant="secondary" size="sm" label={busyId === item.candidateId ? 'Working…' : 'Reject'} isDisabled={Boolean(busyId)} clickAction={() => void decide(item, 'REJECTED')} />}
+              {item.status === 'READY_FOR_CAMPAIGN' && <Button variant="primary" size="sm" label={busyId === item.candidateId ? 'Working…' : 'Approve item'} isDisabled={Boolean(busyId)} clickAction={() => void decide(item, 'APPROVED')} />}
+              {item.status === 'NEEDS_REVIEW' && <span className="creative-review-muted">Owner review required before generation.</span>}
             </footer>
           </article>
         ))}
