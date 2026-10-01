@@ -34,6 +34,7 @@ import {
 } from './viewModel';
 import { MarketingQueue } from './MarketingQueue';
 import { CampaignReview } from './CampaignReview';
+import { CreativeMediaReview } from './CreativeMediaReview';
 import { useI18n } from '../i18n/context';
 import type { MessageKey } from '../i18n/messages';
 import './MarketingPage.css';
@@ -337,6 +338,8 @@ export function MarketingPage() {
       {!loading && !error && mode.kind === 'campaign' && review && (
         <CampaignReview review={review} busy={busy} actions={actions} />
       )}
+
+      {mode.kind === 'queue' && <CreativeMediaReview />}
 
       {/* ---- dialogs: every mutation is an explicit, confirmed action ---- */}
 
