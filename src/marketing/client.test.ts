@@ -46,6 +46,12 @@ describe('every call goes to the JusticeOS gateway, with the session cookie and 
     expect(calls[1]?.url).toBe('/api/marketing/campaigns/campaign%201%2Fwith%20slash/review');
   });
 
+  it('loads rejected items alongside ready items so the owner can request a later redo', async () => {
+    const calls = stubFetch({ body: { items: [], generatedAt: 'now' } });
+    await getCreativeCandidateReviews(undefined, ['READY_FOR_CAMPAIGN', 'REJECTED']);
+    expect(calls[0]?.url).toBe('/api/marketing/media/candidates/review?status=READY_FOR_CAMPAIGN&status=REJECTED');
+  });
+
   it('never sends an Authorization header or anything credential-shaped', async () => {
     const calls = stubFetch();
 

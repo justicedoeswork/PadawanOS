@@ -31,7 +31,7 @@ export function CreativeMediaReview() {
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
-    const result = await getCreativeCandidateReviews(signal);
+    const result = await getCreativeCandidateReviews(signal, ['READY_FOR_CAMPAIGN', 'REJECTED']);
     if (result.ok) { setItems(result.data.items); setError(null); }
     else setError(result.error);
     setLoading(false);
@@ -51,7 +51,8 @@ export function CreativeMediaReview() {
       const key = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : 'creative-' + item.candidateId + '-' + Date.now();
       const result = await decideCreativeCandidate(item.candidateId, decision, notes[item.candidateId] ?? '', key);
       if (!result.ok) { setError(result.error); return; }
-      setItems((current) => current.filter((candidate) => candidate.candidateId !== item.candidateId));
+      if (decision === 'REJECTED') setItems((current) => current.map((candidate) => candidate.candidateId === item.candidateId ? { ...candidate, status: 'REJECTED' } : candidate));
+      else setItems((current) => current.filter((candidate) => candidate.candidateId !== item.candidateId));
     } finally {
       setBusyId(null);
     }
@@ -114,9 +115,9 @@ export function CreativeMediaReview() {
               <option value="runway">Runway</option><option value="higgsfield">Higgsfield.ai</option>
             </select></label>
             <footer>
-              <Button variant="secondary" size="sm" label={busyId === item.candidateId ? 'Working…' : 'Reject'} isDisabled={Boolean(busyId)} clickAction={() => void decide(item, 'REJECTED')} />
+              {item.status !== 'REJECTED' && <Button variant="secondary" size="sm" label={busyId === item.candidateId ? 'Working…' : 'Reject'} isDisabled={Boolean(busyId)} clickAction={() => void decide(item, 'REJECTED')} />}
               <Button variant="secondary" size="sm" label={busyId === item.candidateId ? 'Working…' : `Redo with ${redoProviders[item.candidateId] ?? (item.transformation?.provider === 'runway' ? 'Higgsfield' : 'Runway')}`} isDisabled={Boolean(busyId)} clickAction={() => void redo(item)} />
-              <Button variant="primary" size="sm" label={busyId === item.candidateId ? 'Working…' : 'Approve item'} isDisabled={Boolean(busyId)} clickAction={() => void decide(item, 'APPROVED')} />
+              {item.status !== 'REJECTED' && <Button variant="primary" size="sm" label={busyId === item.candidateId ? 'Working…' : 'Approve item'} isDisabled={Boolean(busyId)} clickAction={() => void decide(item, 'APPROVED')} />}
             </footer>
           </article>
         ))}

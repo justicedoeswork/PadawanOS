@@ -143,8 +143,11 @@ export function getRevisionReview(revisionId: string, signal?: AbortSignal): Pro
 }
 
 
-export function getCreativeCandidateReviews(signal?: AbortSignal): Promise<MarketingResult<CreativeCandidateReviewQueue>> {
-  return call('/media/candidates/review', { method: 'GET', ...(signal ? { signal } : {}) });
+export function getCreativeCandidateReviews(signal?: AbortSignal, statuses?: readonly string[]): Promise<MarketingResult<CreativeCandidateReviewQueue>> {
+  const query = new URLSearchParams();
+  for (const status of statuses ?? []) query.append('status', status);
+  const suffix = query.size > 0 ? '?' + query.toString() : '';
+  return call('/media/candidates/review' + suffix, { method: 'GET', ...(signal ? { signal } : {}) });
 }
 
 export function decideCreativeCandidate(
