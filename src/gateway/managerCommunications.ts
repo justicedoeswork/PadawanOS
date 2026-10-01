@@ -6,6 +6,7 @@ export type LedgerView = 'today' | 'urgent' | 'overdue' | 'waiting' | 'inbox' | 
 export type ManagerIntent =
   | { kind: 'insurance'; question:string }
   | { kind: 'insurance_report'; search:string; activeOnly:boolean; email:boolean }
+  | { kind: 'insurance_draft'; contractor:string; coverageType:'wc'|'gl' }
   | { kind: 'call_followups' }
   | { kind: 'call_followup_owner'; items:string; owner:string }
   | { kind: 'calls'; today?: boolean; participant?: string; topic?: string; latest?: boolean }
