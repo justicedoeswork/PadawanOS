@@ -31,7 +31,7 @@ export function CreativeMediaReview() {
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
-    const result = await getCreativeCandidateReviews(signal, ['READY_FOR_CAMPAIGN', 'REJECTED']);
+    const result = await getCreativeCandidateReviews(signal, ['READY_FOR_CAMPAIGN']);
     if (result.ok) { setItems(result.data.items); setError(null); }
     else setError(result.error);
     setLoading(false);
@@ -51,8 +51,7 @@ export function CreativeMediaReview() {
       const key = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : 'creative-' + item.candidateId + '-' + Date.now();
       const result = await decideCreativeCandidate(item.candidateId, decision, notes[item.candidateId] ?? '', key);
       if (!result.ok) { setError(result.error); return; }
-      if (decision === 'REJECTED') setItems((current) => current.map((candidate) => candidate.candidateId === item.candidateId ? { ...candidate, status: 'REJECTED' } : candidate));
-      else setItems((current) => current.filter((candidate) => candidate.candidateId !== item.candidateId));
+      setItems((current) => current.filter((candidate) => candidate.candidateId !== item.candidateId));
     } finally {
       setBusyId(null);
     }
