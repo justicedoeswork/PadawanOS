@@ -5,6 +5,14 @@ const plan={action:'read',question:null,intents:[intent]};
 const input={question:'whats the last thing me and chase spoke about',turns:[]};
 const envelope=(value:unknown)=>new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({decision:value})}]}]}));
 describe('bounded language interpreter',()=>{
+ it('accepts only the separate bounded report action, never a read or combined action',()=>{
+   const report={action:'report',question:null,intents:[{kind:'insurance_report',search:'',email:true,activeOnly:false}]};
+   expect(parseLanguagePlan(report)).toEqual(report);
+   for(const invalid of [{...report,action:'read'},{...report,intents:[...report.intents,{kind:'emails'}]},
+     {...report,intents:[{...report.intents[0],to:'someone'}]},
+     {...report,intents:[{...report.intents[0],email:'yes'}]}])expect(()=>parseLanguagePlan(invalid)).toThrow();
+   expect(languageInstructions).toContain('only if the current user explicitly requests delivery to themselves');
+ });
  it('accepts bounded insurance questions without endpoints, recipients or action fields',()=>{
    const insurance={action:'read',question:null,intents:[{kind:'insurance',question:'Which contractors have active GL but no verified waiver?'}]};
    expect(parseLanguagePlan(insurance)).toEqual(insurance);

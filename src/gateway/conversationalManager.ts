@@ -1,4 +1,5 @@
 import {previewCallOwner,confirmCallOwner} from './callOwnerCorrection';
+import {reportIntent,requestInsuranceReport,checkInsuranceReport} from './insuranceReport';
 import { askManager, executeManagerIntent, type ManagerContext, type ManagerIntent, type ManagerReply } from './managerCommunications';
 function object(value:unknown):Record<string,unknown>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid interpretation');return value as Record<string,unknown>;}
 /** Validate the read allowlist again at the UI boundary. No model-selected URLs. */
@@ -20,6 +21,7 @@ export function readIntent(value:unknown):ManagerIntent{
 }
 const help=(text:string):ManagerReply=>({intent:{kind:'help'},text});
 export async function askConversationalManager(question:string,context:ManagerContext={}):Promise<ManagerReply>{
+  if(/^check (?:insurance )?report status[.!?]?$/i.test(question.trim()))return checkInsuranceReport();
   if(/^save correction[.!]?$/i.test(question.trim()))return confirmCallOwner(context);
   if(/^cancel correction[.!]?$/i.test(question.trim()))return {...help('Correction cancelled. Nothing was changed.'),followupSelection:context.followupSelection??[]};
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25_000);
@@ -41,6 +43,10 @@ export async function askConversationalManager(question:string,context:ManagerCo
   try{
     plan=object(await response.json());
     if(!Array.isArray(plan.intents)||plan.intents.length>3)throw Error('Invalid interpretation');
+    if(plan.action==='report'){
+      if(plan.question!==null||plan.intents.length!==1)throw Error('Invalid interpretation');
+      return requestInsuranceReport(reportIntent(plan.intents[0]),question);
+    }
     if(plan.action==='clarify'&&plan.intents.length===0&&typeof plan.question==='string'&&plan.question.length<=300&&plan.question.trim().endsWith('?'))return help(plan.question);
     if(plan.action==='unsupported'&&plan.intents.length===0)return help('I can’t carry out that request through this chat yet. Nothing was changed. I can read your connected calls, messages, calendar and task queues; sending, approving or changing records needs the corresponding action workflow.');
     if(plan.action==='greeting'&&plan.intents.length===0)return help('Hi Austin. What would you like to catch up on?');

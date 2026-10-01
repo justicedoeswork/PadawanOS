@@ -5,6 +5,7 @@ export type LedgerView = 'today' | 'urgent' | 'overdue' | 'waiting' | 'inbox' | 
 
 export type ManagerIntent =
   | { kind: 'insurance'; question:string }
+  | { kind: 'insurance_report'; search:string; activeOnly:boolean; email:boolean }
   | { kind: 'call_followups' }
   | { kind: 'call_followup_owner'; items:string; owner:string }
   | { kind: 'calls'; today?: boolean; participant?: string; topic?: string; latest?: boolean }
@@ -252,6 +253,7 @@ export function summarizeSnapshot(s: ManagerSnapshot): string {
 }
 
 function explanationFor(intent: ManagerIntent | undefined, lastReply?: string): string {
+  if (intent?.kind === 'insurance_report') return 'This is a saved report request with a unique ID. PDF creation and any requested email delivery are tracked separately. Checking its status does not repeat either action.';
   if (intent?.kind === 'insurance') return 'That answer was retrieved from the insurance agent using your connected contractor and policy records. Active coverage on file and satisfaction of all COI requirements are evaluated separately. This read did not send email or change policy records.';
   if (intent?.kind === 'call_followups') return 'These are saved call-linked follow-ups awaiting review. The evidence includes the source call and the recorded clarification question; no external action has been taken.';
   if (!intent) return 'I do not have enough prior context to explain that yet.';
@@ -275,12 +277,14 @@ export async function askManager(raw: string, context: ManagerContext = {}): Pro
 }
 
 export async function executeManagerIntent(intent: ManagerIntent, context: ManagerContext = {}): Promise<ManagerReply> {
+  if (intent.kind === 'insurance_report') return {intent,text:context.lastReply??'Ask explicitly for a new insurance PDF, or say “check report status” for your saved request.'};
   if (intent.kind === 'insurance') return { intent, text: await askInsuranceRead(intent.question) };
   if (intent.kind === 'explain') {
     return { intent, text: context.lastEvidence ?? explanationFor(context.lastIntent, context.lastReply) };
   }
   if (intent.kind === 'repeat') {
     const previous = context.lastIntent;
+    if (previous?.kind === 'insurance_report') return {intent:previous,text:context.lastReply??'Say “check report status” to check the saved request.'};
     if (previous?.kind === 'insurance') return executeManagerIntent(previous,context);
     if (previous?.kind === 'call_followup_owner') return {intent,text:context.lastReply??'Ask for your call follow-ups to prepare a new ownership correction.'};
     if (previous?.kind === 'call_followups') return context.lastEvidence ? {intent,text:context.lastEvidence} : executeManagerIntent(previous,context);
