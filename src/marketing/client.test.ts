@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { approveRevision, editChannel, getCampaignReview, getReviewQueue, redoCreativeCandidate, requestChanges } from './client';
+import { approveRevision, editChannel, getCampaignReview, getCreativeCandidateReviews, getReviewQueue, redoCreativeCandidate, requestChanges } from './client';
 
 /**
  * The browser's half of the bridge contract. The gateway's own tests prove
