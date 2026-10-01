@@ -1,5 +1,6 @@
 import {previewCallOwner,confirmCallOwner} from './callOwnerCorrection';
 import {reportIntent,requestInsuranceReport,checkInsuranceReport} from './insuranceReport';
+import {draftIntent,requestInsuranceDraft,checkInsuranceDraft} from './insuranceDraft';
 import { askManager, executeManagerIntent, type ManagerContext, type ManagerIntent, type ManagerReply } from './managerCommunications';
 function object(value:unknown):Record<string,unknown>{if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid interpretation');return value as Record<string,unknown>;}
 /** Validate the read allowlist again at the UI boundary. No model-selected URLs. */
@@ -22,6 +23,7 @@ export function readIntent(value:unknown):ManagerIntent{
 const help=(text:string):ManagerReply=>({intent:{kind:'help'},text});
 export async function askConversationalManager(question:string,context:ManagerContext={}):Promise<ManagerReply>{
   if(/^check (?:insurance )?report status[.!?]?$/i.test(question.trim()))return checkInsuranceReport();
+  if(/^check (?:insurance )?draft status[.!?]?$/i.test(question.trim()))return checkInsuranceDraft();
   if(/^save correction[.!]?$/i.test(question.trim()))return confirmCallOwner(context);
   if(/^cancel correction[.!]?$/i.test(question.trim()))return {...help('Correction cancelled. Nothing was changed.'),followupSelection:context.followupSelection??[]};
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25_000);
@@ -47,8 +49,12 @@ export async function askConversationalManager(question:string,context:ManagerCo
       if(plan.question!==null||plan.intents.length!==1)throw Error('Invalid interpretation');
       return requestInsuranceReport(reportIntent(plan.intents[0]),question);
     }
+    if(plan.action==='draft'){
+      if(plan.question!==null||plan.intents.length!==1)throw Error('Invalid interpretation');
+      return requestInsuranceDraft(draftIntent(plan.intents[0]),question);
+    }
     if(plan.action==='clarify'&&plan.intents.length===0&&typeof plan.question==='string'&&plan.question.length<=300&&plan.question.trim().endsWith('?'))return help(plan.question);
-    if(plan.action==='unsupported'&&plan.intents.length===0)return help('I can’t carry out that request through this chat yet. Nothing was changed. I can check contractor insurance and COI requirements, and read your connected calls, messages, calendar and task queues; sending, approving or changing records needs the corresponding action workflow.');
+    if(plan.action==='unsupported'&&plan.intents.length===0)return help('I can’t carry out that request through this chat yet. Nothing was changed. I can read your connected calls, messages, calendar and task queues; sending, approving or changing records needs the corresponding action workflow.');
     if(plan.action==='greeting'&&plan.intents.length===0)return help('Hi Austin. What would you like to catch up on?');
     if(plan.action!=='read'||plan.question!==null||!plan.intents.length)throw Error('Invalid interpretation');
     intents=plan.intents.map(readIntent);
@@ -60,4 +66,3 @@ export async function askConversationalManager(question:string,context:ManagerCo
   const evidence=replies.map(r=>'evidence' in r?r.evidence:undefined).filter(Boolean).join('\n\n');
   return {followupSelection:replies.find(r=>'followupSelection' in r)?.followupSelection,intent:replies.at(-1)!.intent,text:replies.map(r=>r.text).join('\n\n'),...(evidence?{evidence}:{})};
 }
-

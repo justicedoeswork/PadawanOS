@@ -6,6 +6,7 @@ export type LedgerView = 'today' | 'urgent' | 'overdue' | 'waiting' | 'inbox' | 
 export type ManagerIntent =
   | { kind: 'insurance'; question:string }
   | { kind: 'insurance_report'; search:string; activeOnly:boolean; email:boolean }
+  | { kind: 'insurance_draft'; contractor:string; coverageType:'wc'|'gl' }
   | { kind: 'call_followups' }
   | { kind: 'call_followup_owner'; items:string; owner:string }
   | { kind: 'calls'; today?: boolean; participant?: string; topic?: string; latest?: boolean }
@@ -278,6 +279,7 @@ export async function askManager(raw: string, context: ManagerContext = {}): Pro
 
 export async function executeManagerIntent(intent: ManagerIntent, context: ManagerContext = {}): Promise<ManagerReply> {
   if (intent.kind === 'insurance_report') return {intent,text:context.lastReply??'Ask explicitly for a new insurance PDF, or say “check report status” for your saved request.'};
+  if (intent.kind === 'insurance_draft') return {intent,text:context.lastReply??'Say “draft an email” with the contractor and coverage type to prepare a new review draft.'};
   if (intent.kind === 'insurance') return { intent, text: await askInsuranceRead(intent.question) };
   if (intent.kind === 'explain') {
     return { intent, text: context.lastEvidence ?? explanationFor(context.lastIntent, context.lastReply) };
@@ -285,6 +287,7 @@ export async function executeManagerIntent(intent: ManagerIntent, context: Manag
   if (intent.kind === 'repeat') {
     const previous = context.lastIntent;
     if (previous?.kind === 'insurance_report') return {intent:previous,text:context.lastReply??'Say “check report status” to check the saved request.'};
+    if (previous?.kind === 'insurance_draft') return {intent:previous,text:context.lastReply??'Say “draft an email” with the contractor and coverage type to prepare a new review draft.'};
     if (previous?.kind === 'insurance') return executeManagerIntent(previous,context);
     if (previous?.kind === 'call_followup_owner') return {intent,text:context.lastReply??'Ask for your call follow-ups to prepare a new ownership correction.'};
     if (previous?.kind === 'call_followups') return context.lastEvidence ? {intent,text:context.lastEvidence} : executeManagerIntent(previous,context);

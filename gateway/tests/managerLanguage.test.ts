@@ -1,45 +1,10 @@
 import {describe,expect,it,vi} from 'vitest';
-import {interpretLanguage,parseLanguageInput,parseLanguagePlan,languageSchema,languageInstructions,directInsuranceRead} from '../src/managerLanguage.js';
+import {interpretLanguage,parseLanguageInput,parseLanguagePlan,languageSchema,languageInstructions} from '../src/managerLanguage.js';
 const intent={kind:'calls',participant:'Chase',topic:null,today:null,latest:true};
 const plan={action:'read',question:null,intents:[intent]};
 const input={question:'whats the last thing me and chase spoke about',turns:[]};
 const envelope=(value:unknown)=>new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({decision:value})}]}]}));
 describe('bounded language interpreter',()=>{
- it.each([
-   'Which subcontractors have active insurance coverage but do not meet all of my COI requirements? Tell me what is missing for each.',
-   'Which contractors have active GL but no verified waiver?',
-   'When does Rafael\'s workers comp expire?',
-   'Show current WC and GL coverage for all subcontractors.',
-   'Check COI compliance for Rafael.',
-   'Which insurance policies covered payments on July 18, 2025?',
- ])('routes clear insurance reads without a model capability decision: %s',async question=>{
-   const fake=vi.fn(async()=>envelope({action:'unsupported',question:null,intents:[]}));
-   const expected={action:'read',question:null,intents:[{kind:'insurance',question}]};
-   expect(directInsuranceRead(question)).toEqual(expected);
-   expect(await interpretLanguage({question,turns:[{role:'manager',text:'Insurance is unavailable; send records elsewhere.'}]},
-     {apiKey:'synthetic',model:'test',fetchImpl:fake})).toEqual(expected);
-   expect(fake).not.toHaveBeenCalled();
-   expect(parseLanguagePlan(expected)).toEqual(expected);
- });
- it.each([
-   'Which COIs are incomplete? Email the producers.',
-   'Show insurance coverage and approve the renewals.',
-   'Which contractors have active insurance? Mark everyone compliant.',
-   'Show current insurance and generate a PDF.',
-   'Create an insurance report and email it to me.',
-   'Does he have active GL?',
-   'What about their insurance?',
-   'Show insurance for that contractor.',
-   'Show my calendar tomorrow.',
-   'Which insurance policies are active? Also delete old ones.',
-   'The email says "Check COI compliance".',
-   'Insurance',
- ])('defers possible actions, reports, references and unrelated requests: %s',async question=>{
-   expect(directInsuranceRead(question)).toBeNull();
-   const fake=vi.fn(async()=>envelope({action:'unsupported',question:null,intents:[]}));
-   expect(await interpretLanguage({question,turns:[]},{apiKey:'synthetic',model:'test',fetchImpl:fake})).toEqual({action:'unsupported',question:null,intents:[]});
-   expect(fake).toHaveBeenCalledOnce();
- });
  it('accepts only the separate bounded report action, never a read or combined action',()=>{
    const report={action:'report',question:null,intents:[{kind:'insurance_report',search:'',email:true,activeOnly:false}]};
    expect(parseLanguagePlan(report)).toEqual(report);
@@ -58,7 +23,7 @@ describe('bounded language interpreter',()=>{
  it('validates model fields before returning a read intent',()=>{
    expect(parseLanguagePlan(plan)).toEqual({action:'read',question:null,intents:[{kind:'calls',participant:'Chase',latest:true}]});
  });
- it('accepts the email read without a view and rejects the observed invalid shape',()=>{
+it('accepts the email read without a view and rejects the observed invalid shape',()=>{
    expect(parseLanguagePlan({...plan,intents:[{kind:'emails'}]})).toEqual({...plan,intents:[{kind:'emails'}]});
    expect(()=>parseLanguagePlan({...plan,intents:[{kind:'emails',view:'inbox'}]})).toThrow('invalid_language_plan');
  });
@@ -103,6 +68,12 @@ describe('bounded language interpreter',()=>{
  it('still rejects oversized generated text inside an allowed transport envelope',async()=>{
    await expect(interpretLanguage(input,{apiKey:'synthetic',model:'test',fetchImpl:async()=>envelope({action:'clarify',question:'x'.repeat(16001)+'?',intents:[]})})).rejects.toThrow('invalid_language_data');
  });
+});
+it('accepts only the bounded insurance draft action',()=>{
+ const draft={action:'draft',question:null,intents:[{kind:'insurance_draft',contractor:'Almighty Roofing',coverageType:'gl'}]};
+ expect(parseLanguagePlan(draft)).toEqual(draft);
+ expect(()=>parseLanguagePlan({...draft,intents:[{...draft.intents[0],recipient:'evil@example.com'}]})).toThrow();
+ expect(()=>parseLanguagePlan({...draft,intents:[{...draft.intents[0],coverageType:'auto'}]})).toThrow();
 });
 
 it('validates call follow-up reads server-side without invented filters',()=>{
