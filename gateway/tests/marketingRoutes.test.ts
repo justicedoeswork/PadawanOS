@@ -39,6 +39,7 @@ async function startBridge(
 }
 
 const READ_PATHS = [
+  '/api/marketing/media/candidates/review',
   '/api/marketing/campaigns/review',
   '/api/marketing/campaigns/campaign-1/review',
   '/api/marketing/revisions/revision-1/review',
@@ -46,6 +47,8 @@ const READ_PATHS = [
 ];
 
 const MUTATION_PATHS = [
+  '/api/marketing/media/candidates/candidate-1/decision',
+  '/api/marketing/media/candidates/candidate-1/redo',
   '/api/marketing/revisions/revision-1/request-changes',
   '/api/marketing/revisions/revision-1/edit-channel',
   '/api/marketing/revisions/revision-1/remove-channel',
@@ -164,6 +167,20 @@ describe('mutations: server-side actor, forwarded body, forwarded idempotency ke
       category: 'COPY_LENGTH',
       actor: TEST_MARKETING_ACTOR
     });
+  });
+
+  it('forwards a one-item redo with the server-side actor and idempotency key', async () => {
+    const { port, upstream, cookie } = await startBridge();
+    upstream.respondWith({ status: 200, body: { provider: 'runway', model: 'gen4.5', scheduled: false, published: false } });
+    const res = await fetch(`http://127.0.0.1:${port}/api/marketing/media/candidates/candidate-1/redo`, {
+      method: 'POST',
+      headers: { Cookie: cookie, 'Content-Type': 'application/json', 'Idempotency-Key': 'redo-one-item-1' },
+      body: JSON.stringify({ actor: 'spoofed', provider: 'runway', prompt: 'Keep the roof colors accurate.' })
+    });
+    expect(res.status).toBe(200);
+    expect(upstream.requests[0]?.url).toBe('/api/marketing/media/candidates/candidate-1/redo');
+    expect(upstream.requests[0]?.idempotencyKey).toBe('redo-one-item-1');
+    expect(upstream.requests[0]?.body).toEqual({ provider: 'runway', prompt: 'Keep the roof colors accurate.', actor: TEST_MARKETING_ACTOR });
   });
 
   it('forwards a structured edit body unchanged apart from the actor', async () => {

@@ -16,7 +16,6 @@ import type {
   MarketingApproveResult,
   MarketingCampaignReview,
   CreativeCandidateReviewQueue,
-  CreativeCandidateReviewQueue,
   MarketingIntegrationStatus,
   MarketingQueue,
   MarketingRevisionActionResult,
@@ -161,14 +160,14 @@ export function decideCreativeCandidate(
   });
 }
 
-export function getCreativeCandidateReviews(signal?: AbortSignal): Promise<MarketingResult<CreativeCandidateReviewQueue>> {
-  return call('/media/candidates/review', { method: 'GET', ...(signal ? { signal } : {}) });
-}
-
-export function decideCreativeCandidate(candidateId: string, decision: 'APPROVED' | 'REJECTED', note: string, idempotencyKey: string): Promise<MarketingResult<{ candidateId: string; status: string; decision: string; scheduled: false; published: false }>> {
-  return call('/media/candidates/' + encodeURIComponent(candidateId) + '/decision', {
+export function redoCreativeCandidate(
+  candidateId: string,
+  input: { prompt?: string; provider?: 'runway' | 'higgsfield'; model?: string },
+  idempotencyKey: string,
+): Promise<MarketingResult<{ candidateId: string; planId: string; provider: string; model: string; planStatus: string; jobId: string | null; jobState: string | null; outcome: string; scheduled: false; published: false }>> {
+  return call('/media/candidates/' + encodeURIComponent(candidateId) + '/redo', {
     method: 'POST',
-    body: { decision, ...(note.trim() ? { note: note.trim() } : {}) },
+    body: input,
     idempotencyKey,
   });
 }

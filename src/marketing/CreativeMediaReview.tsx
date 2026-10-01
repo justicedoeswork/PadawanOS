@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { Spinner } from '@astryxdesign/core/Spinner';
-import { decideCreativeCandidate, getCreativeCandidateReviews, type MarketingApiError } from './client';
+import { decideCreativeCandidate, getCreativeCandidateReviews, redoCreativeCandidate, type MarketingApiError } from './client';
 import type { CreativeCandidateReview } from './types';
 import './CreativeMediaReview.css';
 
@@ -25,6 +25,9 @@ export function CreativeMediaReview() {
   const [error, setError] = useState<MarketingApiError | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [redoPrompts, setRedoPrompts] = useState<Record<string, string>>({});
+  const [redoProviders, setRedoProviders] = useState<Record<string, 'runway' | 'higgsfield'>>({});
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -54,6 +57,26 @@ export function CreativeMediaReview() {
     }
   };
 
+  const redo = async (item: CreativeCandidateReview) => {
+    if (busyId) return;
+    setBusyId(item.candidateId);
+    setError(null);
+    setStatusMessage(null);
+    try {
+      const key = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : 'redo-' + item.candidateId + '-' + Date.now();
+      const provider = redoProviders[item.candidateId] ?? (item.transformation?.provider === 'runway' ? 'higgsfield' : 'runway');
+      const prompt = redoPrompts[item.candidateId]?.trim();
+      const result = await redoCreativeCandidate(item.candidateId, { provider, ...(prompt ? { prompt } : {}) }, key);
+      if (!result.ok) { setError(result.error); return; }
+      setItems((current) => current.filter((candidate) => candidate.candidateId !== item.candidateId));
+      setStatusMessage(result.data.jobId
+        ? `Redo submitted to ${result.data.provider} / ${result.data.model}. The item will return to review when generation finishes.`
+        : `Redo was not submitted because its plan needs review (${result.data.planStatus}). No generation job was started.`);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <section className="creative-review" aria-labelledby="creative-review-title">
       <div className="creative-review-heading">
@@ -63,6 +86,7 @@ export function CreativeMediaReview() {
         </div>
         <Button variant="secondary" size="sm" label="Refresh" isDisabled={loading || Boolean(busyId)} clickAction={() => void refresh()} />
       </div>
+      {statusMessage && <p className="creative-review-muted" role="status">{statusMessage}</p>}
       {error && <p className="creative-review-error" role="alert">{error.message || 'The media review service could not be reached.'}</p>}
       {loading && <div className="creative-review-loading"><Spinner size="sm" label="Loading media" /></div>}
       {!loading && items.length === 0 && !error && <p className="creative-review-muted">No generated media is waiting for review.</p>}
@@ -85,8 +109,13 @@ export function CreativeMediaReview() {
             </dl></details>}
             {item.captionDraft && <p className="creative-review-caption">{item.captionDraft}</p>}
             <label className="creative-review-note">Decision note<textarea value={notes[item.candidateId] ?? ''} onChange={(event) => setNotes((current) => ({ ...current, [item.candidateId]: event.target.value }))} rows={2} /></label>
+            <label className="creative-review-note">Redo instructions (optional)<textarea value={redoPrompts[item.candidateId] ?? ''} onChange={(event) => setRedoPrompts((current) => ({ ...current, [item.candidateId]: event.target.value }))} rows={2} placeholder="Leave blank to reuse the current prompt." /></label>
+            <label className="creative-review-note">Provider for redo<select value={redoProviders[item.candidateId] ?? (item.transformation?.provider === 'runway' ? 'higgsfield' : 'runway')} onChange={(event) => setRedoProviders((current) => ({ ...current, [item.candidateId]: event.target.value as 'runway' | 'higgsfield' }))}>
+              <option value="runway">Runway</option><option value="higgsfield">Higgsfield.ai</option>
+            </select></label>
             <footer>
               <Button variant="secondary" size="sm" label={busyId === item.candidateId ? 'Working…' : 'Reject'} isDisabled={Boolean(busyId)} clickAction={() => void decide(item, 'REJECTED')} />
+              <Button variant="secondary" size="sm" label={busyId === item.candidateId ? 'Working…' : `Redo with ${redoProviders[item.candidateId] ?? (item.transformation?.provider === 'runway' ? 'Higgsfield' : 'Runway')}`} isDisabled={Boolean(busyId)} clickAction={() => void redo(item)} />
               <Button variant="primary" size="sm" label={busyId === item.candidateId ? 'Working…' : 'Approve item'} isDisabled={Boolean(busyId)} clickAction={() => void decide(item, 'APPROVED')} />
             </footer>
           </article>
