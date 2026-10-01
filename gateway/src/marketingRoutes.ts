@@ -197,6 +197,31 @@ export function createMarketingRouter(options: MarketingRoutesOptions): Router {
   read(`${UPSTREAM_PREFIX}/campaigns/:campaignId/review`, (req) => `/campaigns/${campaignId(req)}/review`);
   read(`${UPSTREAM_PREFIX}/revisions/:revisionId/review`, (req) => `/revisions/${revisionId(req)}/review`);
 
+
+  router.get(`${UPSTREAM_PREFIX}/media/candidates/:candidateId/preview`, async (req, res) => {
+    if (!client) { notConfigured(res); return; }
+    if (!client.preview) { unavailable(res, 'malformed-response'); return; }
+    const candidateId = encodeURIComponent(String(req.params.candidateId ?? ''));
+    const variant = typeof req.query.variant === 'string' ? req.query.variant : 'GENERATED';
+    if (variant !== 'GENERATED' && variant !== 'ORIGINAL') {
+      res.status(400).json({ error: { code: 'INVALID_PREVIEW_VARIANT', message: 'variant must be GENERATED or ORIGINAL.', details: {} } });
+      return;
+    }
+    const result = await client.preview({ path: `${UPSTREAM_PREFIX}/media/candidates/${candidateId}/preview`, query: `variant=${variant}` });
+    if (result.kind === 'unavailable') { unavailable(res, result.reason); return; }
+    res.status(result.status);
+    res.setHeader('cache-control', 'private, no-store');
+    res.setHeader('x-content-type-options', 'nosniff');
+    if (result.status >= 200 && result.status < 300) {
+      res.setHeader('content-type', result.contentType);
+      res.setHeader('content-length', String(result.body.byteLength));
+      if (result.sha256) res.setHeader('x-content-sha256', result.sha256);
+    } else {
+      res.setHeader('content-type', result.contentType || 'application/json');
+    }
+    res.send(Buffer.from(result.body));
+  });
+
   // Mutations — each one is an operator action the Marketing Agent
   // audits under the actor this gateway asserts.
   for (const action of ['request-changes', 'edit-channel', 'remove-channel', 'regenerate-channel', 'replace-media', 'approve'] as const) {
