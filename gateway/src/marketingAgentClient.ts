@@ -133,7 +133,7 @@ export function createMarketingAgentClient(options: MarketingAgentClientOptions)
   }
 
   return {
-    request: call,
+    request: call,\n    preview,
     async probe() {
       const result = await call({ method: 'GET', path: '/api/marketing/health', timeoutMs: MARKETING_HEALTH_TIMEOUT_MS });
       return result.kind === 'response' && result.status >= 200 && result.status < 300 ? 'REACHABLE' : 'UNREACHABLE';
