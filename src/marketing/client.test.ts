@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { approveRevision, editChannel, getCampaignReview, getReviewQueue, requestChanges } from './client';
+import { approveRevision, editChannel, getCampaignReview, getCreativeCandidateReviews, getReviewQueue, redoCreativeCandidate, requestChanges } from './client';
 
 /**
  * The browser's half of the bridge contract. The gateway's own tests prove
@@ -46,6 +46,12 @@ describe('every call goes to the JusticeOS gateway, with the session cookie and 
     expect(calls[1]?.url).toBe('/api/marketing/campaigns/campaign%201%2Fwith%20slash/review');
   });
 
+  it('loads rejected items alongside ready items so the owner can request a later redo', async () => {
+    const calls = stubFetch({ body: { items: [], generatedAt: 'now' } });
+    await getCreativeCandidateReviews(undefined, ['READY_FOR_CAMPAIGN', 'REJECTED']);
+    expect(calls[0]?.url).toBe('/api/marketing/media/candidates/review?status=READY_FOR_CAMPAIGN&status=REJECTED');
+  });
+
   it('never sends an Authorization header or anything credential-shaped', async () => {
     const calls = stubFetch();
 
@@ -70,6 +76,15 @@ describe('every call goes to the JusticeOS gateway, with the session cookie and 
     for (const call of calls) {
       expect(JSON.parse(String(call.init.body))).not.toHaveProperty('actor');
     }
+  });
+
+  it('submits an item-level redo through the JusticeOS gateway with provider and prompt', async () => {
+    const calls = stubFetch({ body: { candidateId: 'candidate-1', provider: 'runway', model: 'gen4.5', scheduled: false, published: false } });
+    await redoCreativeCandidate('candidate-1', { provider: 'runway', prompt: 'Keep the roof colors accurate.' }, 'redo-one-item-1');
+    expect(calls[0]?.url).toBe('/api/marketing/media/candidates/candidate-1/redo');
+    expect(calls[0]?.init.headers?.['Idempotency-Key']).toBe('redo-one-item-1');
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ provider: 'runway', prompt: 'Keep the roof colors accurate.' });
+    expect(calls[0]?.init.credentials).toBe('same-origin');
   });
 
   it('sends an edit as structured fields, never as raw JSON text', async () => {

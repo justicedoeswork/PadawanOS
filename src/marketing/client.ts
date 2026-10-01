@@ -15,6 +15,7 @@
 import type {
   MarketingApproveResult,
   MarketingCampaignReview,
+  CreativeCandidateReviewQueue,
   MarketingIntegrationStatus,
   MarketingQueue,
   MarketingRevisionActionResult,
@@ -139,6 +140,39 @@ export function getCampaignReview(campaignId: string, signal?: AbortSignal): Pro
 
 export function getRevisionReview(revisionId: string, signal?: AbortSignal): Promise<MarketingResult<MarketingCampaignReview>> {
   return call(`/revisions/${encodeURIComponent(revisionId)}/review`, { method: 'GET', ...(signal ? { signal } : {}) });
+}
+
+
+export function getCreativeCandidateReviews(signal?: AbortSignal, statuses?: readonly string[]): Promise<MarketingResult<CreativeCandidateReviewQueue>> {
+  const query = new URLSearchParams();
+  for (const status of statuses ?? []) query.append('status', status);
+  const suffix = query.size > 0 ? '?' + query.toString() : '';
+  return call('/media/candidates/review' + suffix, { method: 'GET', ...(signal ? { signal } : {}) });
+}
+
+export function decideCreativeCandidate(
+  candidateId: string,
+  decision: 'APPROVED' | 'REJECTED',
+  note: string,
+  idempotencyKey: string,
+): Promise<MarketingResult<{ candidateId: string; status: string; decision: string; scheduled: false; published: false }>> {
+  return call(`/media/candidates/${encodeURIComponent(candidateId)}/decision`, {
+    method: 'POST',
+    body: { decision, ...(note.trim() ? { note: note.trim() } : {}) },
+    idempotencyKey,
+  });
+}
+
+export function redoCreativeCandidate(
+  candidateId: string,
+  input: { prompt?: string; provider?: 'runway' | 'higgsfield'; model?: string },
+  idempotencyKey: string,
+): Promise<MarketingResult<{ candidateId: string; planId: string; provider: string; model: string; planStatus: string; jobId: string | null; jobState: string | null; outcome: string; scheduled: false; published: false }>> {
+  return call('/media/candidates/' + encodeURIComponent(candidateId) + '/redo', {
+    method: 'POST',
+    body: input,
+    idempotencyKey,
+  });
 }
 
 /**

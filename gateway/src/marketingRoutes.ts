@@ -193,6 +193,10 @@ export function createMarketingRouter(options: MarketingRoutesOptions): Router {
   const revisionId = (req: Request): string => encodeURIComponent(String(req.params.revisionId ?? ''));
 
   // Reads
+  read(`${UPSTREAM_PREFIX}/media/candidates/review`, () => '/media/candidates/review');
+  read(`${UPSTREAM_PREFIX}/media/candidates/:candidateId/review`, (req) => `/media/candidates/${encodeURIComponent(String(req.params.candidateId ?? ''))}/review`);
+  mutate(`${UPSTREAM_PREFIX}/media/candidates/:candidateId/decision`, (req) => `/media/candidates/${encodeURIComponent(String(req.params.candidateId ?? ''))}/decision`);
+  mutate(`${UPSTREAM_PREFIX}/media/candidates/:candidateId/redo`, (req) => `/media/candidates/${encodeURIComponent(String(req.params.candidateId ?? ''))}/redo`);
   read(`${UPSTREAM_PREFIX}/campaigns/review`, () => '/campaigns/review');
   read(`${UPSTREAM_PREFIX}/campaigns/:campaignId/review`, (req) => `/campaigns/${campaignId(req)}/review`);
   read(`${UPSTREAM_PREFIX}/revisions/:revisionId/review`, (req) => `/revisions/${revisionId(req)}/review`);
