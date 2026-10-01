@@ -1,4 +1,4 @@
-import type { ManagerReply, ManagerIntent } from './managerCommunications';
+import type { ManagerReply } from './managerCommunications';
 
 export type InsuranceDraftIntent={kind:'insurance_draft';contractor:string;coverageType:'wc'|'gl'};
 type Request={requestId:string;requestText:string;contractor:string;coverageType:'wc'|'gl'};
