@@ -212,6 +212,21 @@ export interface CreativeCandidateReviewQueue {
   readonly generatedAt: string;
 }
 
+export interface CreativeCandidateReview {
+  readonly candidateId: string; readonly status: string;
+  readonly project: { readonly id: string; readonly name: string };
+  readonly originalAsset: { readonly filename: string; readonly mimeType: string };
+  readonly derivedAsset: null | { readonly id: string; readonly mediaType: string; readonly mimeType: string; readonly sha256: string; readonly durationSeconds: number | null; readonly width: number | null; readonly height: number | null; readonly reviewStatus: string; readonly content: { readonly kind: string; readonly path: string } };
+  readonly format: string; readonly stillOrVideo: string;
+  readonly transformation: null | { readonly planId: string; readonly type: string; readonly provider: string; readonly model: string; readonly modelRouteReason: string; readonly prompt: string; readonly promptStrategy: string; readonly aspectRatio: string; readonly durationSeconds: number | null; readonly safetyVerdict: string; readonly status: string; readonly statusReasons: readonly string[]; readonly attempts: number };
+  readonly captionDraft: string | null; readonly intendedChannels: readonly string[]; readonly contentCategory: string;
+  readonly experimental: boolean; readonly whySelected: readonly string[]; readonly whyThisFormat: readonly string[];
+  readonly cost: { readonly estimatedCredits: number | null; readonly estimatedCostUsd: number | null; readonly providerEstimatedCredits: number | null; readonly realizedCredits: number | null; readonly realizedCostUsd: number | null };
+  readonly warnings: readonly string[]; readonly history: readonly { readonly from: string | null; readonly to: string; readonly actor: string; readonly reason: string; readonly at: string }[];
+  readonly publication: { readonly scheduled: false; readonly published: false; readonly livePublishing: 'DISABLED' };
+}
+export interface CreativeCandidateReviewQueue { readonly items: readonly CreativeCandidateReview[]; readonly generatedAt: string; }
+
 export interface MarketingIntegrationStatus {
   readonly gateway: string;
   readonly marketing: {
