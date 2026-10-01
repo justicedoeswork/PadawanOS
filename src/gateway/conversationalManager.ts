@@ -48,7 +48,7 @@ export async function askConversationalManager(question:string,context:ManagerCo
       return requestInsuranceReport(reportIntent(plan.intents[0]),question);
     }
     if(plan.action==='clarify'&&plan.intents.length===0&&typeof plan.question==='string'&&plan.question.length<=300&&plan.question.trim().endsWith('?'))return help(plan.question);
-    if(plan.action==='unsupported'&&plan.intents.length===0)return help('I can’t carry out that request through this chat yet. Nothing was changed. I can read your connected calls, messages, calendar and task queues; sending, approving or changing records needs the corresponding action workflow.');
+    if(plan.action==='unsupported'&&plan.intents.length===0)return help('I can’t carry out that request through this chat yet. Nothing was changed. I can check contractor insurance and COI requirements, and read your connected calls, messages, calendar and task queues; sending, approving or changing records needs the corresponding action workflow.');
     if(plan.action==='greeting'&&plan.intents.length===0)return help('Hi Austin. What would you like to catch up on?');
     if(plan.action!=='read'||plan.question!==null||!plan.intents.length)throw Error('Invalid interpretation');
     intents=plan.intents.map(readIntent);
@@ -60,3 +60,4 @@ export async function askConversationalManager(question:string,context:ManagerCo
   const evidence=replies.map(r=>'evidence' in r?r.evidence:undefined).filter(Boolean).join('\n\n');
   return {followupSelection:replies.find(r=>'followupSelection' in r)?.followupSelection,intent:replies.at(-1)!.intent,text:replies.map(r=>r.text).join('\n\n'),...(evidence?{evidence}:{})};
 }
+
