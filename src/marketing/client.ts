@@ -15,6 +15,7 @@
 import type {
   MarketingApproveResult,
   MarketingCampaignReview,
+  CreativeCandidateReviewQueue,
   MarketingIntegrationStatus,
   MarketingQueue,
   MarketingRevisionActionResult,
@@ -139,6 +140,24 @@ export function getCampaignReview(campaignId: string, signal?: AbortSignal): Pro
 
 export function getRevisionReview(revisionId: string, signal?: AbortSignal): Promise<MarketingResult<MarketingCampaignReview>> {
   return call(`/revisions/${encodeURIComponent(revisionId)}/review`, { method: 'GET', ...(signal ? { signal } : {}) });
+}
+
+
+export function getCreativeCandidateReviews(signal?: AbortSignal): Promise<MarketingResult<CreativeCandidateReviewQueue>> {
+  return call('/media/candidates/review', { method: 'GET', ...(signal ? { signal } : {}) });
+}
+
+export function decideCreativeCandidate(
+  candidateId: string,
+  decision: 'APPROVED' | 'REJECTED',
+  note: string,
+  idempotencyKey: string,
+): Promise<MarketingResult<{ candidateId: string; status: string; decision: string; scheduled: false; published: false }>> {
+  return call(`/media/candidates/${encodeURIComponent(candidateId)}/decision`, {
+    method: 'POST',
+    body: { decision, ...(note.trim() ? { note: note.trim() } : {}) },
+    idempotencyKey,
+  });
 }
 
 /**
