@@ -17,7 +17,13 @@ configured, the route returns LANGUAGE_NOT_CONFIGURED and the frontend retains
 existing deterministic commands with an explicit limitation for unrecognized input.
 A configured provider outage does not silently reinterpret a request with regexes.
 
-One model call per submitted chat turn; no automatic retry. Context is limited to
+Self-contained insurance inspection questions have a conservative direct route to
+the existing read-only insurance connection before model interpretation. It preserves
+the whole question and does not read history. Possible actions, PDF/report requests,
+quoted content and unresolved references fall through to normal interpretation.
+This is not a provider-outage fallback and cannot authorize writes.
+
+Other questions use one model call per submitted chat turn; no automatic retry. Context is limited to
 eight recent turns, 1,500 characters per turn, and a 2,000-character question.
 Context survives reload through the existing manager turn store when that backend
 is available; this is not unlimited model memory. The interpreter sees recent chat
@@ -78,7 +84,8 @@ without re-fetching a potentially different latest call. Recap and evidence are
 stored together in the existing turn content using a readable separator and
 restored separately in chat. Only recap text enters the language history.
 
-The model selects at most three existing read operations: briefing, ledger views,
+The model selects at most three existing read operations: insurance coverage and
+COI questions, briefing, ledger views,
 needs-reply emails, pending approvals, notifications, supported calendar views,
 literal communications search, call lookup, saved call facts, explain, or repeat.
 Follow-ups and corrections use recent conversation; ambiguous references should
@@ -124,3 +131,4 @@ capabilities; the language layer cannot manufacture them. Natural response synth
 and full audio conversation remain follow-up work.
 
 API format reference: https://developers.openai.com/api/docs/guides/structured-outputs
+
