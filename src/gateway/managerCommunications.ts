@@ -279,6 +279,7 @@ export async function askManager(raw: string, context: ManagerContext = {}): Pro
 
 export async function executeManagerIntent(intent: ManagerIntent, context: ManagerContext = {}): Promise<ManagerReply> {
   if (intent.kind === 'insurance_report') return {intent,text:context.lastReply??'Ask explicitly for a new insurance PDF, or say “check report status” for your saved request.'};
+  if (intent.kind === 'insurance_draft') return {intent,text:context.lastReply??'Say “draft an email” with the contractor and coverage type to prepare a new review draft.'};
   if (intent.kind === 'insurance') return { intent, text: await askInsuranceRead(intent.question) };
   if (intent.kind === 'explain') {
     return { intent, text: context.lastEvidence ?? explanationFor(context.lastIntent, context.lastReply) };
