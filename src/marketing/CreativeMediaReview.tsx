@@ -19,6 +19,20 @@ function MediaPreview({ item, variant }: { item: CreativeCandidateReview; varian
     : <img className="creative-review-media" src={src} alt={variant.toLowerCase() + ' image for ' + item.project.name} loading="lazy" />;
 }
 
+function ReviewReason({ text }: { text: string }) {
+  const marker = ' Source: ';
+  const index = text.lastIndexOf(marker);
+  if (index >= 0) {
+    try {
+      const url = new URL(text.slice(index + marker.length));
+      if (url.protocol === 'https:' && !url.username && !url.password) {
+        return <>{text.slice(0, index)}{' '}<a href={url.href} target="_blank" rel="noopener noreferrer">View source ({url.hostname})</a></>;
+      }
+    } catch { /* Older notes can contain plain source descriptions. */ }
+  }
+  return <>{text}</>;
+}
+
 export function CreativeMediaReview() {
   const [items, setItems] = useState<readonly CreativeCandidateReview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +115,10 @@ export function CreativeMediaReview() {
               <div><h4>Original · {item.originalAsset.filename}</h4><MediaPreview item={item} variant="ORIGINAL" /></div>
               <div><h4>Proposed · {item.transformation?.provider ?? 'Original media'}{item.transformation?.model ? ' / ' + item.transformation.model : ''}</h4><MediaPreview item={item} variant="GENERATED" /></div>
             </div>
+            {item.whySelected.length > 0 && <details className="creative-review-reasoning">
+              <summary>Why this content</summary>
+              <ul>{item.whySelected.map((reason, index) => <li key={index}><ReviewReason text={reason} /></li>)}</ul>
+            </details>}
             {item.transformation && <details><summary>Generation details</summary><dl>
               <dt>Prompt</dt><dd>{item.transformation.prompt}</dd>
               <dt>Why this format</dt><dd>{item.whyThisFormat.join(' · ') || '—'}</dd>
