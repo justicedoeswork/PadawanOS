@@ -1,3 +1,4 @@
+import {QuickBooksStatus} from './QuickBooksStatus';
 import {useEffect,useState} from 'react';
 type Status={lastSuccessfulRefresh:string|null;status:string;stale:boolean;counts:Record<string,number>|null;error:string|null;scheduleEnabled:boolean;currentRun?:{processed_jobs:number;expected_jobs:number|null}|null};
 export function FinanceStatus(){
@@ -16,5 +17,6 @@ export function FinanceStatus(){
    {status.error&&<p>Last run failed ({status.error}). The previous dataset remains available. Ask “Finance status” for details.</p>}</div>}
   <button type="button" onClick={()=>void refresh()} disabled={busy||status?.status==='running'}>Refresh now</button>
   <p role="status">{message}</p>
+  <QuickBooksStatus/>
  </details>;
 }
