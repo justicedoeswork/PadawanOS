@@ -25,3 +25,16 @@ it('sanitizes upstream failures and secret reflections',async()=>{
  expect(await(await fetch(url,{headers})).json()).toEqual({error:{code:'FINANCE_UNAVAILABLE'}});
  response=Response.json({answer:refresh});expect((await fetch(url,{headers})).status).toBe(502);
 });
+it('QuickBooks connect requires session and origin, binds callback to a secure browser cookie and clears authorization codes',async()=>{
+ const upstream=vi.fn(async(input:string|URL|Request,init?:RequestInit)=>String(input).endsWith('/authorize')?Response.json({authorizationUrl:'https://appcenter.intuit.com/connect/oauth2?state=finance.'+'a'.repeat(64)}):Response.json({connected:true}));
+ const g=await startTestGateway({financeAgentBaseUrl:'http://justice-finance-agent.internal:8790',financeReadKey:read,financeRefreshKey:refresh,financeFetch:upstream});close.push(g.close);
+ const url=`http://127.0.0.1:${g.port}/api/finance/quickbooks`,cookie=await loginForTestCookie(g.port);
+ expect((await fetch(url+'/connect',{method:'POST'})).status).toBe(401);
+ expect((await fetch(url+'/connect',{method:'POST',headers:{cookie}})).status).toBe(403);
+ const r=await fetch(url+'/connect',{method:'POST',headers:{cookie,origin:'http://127.0.0.1:5173','content-type':'application/json'},body:'{}'});
+ expect(r.status).toBe(200);const binding=r.headers.get('set-cookie')!;expect(binding).toContain('HttpOnly');expect(binding).toContain('Secure');expect(binding).toContain('SameSite=Lax');
+ expect(upstream.mock.calls.at(-1)?.[1]?.headers).toEqual(expect.objectContaining({authorization:`Bearer ${refresh}`}));
+ const cb=await fetch(url+'/callback?code=synthetic-code&state=finance.'+'a'.repeat(64)+'&realmId=123',{headers:{cookie:cookie+'; '+binding.split(';')[0]},redirect:'manual'});
+ expect(cb.status).toBe(303);expect(cb.headers.get('location')).toBe('/#/gateway?qbo=connected');expect(cb.headers.get('referrer-policy')).toBe('no-referrer');
+ upstream.mockClear();const bad=await fetch(url+'/callback?code=synthetic-code&state=bad&realmId=123',{headers:{cookie},redirect:'manual'});expect(bad.headers.get('location')).toContain('reconnect-required');expect(upstream).not.toHaveBeenCalled();
+});
