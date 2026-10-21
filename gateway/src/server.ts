@@ -1,3 +1,4 @@
+import {createFinanceRouter} from './financeRoutes.js';
 import { createAcculynxRouter } from './acculynxRoutes.js';
 import { createCallOwnerRouter } from './callOwnerRoutes.js';
 import { createInsuranceReportRouter } from './insuranceReportRoutes.js';
@@ -25,6 +26,10 @@ import type { CommunicationsAgentClient } from './communicationsAgentClient.js';
 import type { ManagerApiClient } from './managerApiClient.js';
 
 export interface GatewayOverrides {
+  financeAgentBaseUrl?: string | null;
+  financeReadKey?: string | null;
+  financeRefreshKey?: string | null;
+  financeFetch?: typeof fetch;
   acculynxApiKey?: string | null;
   acculynxFetch?: typeof fetch;
   port?: number;
@@ -145,6 +150,11 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   // set on a freshly-provisioned machine), and must never depend on
   // config it isn't allowed to reveal.
   app.use(createHealthRouter());
+  app.use(createFinanceRouter({sessionSecret,allowedOrigins,
+    baseUrl:overrides.financeAgentBaseUrl !== undefined ? overrides.financeAgentBaseUrl : config.financeAgentBaseUrl,
+    readKey:overrides.financeReadKey !== undefined ? overrides.financeReadKey : config.financeReadKey,
+    refreshKey:overrides.financeRefreshKey !== undefined ? overrides.financeRefreshKey : config.financeRefreshKey,
+    ...(overrides.financeFetch?{fetchImpl:overrides.financeFetch}:{})}));
   app.use(createAcculynxRouter({
     sessionSecret,
     apiKey: overrides.acculynxApiKey !== undefined ? overrides.acculynxApiKey : config.acculynxApiKey,

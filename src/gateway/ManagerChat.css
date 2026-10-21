@@ -215,3 +215,8 @@
 .gw-manager-voice small { color: var(--color-muted); }
 .gw-manager-evidence { margin-top: 8px; }
 .gw-manager-evidence summary { cursor: pointer; }
+
+.gw-finance-status { padding: 8px 12px; border-bottom: 1px solid var(--border-color, #454545); font-size: 12px; max-height: 220px; overflow: auto; }
+.gw-finance-status summary { cursor: pointer; }
+.gw-finance-status p { margin: 6px 0; overflow-wrap: anywhere; }
+.gw-finance-status button { padding: 6px 10px; cursor: pointer; }
