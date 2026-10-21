@@ -10,6 +10,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "export:acculynx": "tsx src/exportAcculynx.ts",
     "start": "node --import tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

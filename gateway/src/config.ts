@@ -14,6 +14,8 @@ function requireEnv(name: string): string | null {
 }
 
 export const config = {
+  /** Server-only AccuLynx credential; this integration only issues GET requests. */
+  acculynxApiKey: requireEnv('ACCULYNX_API_KEY'),
   port: Number(process.env.PORT || 4600),
   nodeEnv: process.env.NODE_ENV || 'development',
   isProduction: process.env.NODE_ENV === 'production',

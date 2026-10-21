@@ -164,7 +164,7 @@ export function createMarketingAgentClient(options: MarketingAgentClientOptions)
       return { kind: 'unavailable', reason: timedOut ? 'timeout' : 'network' };
     }
 
-    const contentType = (response.headers.get('content-type') ?? '').split(';', 1)[0].trim().toLowerCase();
+    const contentType = (response.headers.get('content-type') ?? '').split(';', 1)[0]!.trim().toLowerCase();
     const isSuccess = response.status >= 200 && response.status < 300;
     const maxBytes = isSuccess ? MAX_MARKETING_PREVIEW_BYTES : MAX_MARKETING_PREVIEW_ERROR_BYTES;
     const declaredLength = Number(response.headers.get('content-length') ?? 0);

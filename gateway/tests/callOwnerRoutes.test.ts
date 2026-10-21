@@ -25,6 +25,14 @@ async function setup(overrides:Partial<OwnerRouteOptions>={}){
  const post=(route:string,body:unknown,headers:Record<string,string>={})=>fetch('http://127.0.0.1:'+address.port+'/api/call-followup-owner/'+route,{method:'POST',headers:{cookie,origin,'content-type':'application/json',...headers},body:JSON.stringify(body)});
  return {post,get,write,set:(changes:Record<string,unknown>)=>{item={...item,...changes};},item:()=>item};
 }
+type Preview = { token: string; review: { owner: string } };
+async function readPreview(response: Response): Promise<Preview> {
+ const body: unknown = await response.json();
+ if (!body || typeof body !== 'object' || !('token' in body) || typeof body.token !== 'string' ||
+     !('review' in body) || !body.review || typeof body.review !== 'object' ||
+     !('owner' in body.review) || typeof body.review.owner !== 'string') throw new Error('Invalid preview response');
+ return { token: body.token, review: { owner: body.review.owner } };
+}
 const selection={items:[{id,version:1}],owner:'me'};
 it('requires login, allowed origin and optional write configuration before touching records',async()=>{
  const s=await setup();
@@ -36,7 +44,7 @@ it('requires login, allowed origin and optional write configuration before touch
 });
 it('previews without writing, saves only the owner, and safely retries without another write',async()=>{
  const s=await setup();const preview=await s.post('preview',selection);expect(preview.status).toBe(200);
- const body=await preview.json();expect(body.review.owner).toBe('austin');expect(s.write).not.toHaveBeenCalled();
+ const body=await readPreview(preview);expect(body.review.owner).toBe('austin');expect(s.write).not.toHaveBeenCalled();
  expect((await s.post('confirm',{token:body.token})).status).toBe(200);
  expect(s.item().responsibleParty).toBe('austin');
  const [url,init]=s.write.mock.calls[0]!;
@@ -46,7 +54,7 @@ it('previews without writing, saves only the owner, and safely retries without a
  expect((await s.post('confirm',{token:body.token})).status).toBe(200);expect(s.write).toHaveBeenCalledTimes(1);
 });
 it('rejects forged, expired and other-session reviews',async()=>{
- let clock=0;const s=await setup({now:()=>clock});const {token}=await (await s.post('preview',selection)).json();
+ let clock=0;const s=await setup({now:()=>clock});const {token}=await readPreview(await s.post('preview',selection));
  expect((await s.post('confirm',{token:token+'a'})).status).toBe(400);
  expect((await s.post('confirm',{token},{cookie:SESSION_COOKIE_NAME+'='+createSessionToken(secret)})).status).toBe(400);
  clock=600001;expect((await s.post('confirm',{token})).status).toBe(409);expect(s.write).not.toHaveBeenCalled();
@@ -57,12 +65,12 @@ it('rejects unrelated items, stale versions, extra fields and duplicate selectio
  expect((await s.post('preview',{...selection,items:[...selection.items,...selection.items]})).status).toBe(400);
  s.set({createdBy:'email'});expect((await s.post('preview',selection)).status).toBe(502);
  s.set({createdBy:'call-commitments',version:2});expect((await s.post('preview',selection)).status).toBe(409);
- s.set({version:1});const {token}=await (await s.post('preview',selection)).json();
+ s.set({version:1});const {token}=await readPreview(await s.post('preview',selection));
  s.set({version:2,responsibleParty:'Someone else'});expect((await s.post('confirm',{token})).status).toBe(409);expect(s.write).not.toHaveBeenCalled();
 });
 it('reports uncertain writes without claiming success',async()=>{
  const s=await setup({fetchImpl:async()=>{throw Error('connection lost');}});
- const {token}=await (await s.post('preview',selection)).json();
+ const {token}=await readPreview(await s.post('preview',selection));
  const result=await s.post('confirm',{token});expect(result.status).toBe(502);
  expect(await result.json()).toEqual({error:{code:'OWNER_SAVE_UNCERTAIN'},saved:[]});
 });
@@ -75,7 +83,7 @@ it('reports exactly the persisted subset if a later item fails',async()=>{
   return new Response(JSON.stringify({data:row}));
  });
  const s=await setup({client:{get:async(path)=>({kind:'response',status:200,body:{data:{item:rows.get(path.split('/').at(-1)!)}}}),probe:async()=> 'REACHABLE'},fetchImpl:patch as typeof fetch});
- const {token}=await (await s.post('preview',{owner:'me',items:[{id,version:1},{id:other,version:1}]})).json();
+ const {token}=await readPreview(await s.post('preview',{owner:'me',items:[{id,version:1},{id:other,version:1}]}));
  const result=await s.post('confirm',{token});expect(result.status).toBe(409);
  expect(await result.json()).toEqual({error:{code:'OWNER_SAVE_INCOMPLETE'},saved:[id]});
  expect(rows.get(id)?.responsibleParty).toBe('austin');expect(rows.get(other)?.responsibleParty).toBeNull();
