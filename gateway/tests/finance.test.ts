@@ -26,7 +26,7 @@ it('sanitizes upstream failures and secret reflections',async()=>{
  response=Response.json({answer:refresh});expect((await fetch(url,{headers})).status).toBe(502);
 });
 it('QuickBooks connect requires session and origin, binds callback to a secure browser cookie and clears authorization codes',async()=>{
- const upstream=vi.fn(async(input:string|URL|Request,init?:RequestInit)=>String(input).endsWith('/authorize')?Response.json({authorizationUrl:'https://appcenter.intuit.com/connect/oauth2?state=finance.'+'a'.repeat(64)}):Response.json({connected:true}));
+ const upstream=vi.fn(async(input:string|URL|Request,_init?:RequestInit)=>String(input).endsWith('/authorize')?Response.json({authorizationUrl:'https://appcenter.intuit.com/connect/oauth2?state=finance.'+'a'.repeat(64)}):Response.json({connected:true}));
  const g=await startTestGateway({financeAgentBaseUrl:'http://justice-finance-agent.internal:8790',financeReadKey:read,financeRefreshKey:refresh,financeFetch:upstream});close.push(g.close);
  const url=`http://127.0.0.1:${g.port}/api/finance/quickbooks`,cookie=await loginForTestCookie(g.port);
  expect((await fetch(url+'/connect',{method:'POST'})).status).toBe(401);
