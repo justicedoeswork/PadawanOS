@@ -1,3 +1,4 @@
+import {financeIntent} from './finance';
 import {previewCallOwner,confirmCallOwner} from './callOwnerCorrection';
 import {reportIntent,requestInsuranceReport,checkInsuranceReport} from './insuranceReport';
 import {draftIntent,requestInsuranceDraft,checkInsuranceDraft} from './insuranceDraft';
@@ -6,6 +7,7 @@ function object(value:unknown):Record<string,unknown>{if(!value||typeof value!==
 /** Validate the read allowlist again at the UI boundary. No model-selected URLs. */
 export function readIntent(value:unknown):ManagerIntent{
   const v=object(value),kind=String(v.kind);
+  if(kind==='finance')return financeIntent(v);
   const fields:Record<string,string[]>={insurance:['question'],call_followup_owner:['items','owner'],call_followups:[],calls:['participant','topic','today','latest'],call_facts:['subject','topic'],ledger:['view','participant'],calendar:['range'],search:['phrase'],briefing:[],emails:[],approvals:[],notifications:[],explain:[],repeat:[]};
   if(!Object.hasOwn(fields,kind)||Object.keys(v).some(k=>k!=='kind'&&!fields[kind]!.includes(k)))throw Error('Invalid interpretation');
   for(const [key,value] of Object.entries(v)){
@@ -22,6 +24,7 @@ export function readIntent(value:unknown):ManagerIntent{
 }
 const help=(text:string):ManagerReply=>({intent:{kind:'help'},text});
 export async function askConversationalManager(question:string,context:ManagerContext={}):Promise<ManagerReply>{
+  if(/^(?:finance|financial) (?:status|refresh status)[.!?]?$/i.test(question.trim()))return executeManagerIntent({kind:'finance',operation:'status',period:'all_time',jobSearch:'',attention:'all'},context);
   if(/^check (?:insurance )?report status[.!?]?$/i.test(question.trim()))return checkInsuranceReport();
   if(/^check (?:insurance )?draft status[.!?]?$/i.test(question.trim()))return checkInsuranceDraft();
   if(/^save correction[.!]?$/i.test(question.trim()))return confirmCallOwner(context);

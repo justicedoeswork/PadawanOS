@@ -1,3 +1,4 @@
+import {FinanceStatus} from './FinanceStatus';
 import {loadChatSessionStart, currentSessionTurns} from './managerSession';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Bell, BellRing, Send, X } from 'lucide-react';
@@ -22,7 +23,7 @@ import { enablePushNotifications, getPushNotificationState, type PushNotificatio
 import './ManagerChat.css';
 import { askConversationalManager } from './conversationalManager';
 import { persistableAnswer, restoreAnswer } from './managerEvidence';
-import { ManagerVoice } from './ManagerVoice';
+import { ManagerVoice } from './ManagerVoicePanel';
 
 type ChatMessage = { role: 'user' | 'manager'; text: string; evidence?: string };
 
@@ -316,6 +317,7 @@ export function ManagerChat() {
             </div>
           </div>
 
+          <FinanceStatus />
           <div ref={transcriptRef} className="gw-manager-transcript" aria-live="polite">
             {messages.map((message, index) => (
               <div key={index} className={`gw-manager-message gw-manager-message-${message.role}`}>

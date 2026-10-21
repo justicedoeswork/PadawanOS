@@ -14,6 +14,9 @@ function requireEnv(name: string): string | null {
 }
 
 export const config = {
+  financeAgentBaseUrl: requireEnv('FINANCE_AGENT_BASE_URL'),
+  financeReadKey: requireEnv('FINANCE_READ_KEY'),
+  financeRefreshKey: requireEnv('FINANCE_REFRESH_KEY'),
   /** Server-only AccuLynx credential; this integration only issues GET requests. */
   acculynxApiKey: requireEnv('ACCULYNX_API_KEY'),
   port: Number(process.env.PORT || 4600),
