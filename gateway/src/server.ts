@@ -1,3 +1,4 @@
+import { createAcculynxRouter } from './acculynxRoutes.js';
 import { createCallOwnerRouter } from './callOwnerRoutes.js';
 import { createInsuranceReportRouter } from './insuranceReportRoutes.js';
 import { createInsuranceDraftRouter } from './insuranceDraftRoutes.js';
@@ -24,6 +25,8 @@ import type { CommunicationsAgentClient } from './communicationsAgentClient.js';
 import type { ManagerApiClient } from './managerApiClient.js';
 
 export interface GatewayOverrides {
+  acculynxApiKey?: string | null;
+  acculynxFetch?: typeof fetch;
   port?: number;
   distDir?: string;
   sessionSecret?: string | null;
@@ -142,6 +145,11 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   // set on a freshly-provisioned machine), and must never depend on
   // config it isn't allowed to reveal.
   app.use(createHealthRouter());
+  app.use(createAcculynxRouter({
+    sessionSecret,
+    apiKey: overrides.acculynxApiKey !== undefined ? overrides.acculynxApiKey : config.acculynxApiKey,
+    ...(overrides.acculynxFetch ? { fetchImpl: overrides.acculynxFetch } : {})
+  }));
 
   app.use(
     createAuthRouter({

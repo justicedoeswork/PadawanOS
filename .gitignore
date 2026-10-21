@@ -17,3 +17,6 @@ public/material-icons/
 # Tauri desktop shell
 desktop/src-tauri/target/
 desktop/src-tauri/gen/
+
+# Private integration exports
+gateway/.state/
