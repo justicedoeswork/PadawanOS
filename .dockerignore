@@ -3,6 +3,7 @@ node_modules
 dist
 gateway/.env
 gateway/.env.*
+gateway/.state/
 test-agent/.env
 test-agent/.state*/
 test-agent/sandbox*/
