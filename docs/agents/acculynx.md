@@ -39,6 +39,14 @@ change its job's modified date. Pagination rejects changing counts and duplicate
 job IDs. This is a scan over time, not an atomic database snapshot; source
 changes during a run may require a second export.
 
+The gateway keeps `recordStartIndex` as its public query parameter, but maps
+it to upstream `pageStartIndex`. Live verification showed upstream requests
+with `recordStartIndex=25` repeat page zero, while `pageStartIndex=25` and
+`pageStartIndex=50` return the requested offsets with distinct job IDs.
+The current official OpenAPI calls the parameter `recordStartIndex`; the
+transport follows the verified live behavior and still checks the returned
+offset, count, and duplicate IDs rather than accepting repeated pages.
+
 ## Reconciliation contract
 
 Live response structure verified on Fly: `receivedPayments`, `paidPayments`,

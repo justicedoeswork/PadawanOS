@@ -55,7 +55,9 @@ export function createAcculynxClient(apiKey: string, fetchImpl: typeof fetch = f
     async jobs(offset = 0) {
       if (!Number.isSafeInteger(offset) || offset < 0) throw new AcculynxError('INVALID_OFFSET', 400);
       // No date, milestone, or assignment filter: older/unassigned/closed jobs can have new payments.
-      const body = await read(`/jobs?pageSize=25&recordStartIndex=${offset}&sortBy=CreatedDate&sortOrder=Ascending`);
+      // The live API uses pageStartIndex; recordStartIndex is silently ignored
+      // despite the current OpenAPI parameter name. Keep our gateway query stable.
+      const body = await read(`/jobs?pageSize=25&pageStartIndex=${offset}&sortBy=CreatedDate&sortOrder=Ascending`);
       if (!Number.isSafeInteger(body.count) || Number(body.count) < 0 || body.pageStartIndex !== offset ||
           !Array.isArray(body.items) || body.items.length > 25 ||
           !body.items.every((item: unknown) => object(item) && typeof item.id === 'string' && JOB_ID.test(item.id))) {

@@ -77,7 +77,9 @@ describe('AccuLynx read-only bridge', () => {
       if (url.pathname.endsWith('/payments')) return Response.json(payments);
       expect(url.searchParams.has('startDate')).toBe(false);
       expect(url.searchParams.has('assignment')).toBe(false);
-      const offset = Number(url.searchParams.get('recordStartIndex'));
+      expect(url.searchParams.has('recordStartIndex')).toBe(false);
+      expect(url.searchParams.has('pageStartIndex')).toBe(true);
+      const offset = Number(url.searchParams.get('pageStartIndex'));
       return Response.json({ count: 26, pageStartIndex: offset,
         items: Array.from({ length: offset === 0 ? 25 : 1 }, (_, i) => ({ id: id(offset + i + 1), createdDate: '2020-01-01T00:00:00Z' })) });
     });
@@ -86,6 +88,16 @@ describe('AccuLynx read-only bridge', () => {
     expect(snapshot.jobCount).toBe(26);
     expect(snapshot.jobs[0]?.payments).toEqual(payments);
     expect(upstream).toHaveBeenCalledTimes(28);
+  });
+
+  it('rejects an upstream that ignores the requested offset instead of repeating its first page', async () => {
+    const upstream = vi.fn(async (input: string | URL | Request) => String(input).endsWith('/payments')
+      ? Response.json(payments)
+      : Response.json({ count: 26, pageStartIndex: 0,
+        items: Array.from({ length: 25 }, (_, i) => ({ id: id(i + 1) })) }));
+    await expect(collectAcculynxSnapshot(createAcculynxClient(key, upstream)))
+      .rejects.toThrow('ACCULYNX_INVALID_RESPONSE');
+    expect(upstream).toHaveBeenCalledTimes(27);
   });
 
   it('fails the whole scan on drift, duplicates, or a missing page', async () => {
