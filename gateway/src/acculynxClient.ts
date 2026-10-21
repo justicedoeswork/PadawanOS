@@ -68,7 +68,11 @@ export function createAcculynxClient(apiKey: string, fetchImpl: typeof fetch = f
       const body = await read(`/jobs/${jobId}/payments`);
       for (const group of ['receivedPayments', 'paidPayments', 'additionalExpenses']) {
         const value = body[group];
-        if (!object(value) || !Array.isArray(value[group]) || typeof value.total !== 'number') {
+        if (!object(value) || !Array.isArray(value.payments) ||
+            typeof value.total !== 'number' || !Number.isFinite(value.total) ||
+            !value.payments.every((payment: unknown) => object(payment) &&
+              typeof payment.id === 'string' && JOB_ID.test(payment.id) &&
+              typeof payment.amount === 'number' && Number.isFinite(payment.amount))) {
           throw new AcculynxError('ACCULYNX_INVALID_RESPONSE');
         }
       }

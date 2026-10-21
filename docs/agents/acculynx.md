@@ -41,6 +41,13 @@ changes during a run may require a second export.
 
 ## Reconciliation contract
 
+Live response structure verified on Fly: `receivedPayments`, `paidPayments`,
+and `additionalExpenses` each contain a `payments` array and a numeric `total`.
+Every group must be present, including empty groups with explicit totals.
+The client rejects malformed groups, non-finite totals, and records without
+valid IDs or finite numeric amounts; it never substitutes zero or an empty
+array for missing financial data. Original fields and totals pass through.
+
 Preserve source IDs, parent IDs, amounts, dates, reference numbers, and unpaid
 flags. This integration deliberately does not calculate financial totals or
 overwrite bank classifications. Parent payments and their sub-payments must

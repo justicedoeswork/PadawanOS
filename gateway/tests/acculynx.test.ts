@@ -4,16 +4,43 @@ import { loginForTestCookie, startTestGateway } from './helpers/testGateway.js';
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const payments = {
-  receivedPayments: { total: 100, receivedPayments: [{ id: id(101), amount: 100, isParent: true },
+  receivedPayments: { total: 100, payments: [{ id: id(101), amount: 100, isParent: true },
     { id: id(102), parentId: id(101), amount: 100, paymentDate: '2026-10-01T00:00:00Z' }] },
-  paidPayments: { total: 20, paidPayments: [{ id: id(103), amount: 20, isPaid: false }] },
-  additionalExpenses: { total: 0, additionalExpenses: [] }
+  paidPayments: { total: 20, payments: [{ id: id(103), amount: 20, isPaid: false }] },
+  additionalExpenses: { total: 0, payments: [] }
 };
 const key = 'synthetic-acculynx-key';
 const close: Array<() => Promise<void>> = [];
 afterEach(async () => { for (const stop of close.splice(0)) await stop(); });
 
 describe('AccuLynx read-only bridge', () => {
+  it('accepts the observed payments envelope, including explicitly empty groups, without rewriting records or totals', async () => {
+    const client = createAcculynxClient(key, async () => Response.json(payments));
+    expect(await client.payments(id(1))).toEqual(payments);
+    // The parent and child remain separate source records; their amounts are not summed.
+    expect((await client.payments(id(1))).receivedPayments).toEqual(payments.receivedPayments);
+  });
+
+  it('fails closed for every missing or malformed financial group and record', async () => {
+    for (const group of ['receivedPayments', 'paidPayments', 'additionalExpenses']) {
+      for (const invalid of [undefined, null, [], {}, { total: 0 },
+        { total: 0, [group]: [] }, { payments: [], total: '0' },
+        { payments: [], total: null }, { payments: null, total: 0 },
+        { payments: [null], total: 0 }, { payments: [{ id: id(1) }], total: 0 },
+        { payments: [{ id: id(1), amount: '0' }], total: 0 },
+        { payments: [{ amount: 0 }], total: 0 }]) {
+        const client = createAcculynxClient(key, async () => Response.json({ ...payments, [group]: invalid }));
+        await expect(client.payments(id(1))).rejects.toThrow('ACCULYNX_INVALID_RESPONSE');
+        client.jobs = async () => ({ count: 1, pageStartIndex: 0, items: [{ id: id(1) }] });
+        await expect(collectAcculynxSnapshot(client)).rejects.toThrow('ACCULYNX_INVALID_RESPONSE');
+      }
+    }
+    // JSON permits numeric literals that overflow to Infinity on parsing.
+    const raw = JSON.stringify(payments).replace('"total":100', '"total":1e400');
+    await expect(createAcculynxClient(key, async () => new Response(raw)).payments(id(1)))
+      .rejects.toThrow('ACCULYNX_INVALID_RESPONSE');
+  });
+
   it('authenticates before calls, keeps credentials server-side, and rejects writes and extra queries', async () => {
     const upstream = vi.fn(async () => Response.json(payments));
     const gateway = await startTestGateway({ acculynxApiKey: key, acculynxFetch: upstream });
