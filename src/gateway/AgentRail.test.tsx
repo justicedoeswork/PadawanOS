@@ -16,6 +16,7 @@ function renderRail(overrides: Partial<Parameters<typeof AgentRail>[0]> = {}) {
         onOpenAgent={() => {}}
         onOpenMarketing={() => {}}
         onOpenCommunications={() => {}}
+        onOpenFinance={() => {}}
         onSettings={() => {}}
         onSignOut={() => {}}
         onToggleCollapsed={() => {}}
@@ -38,6 +39,7 @@ describe('AgentRail (JusticeOS gateway build, LAYOUT #1)', () => {
     const markup = renderRail();
     expect(markup).toContain('Marketing');
     expect(markup).toContain('Communications');
+    expect(markup).toContain('Finance');
   });
 
   it('lists the Marketing specialist alongside the agent, with its own glyph', () => {
