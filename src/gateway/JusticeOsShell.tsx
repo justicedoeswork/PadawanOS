@@ -5,6 +5,7 @@ import { usePanda } from '../store';
 import { connectionLifecycle } from '../projector/connectionLifecycle';
 import { MANAGED_INSURANCE_PROFILE_ID } from './managedAgentId';
 import { AgentRail, type RailView } from './AgentRail';
+import { FinanceStatus } from './FinanceStatus';
 import { Dashboard } from './Dashboard';
 import { ManagerChat } from './ManagerChat';
 import { useGatewayAuth } from './gatewayAuthStore';
@@ -52,7 +53,7 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
   // survive a reload or a pasted link: opening on the dashboard instead
   // would silently ignore the URL the person actually asked for. Every
   // other route starts on the dashboard, as before.
-  const [view, setView] = useState<RailView>(() => (route === 'marketing' || route === 'communications' || route === 'settings' ? 'agent' : 'dashboard'));
+  const [view, setView] = useState<RailView>(() => (route === 'marketing' || route === 'communications' || route === 'finance' || route === 'settings' ? 'agent' : 'dashboard'));
   const [sidebarCollapsed, setSidebarCollapsedState] = useState(() => loadSidebarCollapsed());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const railNavRef = useRef<HTMLElement>(null);
@@ -108,7 +109,7 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
     // agent button always lands on the chat it names. Settings deliberately
     // does NOT go through here: it sets its own route, and routing it
     // through this would immediately navigate away from it again.
-    if (route === 'marketing') navigate('main');
+    navigate('main');
     showWorkspace();
   }
 
@@ -129,7 +130,7 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
       ? 'marketing'
       : view === 'agent' && route === 'communications'
         ? 'communications'
-        : view;
+        : view === 'agent' && route === 'finance' ? 'finance' : view;
 
   return (
     <div className="gw-shell">
@@ -143,6 +144,7 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
         onOpenAgent={openAgent}
         onOpenMarketing={openMarketing}
         onOpenCommunications={openCommunications}
+        onOpenFinance={() => { navigate('finance'); showWorkspace(); }}
         onSettings={() => {
           navigate('settings');
           showWorkspace();
@@ -169,7 +171,7 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
             <Menu size={20} />
           </button>
         </div>
-        {view === 'dashboard' ? <Dashboard /> : children}
+        {view === 'dashboard' ? <Dashboard /> : route === 'finance' ? <FinanceStatus /> : children}
       </div>
       <ManagerChat />
     </div>

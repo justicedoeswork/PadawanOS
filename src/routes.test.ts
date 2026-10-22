@@ -12,6 +12,7 @@ describe('parseHash', () => {
     ['#/settings', 'settings'],
     ['#/marketing', 'marketing'],
     ['#/communications', 'communications'],
+    ['#/finance', 'finance'],
     ['#marketing', 'marketing'],
     ['#/marketing/', 'marketing'],
     ['#settings', 'settings'],

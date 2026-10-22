@@ -1,4 +1,3 @@
-import {FinanceStatus} from './FinanceStatus';
 import {loadChatSessionStart, currentSessionTurns} from './managerSession';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Bell, BellRing, Send, X } from 'lucide-react';
@@ -317,7 +316,6 @@ export function ManagerChat() {
             </div>
           </div>
 
-          <FinanceStatus />
           <div ref={transcriptRef} className="gw-manager-transcript" aria-live="polite">
             {messages.map((message, index) => (
               <div key={index} className={`gw-manager-message gw-manager-message-${message.role}`}>

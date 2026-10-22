@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import { ChevronLeft, ChevronRight, Home, LogOut, Settings as SettingsIcon, X } from 'lucide-react';
+import { Wallet, ChevronLeft, ChevronRight, Home, LogOut, Settings as SettingsIcon, X } from 'lucide-react';
 import justiceOsMark from '../assets/brand/justiceos-mark.png';
 import { AgentAvatar } from './AgentAvatar';
 import { useI18n } from '../i18n/context';
@@ -7,7 +7,7 @@ import type { ConnectionPhase } from '../projector/connectionLifecycle';
 import { isLinkUp } from '../projector/connectionLifecycle';
 import './AgentRail.css';
 
-export type RailView = 'dashboard' | 'agent' | 'marketing' | 'communications';
+export type RailView = 'dashboard' | 'agent' | 'marketing' | 'communications' | 'finance';
 
 /**
  * The collapsible left agent sidebar for the JusticeOS gateway build
@@ -46,6 +46,7 @@ export function AgentRail({
   onOpenAgent,
   onOpenMarketing,
   onOpenCommunications,
+  onOpenFinance,
   onSettings,
   onSignOut,
   onToggleCollapsed,
@@ -62,6 +63,7 @@ export function AgentRail({
   onOpenAgent(): void;
   onOpenMarketing(): void;
   onOpenCommunications(): void;
+  onOpenFinance(): void;
   onSettings(): void;
   onSignOut(): void;
   onToggleCollapsed(): void;
@@ -152,6 +154,13 @@ export function AgentRail({
             <AgentAvatar role="communications" size={20} />
           </span>
           <span className="gw-rail-agent-caption truncate">{t('rail.communications')}</span>
+        </button>
+
+        <button type="button" className={`gw-rail-btn gw-rail-agent ${activeView === 'finance' ? 'gw-rail-btn--active' : ''}`}
+          aria-label="Finance" aria-current={activeView === 'finance' ? 'page' : undefined}
+          title="Finance Agent" onClick={onOpenFinance}>
+          <span className="gw-rail-agent-icon"><Wallet size={20} /></span>
+          <span className="gw-rail-agent-caption truncate">Finance</span>
         </button>
 
         <div className="gw-rail-spacer" />
