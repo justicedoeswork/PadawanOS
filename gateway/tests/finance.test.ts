@@ -38,3 +38,15 @@ it('QuickBooks connect requires session and origin, binds callback to a secure b
  expect(cb.status).toBe(303);expect(cb.headers.get('location')).toBe('/#/gateway?qbo=connected');expect(cb.headers.get('referrer-policy')).toBe('no-referrer');
  upstream.mockClear();const bad=await fetch(url+'/callback?code=synthetic-code&state=bad&realmId=123',{headers:{cookie},redirect:'manual'});expect(bad.headers.get('location')).toContain('reconnect-required');expect(upstream).not.toHaveBeenCalled();
 });
+it('supplier evidence is session-protected, paginated and refresh uses the separate credential',async()=>{
+ const upstream=vi.fn(async(_input:string|URL|Request,_init?:RequestInit)=>Response.json({documents:[],nextOffset:null}));
+ const g=await startTestGateway({financeAgentBaseUrl:'http://justice-finance-agent.internal:8790',financeReadKey:read,financeRefreshKey:refresh,financeFetch:upstream});close.push(g.close);
+ const url=`http://127.0.0.1:${g.port}/api/finance/suppliers`,cookie=await loginForTestCookie(g.port);
+ expect((await fetch(url+'/status')).status).toBe(401);
+ expect((await fetch(url+'/status?job=Synthetic&offset=50',{headers:{cookie}})).status).toBe(200);
+ expect(upstream.mock.calls.at(-1)?.[0]).toContain('offset=50');
+ expect((await fetch(url+'/refresh',{method:'POST',headers:{cookie}})).status).toBe(403);
+ expect((await fetch(url+'/status?offset=-1',{headers:{cookie}})).status).toBe(400);
+ expect((await fetch(url+'/refresh',{method:'POST',headers:{cookie,origin:'http://127.0.0.1:5173','content-type':'application/json'},body:'{}'})).status).toBe(200);
+ expect(upstream.mock.calls.at(-1)?.[1]).toEqual(expect.objectContaining({headers:expect.objectContaining({authorization:'Bearer '+refresh})}));
+});
