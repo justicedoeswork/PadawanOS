@@ -28,6 +28,7 @@ import type { ManagerApiClient } from './managerApiClient.js';
 export interface GatewayOverrides {
   financeAgentBaseUrl?: string | null;
   financeReadKey?: string | null;
+  financeReviewKey?: string | null;
   financeRefreshKey?: string | null;
   financeFetch?: typeof fetch;
   acculynxApiKey?: string | null;
@@ -153,6 +154,7 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   app.use(createFinanceRouter({sessionSecret,allowedOrigins,
     baseUrl:overrides.financeAgentBaseUrl !== undefined ? overrides.financeAgentBaseUrl : config.financeAgentBaseUrl,
     readKey:overrides.financeReadKey !== undefined ? overrides.financeReadKey : config.financeReadKey,
+    reviewKey:overrides.financeReviewKey !== undefined ? overrides.financeReviewKey : config.financeReviewKey,
     refreshKey:overrides.financeRefreshKey !== undefined ? overrides.financeRefreshKey : config.financeRefreshKey,
     ...(overrides.financeFetch?{fetchImpl:overrides.financeFetch}:{})}));
   app.use(createAcculynxRouter({
