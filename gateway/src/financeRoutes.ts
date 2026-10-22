@@ -1,10 +1,11 @@
+import {createSupplierRouter} from './supplierRoutes.js';
 import {createQuickBooksRouter} from './quickbooksRoutes.js';
 import {Router} from 'express';
 import {createRequireSession} from './requireSession.js';
 export function validFinanceQuery(v:unknown):boolean{
  if(!v||typeof v!=='object'||Array.isArray(v))return false;const q=v as Record<string,unknown>;
  return Object.keys(q).sort().join(',')==='attention,jobSearch,operation,period'&&
- ['received','costs','changes','attention','status','qbo_status','qbo_activity'].includes(String(q.operation))&&
+ ['received','costs','changes','attention','status','qbo_status','qbo_activity','supplier_status','supplier_job'].includes(String(q.operation))&&
  ['this_month','last_month','all_time'].includes(String(q.period))&&
  ['all','undated','unpaid','reconciliation'].includes(String(q.attention))&&
  typeof q.jobSearch==='string'&&q.jobSearch.length<=160&&!/[\x00-\x1f]/.test(q.jobSearch);
@@ -16,6 +17,7 @@ export function createFinanceRouter(options:{sessionSecret:string|null;baseUrl:s
  if((options.readKey&&options.readKey.length<32)||(options.refreshKey&&options.refreshKey.length<32)||(options.readKey&&options.readKey===options.refreshKey))throw Error('INVALID_FINANCE_SERVICE_KEYS');
  router.use(prefix,createRequireSession(options.sessionSecret),(_req,res,next)=>{res.setHeader('Cache-Control','private, no-store');next();});
  router.use(createQuickBooksRouter(options));
+ router.use(createSupplierRouter(options));
  let active=0;
  for(const [path,method] of [['status','GET'],['query','POST'],['refresh','POST']] as const){
   router[method==='GET'?'get':'post'](`${prefix}/${path}`,async(req,res)=>{
