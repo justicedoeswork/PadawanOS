@@ -1,3 +1,4 @@
+import {createSupplierReviewRouter} from './supplierReviewRoutes.js';
 import {createSupplierRouter} from './supplierRoutes.js';
 import {createQuickBooksRouter} from './quickbooksRoutes.js';
 import {Router} from 'express';
@@ -10,7 +11,7 @@ export function validFinanceQuery(v:unknown):boolean{
  ['all','undated','unpaid','reconciliation'].includes(String(q.attention))&&
  typeof q.jobSearch==='string'&&q.jobSearch.length<=160&&!/[\x00-\x1f]/.test(q.jobSearch);
 }
-export function createFinanceRouter(options:{sessionSecret:string|null;baseUrl:string|null;readKey:string|null;refreshKey:string|null;allowedOrigins:string[];fetchImpl?:typeof fetch}){
+export function createFinanceRouter(options:{reviewKey?:string|null;sessionSecret:string|null;baseUrl:string|null;readKey:string|null;refreshKey:string|null;allowedOrigins:string[];fetchImpl?:typeof fetch}){
  const router=Router(),prefix='/api/finance';
  if(options.baseUrl){const u=new URL(options.baseUrl);
   if(u.protocol!=='http:'||u.hostname!=='justice-finance-agent.internal'||u.port!=='8790'||u.username||u.password||u.search||u.hash||u.pathname!=='/')throw Error('INVALID_FINANCE_AGENT_URL');}
@@ -18,6 +19,8 @@ export function createFinanceRouter(options:{sessionSecret:string|null;baseUrl:s
  router.use(prefix,createRequireSession(options.sessionSecret),(_req,res,next)=>{res.setHeader('Cache-Control','private, no-store');next();});
  router.use(createQuickBooksRouter(options));
  router.use(createSupplierRouter(options));
+ router.use(createSupplierReviewRouter(options));
+ if(options.reviewKey&&(options.reviewKey.length<32||[options.readKey,options.refreshKey].includes(options.reviewKey)))throw Error('INVALID_FINANCE_REVIEW_KEY');
  let active=0;
  for(const [path,method] of [['status','GET'],['query','POST'],['refresh','POST']] as const){
   router[method==='GET'?'get':'post'](`${prefix}/${path}`,async(req,res)=>{

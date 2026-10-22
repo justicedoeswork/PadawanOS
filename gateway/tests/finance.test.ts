@@ -50,3 +50,20 @@ it('supplier evidence is session-protected, paginated and refresh uses the separ
  expect((await fetch(url+'/refresh',{method:'POST',headers:{cookie,origin:'http://127.0.0.1:5173','content-type':'application/json'},body:'{}'})).status).toBe(200);
  expect(upstream.mock.calls.at(-1)?.[1]).toEqual(expect.objectContaining({headers:expect.objectContaining({authorization:'Bearer '+refresh})}));
 });
+it('supplier assignments require session and origin, bind reviewer server-side and preserve conflicts',async()=>{
+ const review='synthetic-review-'.repeat(3);let status=200;
+ const upstream=vi.fn(async(_input:string|URL|Request,_init?:RequestInit)=>Response.json({assigned:true},{status}));
+ const g=await startTestGateway({financeAgentBaseUrl:'http://justice-finance-agent.internal:8790',financeReadKey:read,financeRefreshKey:refresh,financeReviewKey:review,financeFetch:upstream});close.push(g.close);
+ const url=`http://127.0.0.1:${g.port}/api/finance/suppliers/assign`,cookie=await loginForTestCookie(g.port);
+ const body=JSON.stringify({documentKey:'a'.repeat(64),jobId:'00000000-0000-4000-8000-000000000001',requestId:'00000000-0000-4000-8000-000000000002',expectedReviewId:'0'});
+ expect((await fetch(url,{method:'POST',body})).status).toBe(401);
+ const headers={cookie,'content-type':'application/json'};
+ expect((await fetch(url,{method:'POST',headers,body})).status).toBe(403);
+ expect((await fetch(url,{method:'POST',headers:{...headers,origin:'https://evil.example'},body})).status).toBe(403);
+ expect(upstream).not.toHaveBeenCalled();
+ const good={...headers,origin:'http://127.0.0.1:5173'};
+ expect((await fetch(url,{method:'POST',headers:good,body})).status).toBe(200);
+ const sent=upstream.mock.calls[0]![1]!;expect(sent.headers).toEqual(expect.objectContaining({authorization:'Bearer '+review}));expect(JSON.parse(String(sent.body)).reviewer).toMatch(/^justiceos-owner-session:[a-f0-9]{64}$/);expect(String(sent.body)).not.toContain(cookie);
+ expect((await fetch(url,{method:'POST',headers:good,body:JSON.stringify({...JSON.parse(body),reviewer:'spoof'})})).status).toBe(400);
+ status=409;expect((await fetch(url,{method:'POST',headers:good,body})).status).toBe(409);
+});
