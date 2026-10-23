@@ -1,3 +1,4 @@
+import {createReceiptReviewRouter} from './receiptReviewRoutes.js';
 import {createSupplierReviewRouter} from './supplierReviewRoutes.js';
 import {createSupplierRouter} from './supplierRoutes.js';
 import {createQuickBooksRouter} from './quickbooksRoutes.js';
@@ -20,6 +21,7 @@ export function createFinanceRouter(options:{reviewKey?:string|null;sessionSecre
  router.use(createQuickBooksRouter(options));
  router.use(createSupplierRouter(options));
  router.use(createSupplierReviewRouter(options));
+ router.use(createReceiptReviewRouter(options));
  if(options.reviewKey&&(options.reviewKey.length<32||[options.readKey,options.refreshKey].includes(options.reviewKey)))throw Error('INVALID_FINANCE_REVIEW_KEY');
  let active=0;
  for(const [path,method] of [['status','GET'],['query','POST'],['refresh','POST']] as const){

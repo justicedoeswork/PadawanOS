@@ -1,0 +1,10 @@
+import {useEffect,useState} from 'react';
+type Task={bankId:string;date:string;amount:string;description:string;fingerprint:string;status:string;question:string;scope:string};
+type Result={tasks:Task[];count:number;confirmedCount:number;coverage:string};
+export function ReceiptReview(){
+ const [data,setData]=useState<Result|null>(null),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+ async function load(){try{const r=await fetch('/api/finance/receipts',{credentials:'same-origin',signal:AbortSignal.timeout(25000)});if(!r.ok)throw Error();setData(await r.json());}catch{setMessage('Deposit review is unavailable. Existing decisions are preserved.');}}
+ useEffect(()=>{void load();},[]);
+ async function confirm(t:Task){setBusy(true);setMessage('');try{const r=await fetch('/api/finance/receipts/confirm',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({bankId:t.bankId,fingerprint:t.fingerprint,requestId:crypto.randomUUID()}),signal:AbortSignal.timeout(25000)});setMessage(r.ok?'Deposit match confirmed.':r.status===409?'The evidence changed or a receipt was already matched. Review the refreshed suggestion.':'Confirmation could not be verified. Refresh before retrying.');await load();}catch{setMessage('Confirmation could not be verified. Refresh before retrying.');}finally{setBusy(false);}}
+ return <section aria-label="Customer deposit review"><h2>Customer deposits</h2><p role="status">{message}</p>{data&&<><p>{data.count} deposits need review · {data.confirmedCount} confirmed</p><p>{data.coverage}</p>{data.tasks.map(t=><article key={t.bankId}><h3>{t.date} · ${Number(t.amount).toLocaleString('en-US',{minimumFractionDigits:2})}</h3><p>{t.question}</p><p>{t.description}</p><p>{t.scope}</p>{t.status==='proposed'?<button type="button" disabled={busy} onClick={()=>void confirm(t)}>Confirm deposit match</button>:<p>{t.status==='ambiguous'?'Multiple combinations fit; no automatic assignment was made.':'No unique check combination found.'}</p>}</article>)}</>}<button type="button" disabled={busy} onClick={()=>void load()}>Refresh deposit suggestions</button></section>;
+}
