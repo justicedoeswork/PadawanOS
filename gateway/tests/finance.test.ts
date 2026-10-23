@@ -67,3 +67,12 @@ it('supplier assignments require session and origin, bind reviewer server-side a
  expect((await fetch(url,{method:'POST',headers:good,body:JSON.stringify({...JSON.parse(body),reviewer:'spoof'})})).status).toBe(400);
  status=409;expect((await fetch(url,{method:'POST',headers:good,body})).status).toBe(409);
 });
+it('deposit confirmations require session, same origin and server-derived reviewer',async()=>{
+ const upstream=vi.fn(async()=>Response.json({confirmed:true})),review='synthetic-review-credential-'.repeat(3);
+ const g=await startTestGateway({financeAgentBaseUrl:'http://justice-finance-agent.internal:8790',financeReadKey:read,financeRefreshKey:refresh,financeReviewKey:review,financeFetch:upstream});close.push(g.close);
+ const url=`http://127.0.0.1:${g.port}/api/finance/receipts`,cookie=await loginForTestCookie(g.port),body=JSON.stringify({bankId:'a'.repeat(64),fingerprint:'b'.repeat(64),requestId:'00000000-0000-4000-8000-000000000001'});
+ expect((await fetch(url)).status).toBe(401);
+ expect((await fetch(url+'/confirm',{method:'POST',headers:{cookie,'content-type':'application/json'},body})).status).toBe(403);
+ expect((await fetch(url+'/confirm',{method:'POST',headers:{cookie,origin:'http://127.0.0.1:5173','content-type':'application/json'},body})).status).toBe(200);
+ const call=upstream.mock.calls.at(-1) as unknown as [string,RequestInit];expect(call[0]).toContain('/v1/receipts/confirm');expect(JSON.parse(call[1].body as string).reviewer).toMatch(/^justiceos-owner-session:[a-f0-9]{64}$/);
+});

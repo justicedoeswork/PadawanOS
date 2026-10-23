@@ -1,3 +1,4 @@
+import {ReceiptReview} from './ReceiptReview';
 import './FinanceStatus.css';
 import {SupplierStatus} from './SupplierStatus';
 import {QuickBooksStatus} from './QuickBooksStatus';
@@ -22,6 +23,6 @@ export function FinanceStatus(){
   <button type="button" onClick={()=>void refresh()} disabled={busy||status?.status==='running'}>Refresh now</button>
   <p role="status">{message}</p>
   </section><QuickBooksStatus/>
-  </div>:<SupplierStatus mode={tab}/> }
+  </div>:<>{tab==='tasks'&&<ReceiptReview/>}<SupplierStatus mode={tab}/></> }
  </main>;
 }
