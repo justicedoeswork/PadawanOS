@@ -46,3 +46,10 @@
 .gw-supplier-job-option input { margin-top: var(--space-1); min-width: 20px; min-height: 20px; }
 .gw-supplier-job-option span span { display: block; color: var(--color-muted); }
 .gw-supplier-job-option:has(input:checked) { border-color: var(--color-fg); background: var(--color-raised); }
+.gw-plaid-accounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--space-4); }
+.gw-plaid-rows { display: grid; gap: var(--space-4); margin-block: var(--space-5); }
+.gw-plaid :is(article, select) { padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--panda-radius-md); background: var(--color-surface); color: var(--color-fg); }
+.gw-plaid article header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-3); }
+.gw-plaid article header strong { flex: 1 1 240px; overflow-wrap: anywhere; }
+.gw-plaid pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--panda-size-chrome); max-height: 320px; overflow: auto; }
+.gw-plaid select { max-width: 100%; min-height: 44px; }

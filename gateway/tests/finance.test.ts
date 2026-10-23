@@ -76,3 +76,17 @@ it('deposit confirmations require session, same origin and server-derived review
  expect((await fetch(url+'/confirm',{method:'POST',headers:{cookie,origin:'http://127.0.0.1:5173','content-type':'application/json'},body})).status).toBe(200);
  const call=upstream.mock.calls.at(-1) as unknown as [string,RequestInit];expect(call[0]).toContain('/v1/receipts/confirm');expect(JSON.parse(call[1].body as string).reviewer).toMatch(/^justiceos-owner-session:[a-f0-9]{64}$/);
 });
+it('Plaid routes require session and refresh origin, bound filters and redact upstream errors',async()=>{
+ let fail=false;const upstream=vi.fn(async(_input:string|URL|Request,_init?:RequestInit)=>fail?Response.json({secret:'never disclose'},{status:500}):Response.json({accounts:[],rows:[],trialOnly:true}));
+ const g=await startTestGateway({financeAgentBaseUrl:'http://justice-finance-agent.internal:8790',financeReadKey:read,financeRefreshKey:refresh,financeFetch:upstream});close.push(g.close);
+ const url=`http://127.0.0.1:${g.port}/api/finance/plaid`,cookie=await loginForTestCookie(g.port);
+ expect((await fetch(url+'/status')).status).toBe(401);
+ expect((await fetch(url+'/status?account=test&offset=50',{headers:{cookie}})).status).toBe(200);
+ expect(upstream.mock.calls.at(-1)?.[0]).toContain('account=test&offset=50');
+ expect((await fetch(url+'/status?offset=-1',{headers:{cookie}})).status).toBe(400);
+ expect((await fetch(url+'/status?access_token=bad',{headers:{cookie}})).status).toBe(400);
+ expect((await fetch(url+'/refresh',{method:'POST',headers:{cookie}})).status).toBe(403);
+ expect((await fetch(url+'/refresh',{method:'POST',headers:{cookie,origin:'http://127.0.0.1:5173','content-type':'application/json'},body:'{}'})).status).toBe(200);
+ expect(upstream.mock.calls.at(-1)?.[1]?.headers).toEqual(expect.objectContaining({authorization:'Bearer '+refresh}));
+ fail=true;const r=await fetch(url+'/status',{headers:{cookie}});expect(await r.text()).not.toContain('never disclose');expect(r.status).toBe(502);
+});
