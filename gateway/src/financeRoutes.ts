@@ -1,3 +1,4 @@
+import {createPlaidRouter} from './plaidRoutes.js';
 import {createReceiptReviewRouter} from './receiptReviewRoutes.js';
 import {createSupplierReviewRouter} from './supplierReviewRoutes.js';
 import {createSupplierRouter} from './supplierRoutes.js';
@@ -7,7 +8,7 @@ import {createRequireSession} from './requireSession.js';
 export function validFinanceQuery(v:unknown):boolean{
  if(!v||typeof v!=='object'||Array.isArray(v))return false;const q=v as Record<string,unknown>;
  return Object.keys(q).sort().join(',')==='attention,jobSearch,operation,period'&&
- ['received','costs','changes','attention','status','qbo_status','qbo_activity','supplier_status','supplier_job'].includes(String(q.operation))&&
+ ['received','costs','changes','attention','status','qbo_status','qbo_activity','supplier_status','supplier_job','plaid_status','plaid_activity'].includes(String(q.operation))&&
  ['this_month','last_month','all_time'].includes(String(q.period))&&
  ['all','undated','unpaid','reconciliation'].includes(String(q.attention))&&
  typeof q.jobSearch==='string'&&q.jobSearch.length<=160&&!/[\x00-\x1f]/.test(q.jobSearch);
@@ -18,6 +19,7 @@ export function createFinanceRouter(options:{reviewKey?:string|null;sessionSecre
   if(u.protocol!=='http:'||u.hostname!=='justice-finance-agent.internal'||u.port!=='8790'||u.username||u.password||u.search||u.hash||u.pathname!=='/')throw Error('INVALID_FINANCE_AGENT_URL');}
  if((options.readKey&&options.readKey.length<32)||(options.refreshKey&&options.refreshKey.length<32)||(options.readKey&&options.readKey===options.refreshKey))throw Error('INVALID_FINANCE_SERVICE_KEYS');
  router.use(prefix,createRequireSession(options.sessionSecret),(_req,res,next)=>{res.setHeader('Cache-Control','private, no-store');next();});
+ router.use(createPlaidRouter(options));
  router.use(createQuickBooksRouter(options));
  router.use(createSupplierRouter(options));
  router.use(createSupplierReviewRouter(options));
