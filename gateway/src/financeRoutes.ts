@@ -26,17 +26,18 @@ export function createFinanceRouter(options:{reviewKey?:string|null;sessionSecre
  router.use(createReceiptReviewRouter(options));
  if(options.reviewKey&&(options.reviewKey.length<32||[options.readKey,options.refreshKey].includes(options.reviewKey)))throw Error('INVALID_FINANCE_REVIEW_KEY');
  let active=0;
- for(const [path,method] of [['status','GET'],['query','POST'],['refresh','POST']] as const){
+ for(const [path,method] of [['status','GET'],['feeds','GET'],['query','POST'],['refresh','POST'],['refresh-job','POST']] as const){
   router[method==='GET'?'get':'post'](`${prefix}/${path}`,async(req,res)=>{
    if(req.originalUrl.includes('?')){res.status(400).json({error:{code:'INVALID_QUERY'}});return;}
-   if((path==='refresh'&&!req.headers.origin)||(req.headers.origin&&!options.allowedOrigins.includes(req.headers.origin))){res.status(403).json({error:{code:'ORIGIN_REJECTED'}});return;}
+   if(((path==='refresh'||path==='refresh-job')&&!req.headers.origin)||(req.headers.origin&&!options.allowedOrigins.includes(req.headers.origin))){res.status(403).json({error:{code:'ORIGIN_REJECTED'}});return;}
    if(path==='query'&&!validFinanceQuery(req.body)){res.status(400).json({error:{code:'INVALID_FINANCE_QUERY'}});return;}
    if(path==='refresh'&&req.body&&Object.keys(req.body).length){res.status(400).json({error:{code:'INVALID_FINANCE_QUERY'}});return;}
-   const key=path==='refresh'?options.refreshKey:options.readKey;
+   if(path==='refresh-job'&&(!req.body||Object.keys(req.body).join(',')!=='jobNumber'||typeof req.body.jobNumber!=='string'||!/^\d{1,10}$/.test(req.body.jobNumber))){res.status(400).json({error:{code:'INVALID_FINANCE_QUERY'}});return;}
+   const key=(path==='refresh'||path==='refresh-job')?options.refreshKey:options.readKey;
    if(!options.baseUrl||!key){res.status(503).json({error:{code:'FINANCE_NOT_CONFIGURED'}});return;}
    if(active>=4){res.status(429).json({error:{code:'FINANCE_BUSY'}});return;}active++;
    try{
-    const response=await(options.fetchImpl??fetch)(`${options.baseUrl.replace(/\/$/,'')}/v1/${path}`,{method,redirect:'error',signal:AbortSignal.timeout(20000),headers:{authorization:`Bearer ${key}`,accept:'application/json','content-type':'application/json'},...(method==='POST'?{body:JSON.stringify(path==='query'?req.body:{})}:{})});
+    const response=await(options.fetchImpl??fetch)(`${options.baseUrl.replace(/\/$/,'')}/v1/${path}`,{method,redirect:'error',signal:AbortSignal.timeout(20000),headers:{authorization:`Bearer ${key}`,accept:'application/json','content-type':'application/json'},...(method==='POST'?{body:JSON.stringify(path==='query'||path==='refresh-job'?req.body:{})}:{})});
     const reader=response.body?.getReader();if(!reader)throw Error();const chunks:Uint8Array[]=[];let n=0;
     try{for(;;){const p=await reader.read();if(p.done)break;n+=p.value.byteLength;if(n>512000)throw Error();chunks.push(p.value);}}finally{await reader.cancel();}
     const raw=Buffer.concat(chunks).toString();if([options.readKey,options.refreshKey].some(k=>k&&raw.includes(k)))throw Error();
@@ -44,8 +45,8 @@ export function createFinanceRouter(options:{reviewKey?:string|null;sessionSecre
     if(!data||typeof data!=='object'||Array.isArray(data))throw Error();
     if(!response.ok){
      const code=(data as {error?:{code?:string}}).error?.code;
-     const permitted=['SYNC_ALREADY_RUNNING','REFRESH_COOLDOWN','FINANCE_UNAVAILABLE'];
-     res.status(response.status===409?409:response.status===429?429:502).json({error:{code:code&&permitted.includes(code)?code:'FINANCE_UNAVAILABLE'}});return;
+     const permitted=['SYNC_ALREADY_RUNNING','REFRESH_COOLDOWN','FINANCE_UNAVAILABLE','JOB_NOT_UNIQUE'];
+     res.status(response.status===400?400:response.status===409?409:response.status===429?429:502).json({error:{code:code&&permitted.includes(code)?code:'FINANCE_UNAVAILABLE'}});return;
     }
     res.status(response.status).json(data);
    }catch{res.status(502).json({error:{code:'FINANCE_UNAVAILABLE'}});}finally{active--;}
