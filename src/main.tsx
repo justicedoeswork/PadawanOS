@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Theme } from '@astryxdesign/core/theme';
 import './index.css';
 import App from './App';
+import './gateway/AppleExperience.css';
 import { AstryxSmoke } from './dev/AstryxSmoke';
 import { CrashProbe } from './dev/CrashProbe';
 import { ErrorBoundary } from './components/ErrorBoundary';
