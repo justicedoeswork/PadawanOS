@@ -3,14 +3,15 @@ import {describe,it,expect} from 'vitest';
 import {FinanceStatus} from './FinanceStatus';
 import {SupplierStatus} from './SupplierStatus';
 describe('Finance workspace',()=>{
- it('starts with review tasks in a main workspace, not a chat disclosure',()=>{
+ it('starts with the visual dashboard and keeps review tasks accessible',()=>{
   const html=renderToStaticMarkup(<FinanceStatus/>);
   expect(html).toContain('<main');
   expect(html).toContain('Automatic feed status');
   expect(html).toContain('Feeds refresh automatically while this page is closed');
   expect(html).toContain('aria-label="Finance Agent"');
-  expect(html).toContain('aria-current="page">Needs your input');
-  expect(html).toContain('Review tasks');
+  expect(html).toContain('aria-current="page">Dashboard');
+  expect(html).toContain('Finance dashboard');
+  expect(html).toContain('Needs your input');
   expect(html).not.toContain('Connect / reconnect QuickBooks');
  });
  it('labels the evidence view separately from the task view',()=>{

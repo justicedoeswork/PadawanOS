@@ -107,6 +107,8 @@ it('forecasts require a session and use read-only credentials for panel and ques
  const g=await startTestGateway({financeAgentBaseUrl:'http://justice-finance-agent.internal:8790',financeReadKey:read,financeRefreshKey:refresh,financeFetch:upstream});close.push(g.close);
  const url=`http://127.0.0.1:${g.port}/api/finance`,cookie=await loginForTestCookie(g.port);
  expect((await fetch(url+'/forecast')).status).toBe(401);expect(upstream).not.toHaveBeenCalled();
+ expect((await fetch(url+'/dashboard')).status).toBe(401);expect(upstream).not.toHaveBeenCalled();
+ expect((await fetch(url+'/dashboard',{headers:{cookie}})).status).toBe(200);
  expect((await fetch(url+'/forecast',{headers:{cookie}})).status).toBe(200);
  expect(upstream.mock.calls.at(-1)?.[1]?.headers).toEqual(expect.objectContaining({authorization:'Bearer '+read}));
  expect((await fetch(url+'/query',{method:'POST',headers:{cookie,'content-type':'application/json'},body:JSON.stringify({...query,operation:'forecast',period:'all_time'})})).status).toBe(200);

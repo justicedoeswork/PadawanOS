@@ -26,7 +26,7 @@ export function createFinanceRouter(options:{reviewKey?:string|null;sessionSecre
  router.use(createReceiptReviewRouter(options));
  if(options.reviewKey&&(options.reviewKey.length<32||[options.readKey,options.refreshKey].includes(options.reviewKey)))throw Error('INVALID_FINANCE_REVIEW_KEY');
  let active=0;
- for(const [path,method] of [['status','GET'],['feeds','GET'],['forecast','GET'],['query','POST'],['refresh','POST'],['refresh-job','POST']] as const){
+ for(const [path,method] of [['status','GET'],['feeds','GET'],['forecast','GET'],['dashboard','GET'],['query','POST'],['refresh','POST'],['refresh-job','POST']] as const){
   router[method==='GET'?'get':'post'](`${prefix}/${path}`,async(req,res)=>{
    if(req.originalUrl.includes('?')){res.status(400).json({error:{code:'INVALID_QUERY'}});return;}
    if(((path==='refresh'||path==='refresh-job')&&!req.headers.origin)||(req.headers.origin&&!options.allowedOrigins.includes(req.headers.origin))){res.status(403).json({error:{code:'ORIGIN_REJECTED'}});return;}
