@@ -90,3 +90,15 @@ it('Plaid routes require session and refresh origin, bound filters and redact up
  expect(upstream.mock.calls.at(-1)?.[1]?.headers).toEqual(expect.objectContaining({authorization:'Bearer '+refresh}));
  fail=true;const r=await fetch(url+'/status',{headers:{cookie}});expect(await r.text()).not.toContain('never disclose');expect(r.status).toBe(502);
 });
+it('job refresh requires session, origin and exact job-number payload; feeds use read credential',async()=>{
+ const upstream=vi.fn(async(_input:string|URL|Request,_init?:RequestInit)=>Response.json({accepted:true},{status:202}));
+ const g=await startTestGateway({financeAgentBaseUrl:'http://justice-finance-agent.internal:8790',financeReadKey:read,financeRefreshKey:refresh,financeFetch:upstream});close.push(g.close);
+ const url=`http://127.0.0.1:${g.port}/api/finance`,cookie=await loginForTestCookie(g.port),body=JSON.stringify({jobNumber:'123'});
+ expect((await fetch(url+'/refresh-job',{method:'POST',body})).status).toBe(401);
+ expect((await fetch(url+'/refresh-job',{method:'POST',headers:{cookie,'content-type':'application/json'},body})).status).toBe(403);
+ const headers={cookie,origin:'http://127.0.0.1:5173','content-type':'application/json'};
+ for(const bad of [{jobNumber:'../123'},{jobNumber:123},{jobNumber:'123',write:true}])expect((await fetch(url+'/refresh-job',{method:'POST',headers,body:JSON.stringify(bad)})).status).toBe(400);
+ expect(upstream).not.toHaveBeenCalled();expect((await fetch(url+'/refresh-job',{method:'POST',headers,body})).status).toBe(202);
+ expect(upstream.mock.calls.at(-1)?.[1]).toEqual(expect.objectContaining({body,headers:expect.objectContaining({authorization:'Bearer '+refresh})}));
+ await fetch(url+'/feeds',{headers:{cookie}});expect(upstream.mock.calls.at(-1)?.[1]?.headers).toEqual(expect.objectContaining({authorization:'Bearer '+read}));
+});

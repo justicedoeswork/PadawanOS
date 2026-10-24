@@ -6,6 +6,8 @@ describe('Finance workspace',()=>{
  it('starts with review tasks in a main workspace, not a chat disclosure',()=>{
   const html=renderToStaticMarkup(<FinanceStatus/>);
   expect(html).toContain('<main');
+  expect(html).toContain('Automatic feed status');
+  expect(html).toContain('Feeds refresh automatically while this page is closed');
   expect(html).toContain('aria-label="Finance Agent"');
   expect(html).toContain('aria-current="page">Needs your input');
   expect(html).toContain('Review tasks');
