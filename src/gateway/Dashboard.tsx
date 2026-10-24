@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Bell, Activity, CircleCheck, CircleAlert, ScanLine, Files, CalendarDays, Sparkles } from 'lucide-react';
 import justiceOsLogo from '../assets/brand/justiceos-logo.png';
 import { useI18n } from '../i18n/context';
 import { usePanda } from '../store';
@@ -90,26 +91,28 @@ export function Dashboard() {
       </header>
 
       <section className="gw-dashboard-briefing" aria-label={t('dashboard.briefing.title')}>
+        <Sparkles className="gw-dashboard-briefing-icon" size={22} aria-hidden="true" />
         <h2 className="gw-dashboard-briefing-title">{t('dashboard.briefing.title')}</h2>
         <p className="gw-dashboard-briefing-body">{t('dashboard.briefing.placeholder')}</p>
       </section>
 
       <div className="gw-dashboard-grid">
-        <DashboardCard title={t('dashboard.card.attention')} items={attentionItems} emptyText={t('dashboard.empty.attention')} />
-        <DashboardCard title={t('dashboard.card.inProgress')} items={inProgressItems} emptyText={t('dashboard.empty.inProgress')} />
-        <DashboardCard title={t('dashboard.card.completed')} items={[]} emptyText={t('dashboard.empty.completed')} />
-        <DashboardCard title={t('dashboard.card.failedBlocked')} items={[]} emptyText={t('dashboard.empty.failedBlocked')} />
-        <DashboardCard title={t('dashboard.card.findings')} items={[]} emptyText={t('dashboard.empty.findings')} />
-        <DashboardCard title={t('dashboard.card.documents')} items={[]} emptyText={t('dashboard.empty.documents')} />
-        <DashboardCard title={t('dashboard.card.upcoming')} items={[]} emptyText={t('dashboard.empty.upcoming')} />
+        <DashboardCard icon={Bell} title={t('dashboard.card.attention')} items={attentionItems} emptyText={t('dashboard.empty.attention')} />
+        <DashboardCard icon={Activity} title={t('dashboard.card.inProgress')} items={inProgressItems} emptyText={t('dashboard.empty.inProgress')} />
+        <DashboardCard icon={CircleCheck} title={t('dashboard.card.completed')} items={[]} emptyText={t('dashboard.empty.completed')} />
+        <DashboardCard icon={CircleAlert} title={t('dashboard.card.failedBlocked')} items={[]} emptyText={t('dashboard.empty.failedBlocked')} />
+        <DashboardCard icon={ScanLine} title={t('dashboard.card.findings')} items={[]} emptyText={t('dashboard.empty.findings')} />
+        <DashboardCard icon={Files} title={t('dashboard.card.documents')} items={[]} emptyText={t('dashboard.empty.documents')} />
+        <DashboardCard icon={CalendarDays} title={t('dashboard.card.upcoming')} items={[]} emptyText={t('dashboard.empty.upcoming')} />
       </div>
     </div>
   );
 }
 
-function DashboardCard({ title, items, emptyText }: { title: string; items: string[]; emptyText: string }) {
+function DashboardCard({ icon: Icon, title, items, emptyText }: { icon: typeof Bell; title: string; items: string[]; emptyText: string }) {
   return (
     <section className="gw-dashboard-card" aria-label={title}>
+      <span className="gw-dashboard-card-icon"><Icon size={20} strokeWidth={1.7} aria-hidden="true" /></span>
       <h3 className="gw-dashboard-card-title">{title}</h3>
       {items.length === 0 ? (
         <p className="gw-dashboard-card-empty">{emptyText}</p>
