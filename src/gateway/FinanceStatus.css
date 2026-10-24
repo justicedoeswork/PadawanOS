@@ -53,3 +53,11 @@
 .gw-plaid article header strong { flex: 1 1 240px; overflow-wrap: anywhere; }
 .gw-plaid pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--panda-size-chrome); max-height: 320px; overflow: auto; }
 .gw-plaid select { max-width: 100%; min-height: 44px; }
+
+.gw-forecast-summary { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 24px; margin-block: 24px; }
+.gw-forecast-summary article { padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; }
+.gw-forecast-summary strong { font-size: 1.5rem; }
+.gw-forecast-jobs details { padding-block: 16px; border-bottom: 1px solid var(--color-border); }
+.gw-forecast-jobs summary { cursor: pointer; }
+.gw-forecast-jobs dl { display: grid; grid-template-columns: minmax(140px,1fr) 2fr; gap: 12px; }
+.gw-forecast-jobs dd { margin: 0; }

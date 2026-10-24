@@ -102,3 +102,13 @@ it('job refresh requires session, origin and exact job-number payload; feeds use
  expect(upstream.mock.calls.at(-1)?.[1]).toEqual(expect.objectContaining({body,headers:expect.objectContaining({authorization:'Bearer '+refresh})}));
  await fetch(url+'/feeds',{headers:{cookie}});expect(upstream.mock.calls.at(-1)?.[1]?.headers).toEqual(expect.objectContaining({authorization:'Bearer '+read}));
 });
+it('forecasts require a session and use read-only credentials for panel and questions',async()=>{
+ const upstream=vi.fn(async(_input:string|URL|Request,_init?:RequestInit)=>Response.json({answer:'Budget forecast',matchedJobs:1}));
+ const g=await startTestGateway({financeAgentBaseUrl:'http://justice-finance-agent.internal:8790',financeReadKey:read,financeRefreshKey:refresh,financeFetch:upstream});close.push(g.close);
+ const url=`http://127.0.0.1:${g.port}/api/finance`,cookie=await loginForTestCookie(g.port);
+ expect((await fetch(url+'/forecast')).status).toBe(401);expect(upstream).not.toHaveBeenCalled();
+ expect((await fetch(url+'/forecast',{headers:{cookie}})).status).toBe(200);
+ expect(upstream.mock.calls.at(-1)?.[1]?.headers).toEqual(expect.objectContaining({authorization:'Bearer '+read}));
+ expect((await fetch(url+'/query',{method:'POST',headers:{cookie,'content-type':'application/json'},body:JSON.stringify({...query,operation:'forecast',period:'all_time'})})).status).toBe(200);
+ expect((await fetch(url+'/forecast?sql=bad',{headers:{cookie}})).status).toBe(400);
+});
