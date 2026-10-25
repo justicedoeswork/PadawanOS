@@ -1,3 +1,5 @@
+import {InsuranceOverview} from './InsuranceOverview';
+import './WorkspaceDesign.css';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Menu } from 'lucide-react';
 import { isGatewayBuild } from './buildMode';
@@ -174,6 +176,7 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
             <Menu size={20} />
           </button>
         </div>
+        {view==='agent' && route==='main' && <InsuranceOverview/>}
         {view === 'dashboard' ? <Dashboard onOpenAgent={destination => { if(destination==='insurance')openAgent();else if(destination==='marketing')openMarketing();else {window.location.hash='#/communications?panel='+destination;showWorkspace();} }} onNavigate={section => { setFinanceSection(section); navigate('finance'); showWorkspace(); }} /> : route === 'finance' ? <FinanceStatus key={financeSection} initialTab={financeSection} /> : children}
       </div>
       <ManagerChat />

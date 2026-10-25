@@ -95,8 +95,8 @@ export function CreativeMediaReview() {
     <section className="creative-review" aria-labelledby="creative-review-title">
       <div className="creative-review-heading">
         <div>
-          <h2 id="creative-review-title">Individual media review</h2>
-          <p>Review one photo or video at a time. Approvals do not schedule or publish content.</p>
+          <h2 id="creative-review-title">Creative review</h2>
+          <p>Approval does not publish.</p>
         </div>
         <Button variant="secondary" size="sm" label="Refresh" isDisabled={loading || Boolean(busyId)} clickAction={() => void refresh()} />
       </div>
@@ -112,25 +112,27 @@ export function CreativeMediaReview() {
               <span className="creative-review-status">{item.status.replaceAll('_', ' ').toLowerCase()}</span>
             </header>
             <div className="creative-review-previews">
-              <div><h4>Original · {item.originalAsset.filename}</h4><MediaPreview item={item} variant="ORIGINAL" /></div>
-              <div><h4>Proposed · {item.transformation?.provider ?? 'Original media'}{item.transformation?.model ? ' / ' + item.transformation.model : ''}</h4><MediaPreview item={item} variant="GENERATED" /></div>
+              <div><h4 title={item.originalAsset.filename}>Original</h4><MediaPreview item={item} variant="ORIGINAL" /></div>
+              <div><h4>Proposed</h4><MediaPreview item={item} variant="GENERATED" /></div>
             </div>
             {item.whySelected.length > 0 && <details className="creative-review-reasoning">
               <summary>Why this content</summary>
               <ul>{item.whySelected.map((reason, index) => <li key={index}><ReviewReason text={reason} /></li>)}</ul>
             </details>}
             {item.transformation && <details><summary>Generation details</summary><dl>
-              <dt>Prompt</dt><dd>{item.transformation.prompt}</dd>
+              <dt>Source</dt><dd>{item.originalAsset.filename}</dd><dt>Model</dt><dd>{item.transformation.provider} · {item.transformation.model}</dd><dt>Prompt</dt><dd>{item.transformation.prompt}</dd>
               <dt>Why this format</dt><dd>{item.whyThisFormat.join(' · ') || '—'}</dd>
               <dt>Estimated spend</dt><dd>{item.cost.estimatedCostUsd === null ? 'Not available' : '$' + item.cost.estimatedCostUsd.toFixed(2)}</dd>
               <dt>Actual spend</dt><dd>{item.cost.realizedCostUsd === null ? 'Not reported' : '$' + item.cost.realizedCostUsd.toFixed(2)}</dd>
             </dl></details>}
             {item.captionDraft && <p className="creative-review-caption">{item.captionDraft}</p>}
             <label className="creative-review-note">Decision note<textarea value={notes[item.candidateId] ?? ''} onChange={(event) => setNotes((current) => ({ ...current, [item.candidateId]: event.target.value }))} rows={2} /></label>
+            <details className="workspace-disclosure"><summary>Redo settings</summary>
             <label className="creative-review-note">Redo instructions (optional)<textarea value={redoPrompts[item.candidateId] ?? ''} onChange={(event) => setRedoPrompts((current) => ({ ...current, [item.candidateId]: event.target.value }))} rows={2} placeholder="Leave blank to reuse the current prompt." /></label>
             <label className="creative-review-note">Provider for redo<select value={redoProviders[item.candidateId] ?? (item.transformation?.provider === 'runway' ? 'higgsfield' : 'runway')} onChange={(event) => setRedoProviders((current) => ({ ...current, [item.candidateId]: event.target.value as 'runway' | 'higgsfield' }))}>
               <option value="runway">Runway</option><option value="higgsfield">Higgsfield.ai</option>
             </select></label>
+            </details>
             <footer>
               <Button variant="secondary" size="sm" label={busyId === item.candidateId ? 'Working…' : `Redo with ${redoProviders[item.candidateId] ?? (item.transformation?.provider === 'runway' ? 'Higgsfield' : 'Runway')}`} isDisabled={Boolean(busyId)} clickAction={() => void redo(item)} />
               {item.status === 'READY_FOR_CAMPAIGN' && <Button variant="secondary" size="sm" label={busyId === item.candidateId ? 'Working…' : 'Reject'} isDisabled={Boolean(busyId)} clickAction={() => void decide(item, 'REJECTED')} />}

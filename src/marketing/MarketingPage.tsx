@@ -249,6 +249,7 @@ export function MarketingPage() {
 
   return (
     <div className="mkt-page">
+      <header className="workspace-heading"><h1>{t('mkt.title')}</h1><span>Review before publishing</span></header>
       <div className="mkt-topbar">
         <div className="mkt-status">
           <StatusDot

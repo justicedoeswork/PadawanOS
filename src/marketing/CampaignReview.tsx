@@ -171,8 +171,8 @@ export function CampaignReview({
         </section>
       )}
 
-      <section className="mkt-panel">
-        <h3>{t('mkt.review.why')}</h3>
+      <details className="mkt-panel workspace-disclosure">
+        <summary>{t('mkt.review.why')}</summary>
         {review.overview.campaignAngle && (
           <p className="mkt-kv">
             <span className="mkt-kv-label">{t('mkt.review.angle')}</span>
@@ -215,7 +215,7 @@ export function CampaignReview({
             </details>
           </>
         )}
-      </section>
+      </details>
 
       <section className="mkt-panel">
         <h3>{t('mkt.review.facts')}</h3>
@@ -305,14 +305,14 @@ export function CampaignReview({
       </section>
 
       {review.whyThisCampaign.assumptions.length > 0 && (
-        <section className="mkt-panel">
-          <h3>{t('mkt.review.assumptions')}</h3>
+        <details className="mkt-panel workspace-disclosure">
+          <summary>{t('mkt.review.assumptions')}</summary>
           <ul className="mkt-list mkt-list--muted">
             {review.whyThisCampaign.assumptions.map((assumption) => (
               <li key={assumption}>{assumption}</li>
             ))}
           </ul>
-        </section>
+        </details>
       )}
 
       <section className="mkt-panel">
@@ -338,8 +338,8 @@ export function CampaignReview({
         )}
       </section>
 
-      <section className="mkt-panel">
-        <h3>{t('mkt.review.history')}</h3>
+      <details className="mkt-panel workspace-disclosure">
+        <summary>{t('mkt.review.history')}</summary>
         <ol className="mkt-timeline">
           {timeline.map((entry) => (
             <li key={entry.revisionId} className={entry.isViewing ? 'mkt-timeline-entry--viewing' : undefined}>
@@ -353,7 +353,7 @@ export function CampaignReview({
             </li>
           ))}
         </ol>
-      </section>
+      </details>
 
       <section className="mkt-panel">
         <details className="mkt-details">

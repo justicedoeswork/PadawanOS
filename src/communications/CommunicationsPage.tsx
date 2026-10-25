@@ -45,7 +45,7 @@ function nestedString(value: unknown, parent: string, ...keys: string[]): string
 
 export function CommunicationsPage() {
   const { t } = useI18n();
-  const [selected, setSelected] = useState<PanelKey | null>(() => {const panel=typeof window==='undefined'?null:new URLSearchParams(window.location.hash.split('?')[1]).get('panel');return panel==='replies'||panel==='approvals'?panel:null;});
+  const [selected, setSelected] = useState<PanelKey | null>(() => {const panel=typeof window==='undefined'?null:new URLSearchParams(window.location.hash.split('?')[1]).get('panel');return panel==='replies'||panel==='approvals'?panel:'replies';});
   const [data, setData] = useState<LoadedData>({
     status: 'loading',
     reachable: false,
@@ -91,14 +91,14 @@ export function CommunicationsPage() {
 
   const metrics = useMemo(
     () => [
-      { key: 'today' as const, label: t('communications.today'), value: data.today.length },
-      { key: 'waiting' as const, label: t('communications.waiting'), value: data.waiting.length },
-      { key: 'replies' as const, label: t('communications.replies'), value: data.replies.length },
+            { key: 'replies' as const, label: t('communications.replies'), value: data.replies.length },
       {
         key: 'approvals' as const,
         label: t('communications.approvals'),
         value: data.responseDrafts.length + data.calendarProposals.length
       },
+      { key: 'today' as const, label: t('communications.today'), value: data.today.length },
+      { key: 'waiting' as const, label: t('communications.waiting'), value: data.waiting.length },
       { key: 'notifications' as const, label: t('communications.notifications'), value: data.notifications.length }
     ],
     [data, t]
@@ -108,9 +108,7 @@ export function CommunicationsPage() {
     <div className="communications-page">
       <section className="communications-hero">
         <div>
-          <p className="communications-kicker">{t('communications.kicker')}</p>
           <h1>{t('communications.title')}</h1>
-          <p>{t('communications.subtitle')}</p>
         </div>
         <span className={`communications-status communications-status--${data.reachable ? 'ok' : 'down'}`}>
           {data.status === 'loading'
@@ -130,13 +128,14 @@ export function CommunicationsPage() {
               <Metric
                 key={metric.key}
                 label={metric.label}
-                value={metric.value}
+                value={data.status==='ready'?metric.value:null}
+                selected={selected===metric.key}
                 onClick={() => setSelected(metric.key)}
               />
             ))}
           </div>
 
-          {selected && (
+          {selected && data.status==='ready' && (
             <Drilldown
               panel={selected}
               data={data}
@@ -148,18 +147,18 @@ export function CommunicationsPage() {
         </>
       )}
 
-      <section className="communications-note">
-        <strong>{t('communications.readOnlyTitle')}</strong>
+      <details className="communications-note">
+        <summary>{t('communications.readOnlyTitle')}</summary>
         <p>{t('communications.readOnlyBody')}</p>
-      </section>
+      </details>
     </div>
   );
 }
 
-function Metric({ label, value, onClick }: { label: string; value: number; onClick(): void }) {
+function Metric({ label, value, selected, onClick }: { label: string; value: number|null; selected:boolean; onClick(): void }) {
   return (
-    <button type="button" className="communications-card communications-card--button" onClick={onClick}>
-      <span className="communications-card-value">{value}</span>
+    <button type="button" className="communications-card communications-card--button" aria-pressed={selected} disabled={value===null} onClick={onClick}>
+      <span className="communications-card-value">{value??'—'}</span>
       <span className="communications-card-row">
         <span className="communications-card-label">{label}</span>
         <ChevronRight size={16} aria-hidden="true" />
@@ -168,7 +167,7 @@ function Metric({ label, value, onClick }: { label: string; value: number; onCli
   );
 }
 
-function Drilldown({
+export function Drilldown({
   panel,
   data,
   title,
@@ -198,7 +197,7 @@ function Drilldown({
   } else if (panel === 'replies') {
     rows = data.replies.map((item) => ({
       title: nestedString(item, 'message', 'subject') ?? '(no subject)',
-      detail: nestedString(item, 'message', 'sender') ?? 'Unknown sender',
+      detail: nestedString(item, 'message', 'sender') ?? stringField(record(record(item).message).sender,'displayName','emailAddress','address') ?? 'Unknown sender',
       meta: nestedString(item, 'message', 'occurredAt')
         ? new Date(nestedString(item, 'message', 'occurredAt')!).toLocaleString()
         : undefined
@@ -232,7 +231,6 @@ function Drilldown({
     <section className="communications-drilldown" aria-label={title}>
       <div className="communications-drilldown-header">
         <div>
-          <p className="communications-drilldown-kicker">Read-only details</p>
           <h2>{title}</h2>
         </div>
         <button type="button" className="communications-drilldown-close" onClick={onClose} aria-label="Close details">
@@ -247,7 +245,7 @@ function Drilldown({
           {rows.map((row, index) => (
             <article className="communications-list-item" key={index}>
               <strong>{row.title}</strong>
-              {row.detail && row.detail !== row.title && <p>{row.detail}</p>}
+              {row.detail && row.detail !== row.title && (panel==='replies'?<p>{row.detail}</p>:<details><summary>Details</summary><p>{row.detail}</p></details>)}
               {row.meta && <span>{row.meta}</span>}
             </article>
           ))}

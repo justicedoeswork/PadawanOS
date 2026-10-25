@@ -66,7 +66,7 @@ function QueueCard({ item, onOpen }: { item: MarketingQueueItem; onOpen(campaign
   const Icon = STATE_ICON[state];
 
   return (
-    <button type="button" className={`mkt-card mkt-card--${state.toLowerCase()}`} onClick={() => onOpen(item.campaignId)}>
+    <article className="mkt-queue-entry"><button type="button" className={`mkt-card mkt-card--${state.toLowerCase()}`} onClick={() => onOpen(item.campaignId)}>
       <div className="mkt-card-head">
         <span className={`mkt-badge mkt-badge--${state.toLowerCase()}`}>
           <Icon size={12} />
@@ -76,10 +76,8 @@ function QueueCard({ item, onOpen }: { item: MarketingQueueItem; onOpen(campaign
       </div>
       <h4 className="mkt-card-title truncate">{item.title}</h4>
       <dl className="mkt-card-facts">
-        <Fact label={t('mkt.card.objective')} value={item.objective} />
         <Fact label={t('mkt.card.trade')} value={item.serviceTrade} />
         <Fact label={t('mkt.card.market')} value={item.geographicMarket} />
-        <Fact label={t('mkt.card.serviceArea')} value={item.serviceAreaMarket} />
       </dl>
       {item.channels.length > 0 && (
         <div className="mkt-chip-row">
@@ -110,7 +108,7 @@ function QueueCard({ item, onOpen }: { item: MarketingQueueItem; onOpen(campaign
           {t('mkt.card.updated', { time: formatRelativeTime(item.updatedAt, t) ?? item.updatedAt })}
         </span>
       </div>
-    </button>
+    </button><details className="mkt-queue-extra"><summary>Campaign details</summary><dl><Fact label={t('mkt.card.objective')} value={item.objective}/><Fact label={t('mkt.card.serviceArea')} value={item.serviceAreaMarket}/></dl></details></article>
   );
 }
 
