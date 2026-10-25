@@ -13,14 +13,14 @@ export function createAcculynxRouter(options: {
   router.get(`${prefix}/status`, (_req, res) => {
     res.json({ configured: Boolean(client), mode: 'read-only', connectionVerified: false });
   });
-  router.get([`${prefix}/jobs`, `${prefix}/jobs/:jobId/payments`], async (req, res) => {
+  router.get([`${prefix}/jobs`, `${prefix}/jobs/:jobId/payments`, `${prefix}/jobs/:jobId/context`], async (req, res) => {
     if (!client) { res.status(503).json({ error: { code: 'ACCULYNX_NOT_CONFIGURED' } }); return; }
     try {
       const allowed = req.params.jobId ? [] : ['recordStartIndex'];
       if (Object.keys(req.query).some(key => !allowed.includes(key))) throw new AcculynxError('INVALID_QUERY', 400);
       const rawOffset = req.query.recordStartIndex ?? '0';
       if (typeof rawOffset !== 'string' || !/^\d+$/.test(rawOffset)) throw new AcculynxError('INVALID_OFFSET', 400);
-      res.json(req.params.jobId ? await client.payments(String(req.params.jobId)) : await client.jobs(Number(rawOffset)));
+      res.json(req.params.jobId ? (req.path.endsWith('/context') ? await client.context!(String(req.params.jobId)) : await client.payments(String(req.params.jobId))) : await client.jobs(Number(rawOffset)));
     } catch (error) {
       const safe = error instanceof AcculynxError ? error : new AcculynxError('ACCULYNX_UNAVAILABLE');
       res.status(safe.status).json({ error: { code: safe.code } });
