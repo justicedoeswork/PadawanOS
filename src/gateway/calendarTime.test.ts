@@ -1,3 +1,8 @@
+// The date presenter is transport-independent; the MCP client has separate wire tests.
+vi.mock('./agentMcpClient',()=>({readCommunicationsTool:async(path:string)=>{
+ const response=await fetch(path,{credentials:'same-origin',headers:{accept:'application/json'}});
+ if(!response.ok)throw Error('Source unavailable');return response.json();
+}}));
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {calendarWindow,calendarDayLabel,calendarEventTime} from './calendarTime';
 import {executeManagerIntent} from './managerCommunications';

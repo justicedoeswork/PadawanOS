@@ -1,3 +1,4 @@
+import {callAgentTool} from './agentMcpClient';
 export type FinanceIntent={kind:'finance';operation:'received'|'costs'|'changes'|'attention'|'status'|'qbo_status'|'qbo_activity'|'supplier_status'|'supplier_job'|'plaid_status'|'plaid_activity'|'forecast';period:'this_month'|'last_month'|'all_time';jobSearch:string;attention:'all'|'undated'|'unpaid'|'reconciliation'};
 export function financeIntent(v:Record<string,unknown>):FinanceIntent{
  if(Object.keys(v).sort().join(',')!=='attention,jobSearch,kind,operation,period'||v.kind!=='finance'||
@@ -7,8 +8,6 @@ export function financeIntent(v:Record<string,unknown>):FinanceIntent{
 export async function askFinance(intent:FinanceIntent){
  const {kind:_,...query}=financeIntent(intent);
  try{
-  const r=await fetch('/api/finance/query',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(query),signal:AbortSignal.timeout(25000)});
-  if(!r.ok)return 'Finance data is unavailable right now. Open Finance status to check the last successful refresh and retry later.';
-  const data=await r.json();if(typeof data.answer!=='string'||data.answer.length>40000)throw Error();return data.answer;
+  const data=await callAgentTool('finance_query',query) as {answer?:unknown};if(typeof data.answer!=='string'||data.answer.length>40000)throw Error();return data.answer;
  }catch{return 'The Finance Agent could not be reached. Its last successful dataset is preserved; check Finance status before relying on older answers.';}
 }

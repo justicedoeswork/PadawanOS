@@ -1,3 +1,4 @@
+import {readCommunicationsTool} from './agentMcpClient';
 import {askFinance,type FinanceIntent} from './finance';
 import {summarizeCallFollowups,openCallFollowups,type CallContext,type FollowupSelection} from './callFollowups';
 import {calendarWindow,calendarDayLabel,calendarEventTime} from './calendarTime';
@@ -137,10 +138,7 @@ export function classifyManagerQuestion(raw: string, context: ManagerContext = {
 }
 
 async function getJson(path: string): Promise<unknown> {
-  const response = await fetch(path, { credentials: 'same-origin', headers: { accept: 'application/json' } });
-  const body = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return body;
+  return readCommunicationsTool(path);
 }
 
 function arr(value: unknown): unknown[] {

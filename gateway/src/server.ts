@@ -1,3 +1,7 @@
+import { createAgentMcpRouter } from './agentMcp.js';
+import { createSessionToken } from './session.js';
+import { SESSION_COOKIE_NAME } from './cookies.js';
+import { readInsuranceMcp } from './insuranceMcpRead.js';
 import {createFinanceRouter} from './financeRoutes.js';
 import { createAcculynxRouter } from './acculynxRoutes.js';
 import { createCallOwnerRouter } from './callOwnerRoutes.js';
@@ -26,6 +30,7 @@ import type { CommunicationsAgentClient } from './communicationsAgentClient.js';
 import type { ManagerApiClient } from './managerApiClient.js';
 
 export interface GatewayOverrides {
+  mcpClients?: string | null;
   financeAgentBaseUrl?: string | null;
   financeReadKey?: string | null;
   financeReviewKey?: string | null;
@@ -151,6 +156,33 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   // set on a freshly-provisioned machine), and must never depend on
   // config it isn't allowed to reveal.
   app.use(createHealthRouter());
+  // Only the server builds this loopback URL and cookie. Tool input never controls
+  // the destination, credentials or method. Existing route validation remains in force.
+  const loopback = () => {
+    const address = server.address();
+    if (!address || typeof address === 'string' || !sessionSecret) throw Error('MCP_NOT_READY');
+    return { base: `http://127.0.0.1:${address.port}`, cookie: `${SESSION_COOKIE_NAME}=${createSessionToken(sessionSecret)}` };
+  };
+  app.use(createAgentMcpRouter({ sessionSecret, allowedOrigins,
+    clients: overrides.mcpClients !== undefined ? overrides.mcpClients : config.mcpClients,
+    insuranceRead: async(question) => {
+      const {base,cookie} = loopback();
+      return {answer: await readInsuranceMcp(question, base, cookie, allowedOrigins[0] ?? '')};
+    },
+    read: async({path,body}) => {
+      const {base,cookie}=loopback();
+      const response=await fetch(base+path,{method:body===undefined?'GET':'POST',redirect:'error',
+        headers:{cookie,accept:'application/json','content-type':'application/json'},
+        ...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(25000)});
+      if(!response.ok){await response.body?.cancel();throw Error('SOURCE_UNAVAILABLE');}
+      const reader=response.body?.getReader();if(!reader)throw Error('MISSING_BODY');
+      let bytes=0;const chunks:Uint8Array[]=[];
+      try{for(;;){const part=await reader.read();if(part.done)break;bytes+=part.value.byteLength;if(bytes>512000)throw Error('RESPONSE_TOO_LARGE');chunks.push(part.value);}}finally{await reader.cancel();}
+      const raw=Buffer.concat(chunks).toString();
+      if(raw.includes(cookie)||raw.includes(sessionSecret!))throw Error('UNSAFE_RESPONSE');
+      return JSON.parse(raw) as unknown;
+    }
+  }));
   app.use(createFinanceRouter({sessionSecret,allowedOrigins,
     baseUrl:overrides.financeAgentBaseUrl !== undefined ? overrides.financeAgentBaseUrl : config.financeAgentBaseUrl,
     readKey:overrides.financeReadKey !== undefined ? overrides.financeReadKey : config.financeReadKey,
