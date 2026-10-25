@@ -31,13 +31,13 @@ export function validateHomeData(key:Key,v:unknown):boolean {
 export function HomeOverview({onNavigate,attention=[],running=false}:{onNavigate?:(s:Section)=>void;attention?:string[];running?:boolean}){
  const [data,setData]=useState<HomeData>({}),[errors,setErrors]=useState<HomeErrors>({});
  useEffect(()=>{let active=true,busy=false;const abort=new AbortController();
- const load=async()=>{if(busy||document.hidden)return;busy=true;try{await Promise.allSettled((Object.keys(endpoints) as Key[]).map(async key=>{try{
+ const load=async()=>{if(busy||document.hidden)return;busy=true;try{for(const key of Object.keys(endpoints) as Key[]){if(!active)break;try{
  const response=await fetch(endpoints[key],{credentials:'same-origin',signal:AbortSignal.any([abort.signal,AbortSignal.timeout(25000)])});if(!response.ok)throw Error();
  const value:unknown=await response.json();if(!validateHomeData(key,value))throw Error();
  // Home only retains aggregate review counts, not all supplier documents or deposit descriptions.
  const selected=key==='suppliers'?{jobReviewCount:(value as {jobReviewCount:number}).jobReviewCount}:key==='receipts'?{count:(value as {count:number}).count}:value;
  if(active){setData(old=>({...old,[key]:selected}));setErrors(old=>({...old,[key]:undefined}));}
- }catch{if(active)setErrors(old=>({...old,[key]:`${names[key]} could not refresh.`}));}}));}finally{busy=false;}};
+ }catch{if(active)setErrors(old=>({...old,[key]:`${names[key]} could not refresh.`}));}}}finally{busy=false;}};
  void load();const timer=setInterval(()=>void load(),60000);const visible=()=>{if(!document.hidden)void load();};document.addEventListener('visibilitychange',visible);
  return()=>{active=false;abort.abort();clearInterval(timer);document.removeEventListener('visibilitychange',visible);};},[]);
  return <HomeOverviewView data={data} errors={errors} onNavigate={onNavigate} attention={attention} running={running}/>;
