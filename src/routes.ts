@@ -25,7 +25,7 @@ export type DevPage = 'astryx-smoke' | 'crash';
  * the first-run empty state's entry (#200); the app never opens on it by
  * itself). */
 export function parseHash(hash: string): AppRoute {
-  const path = hash.replace(/^#\/?/, '').replace(/\/+$/, '');
+  const path = hash.replace(/^#\/?/, '').split('?')[0]!.replace(/\/+$/, '');
   if (path === 'settings') return 'settings';
   if (path === 'demo') return 'demo';
   if (path === 'marketing') return 'marketing';
@@ -36,7 +36,7 @@ export function parseHash(hash: string): AppRoute {
 
 /** Dev-only tree-level pages (main.tsx renders a different root for these). */
 export function parseDevPage(hash: string): DevPage | null {
-  const path = hash.replace(/^#\/?/, '').replace(/\/+$/, '');
+  const path = hash.replace(/^#\/?/, '').split('?')[0]!.replace(/\/+$/, '');
   if (import.meta.env.DEV && path === 'astryx-smoke') return 'astryx-smoke';
   if (import.meta.env.DEV && path === 'crash') return 'crash';
   return null;

@@ -5,6 +5,7 @@ import { readInsuranceMcp } from './insuranceMcpRead.js';
 import {createFinanceRouter} from './financeRoutes.js';
 import { createAcculynxRouter } from './acculynxRoutes.js';
 import { createCallOwnerRouter } from './callOwnerRoutes.js';
+import { createInsuranceAttentionRouter } from './insuranceAttentionRoutes.js';
 import { createInsuranceReportRouter } from './insuranceReportRoutes.js';
 import { createInsuranceDraftRouter } from './insuranceDraftRoutes.js';
 import { createManagerLanguageRouter } from './managerLanguageRoutes.js';
@@ -241,6 +242,7 @@ export function createGatewayServer(overrides: GatewayOverrides = {}): GatewayIn
   app.use(createManagerVoiceRouter({sessionSecret,allowedOrigins,
     apiKey:overrides.managerLanguageApiKey ?? config.managerLanguageApiKey,
     ...(overrides.managerLanguageFetch?{fetchImpl:overrides.managerLanguageFetch}:{})}));
+  app.use(createInsuranceAttentionRouter({sessionSecret,acpUrl:acpUpstreamUrl,serviceKey,userId,realmId}));
   app.use(createInsuranceReportRouter({sessionSecret,allowedOrigins,acpUrl:acpUpstreamUrl,serviceKey,userId,realmId,
     ...(overrides.insuranceReportFetch?{fetchImpl:overrides.insuranceReportFetch}:{})}));
   app.use(createInsuranceDraftRouter({sessionSecret,allowedOrigins,acpUrl:acpUpstreamUrl,serviceKey,userId,realmId,
