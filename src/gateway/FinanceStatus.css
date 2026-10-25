@@ -61,3 +61,36 @@
 .gw-forecast-jobs summary { cursor: pointer; }
 .gw-forecast-jobs dl { display: grid; grid-template-columns: minmax(140px,1fr) 2fr; gap: 12px; }
 .gw-forecast-jobs dd { margin: 0; }
+/* Quiet review surfaces: amount, identity, action; evidence stays one tap away. */
+.review-section { margin-block:32px; }
+.review-section-heading { display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px; }
+.review-section-heading h2 { margin:0;display:flex;gap:12px;align-items:center; }
+.review-badge { font-size:13px;line-height:24px;padding:0 8px;border-radius:24px;background:var(--color-raised);color:var(--color-muted);font-variant-numeric:tabular-nums; }
+.review-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:20px;align-items:start; }
+.review-card { min-width:0;padding:28px;border-radius:20px;border:1px solid var(--color-border);background:var(--color-surface); }
+.review-card header { display:flex;align-items:start;justify-content:space-between;gap:16px; }
+.review-card h3 { font-size:17px;margin:4px 0 0; }
+.review-amount { font-size:22px;letter-spacing:-.03em;white-space:nowrap;font-variant-numeric:tabular-nums; }
+.review-kind,.review-muted,.review-lead { font-size:13px;color:var(--color-muted); }
+.review-kind { display:block; }
+.review-actions { display:flex;flex-wrap:wrap;gap:8px;margin-block:20px; }
+.review-card details { margin-bottom:0;border-top:1px solid var(--color-border);padding-top:8px;font-size:13px;color:var(--color-muted); }
+.review-selection { display:grid;gap:12px;margin-block:20px; }
+.review-selection small { color:var(--color-muted); }
+.review-search-row { display:flex;gap:8px;margin-top:8px; }
+.review-search-row input { flex:1;min-width:0;padding:12px;border:1px solid var(--color-border);border-radius:12px;background:var(--color-bg);color:var(--color-fg);font:inherit; }
+.review-job-results { display:grid;gap:8px;max-height:320px;overflow:auto;margin-top:12px; }
+.review-job-results button { text-align:left; }
+.review-job-results span { display:block;color:var(--color-muted);font-size:12px; }
+.review-payment { display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--color-border);border-radius:12px; }
+.review-payment strong { margin-left:auto; }
+.review-payment input { width:20px;height:20px; }
+.review-picked { display:grid;gap:8px; }
+.review-picked > div { display:flex;justify-content:space-between;gap:12px;align-items:center; }
+.review-empty { padding:24px;color:var(--color-muted);background:var(--color-surface);border-radius:16px; }
+.gw-finance-tabs { gap:4px; }
+.gw-finance-tabs button { border-color:transparent;background:transparent; }
+.gw-finance-tabs button[aria-current='page'] { border-color:var(--color-border);background:var(--color-surface); }
+@media(max-width:639px){.review-card{padding:20px}.review-amount{font-size:19px}.review-grid{grid-template-columns:1fr}.review-search-row{flex-wrap:wrap}.review-search-row input{flex-basis:180px}}
+.review-actions button:first-child,.review-selection > button:not(:disabled) { background:var(--color-fg);color:var(--color-bg);border-color:transparent;font-weight:600; }
+.home-note summary,.fd-note summary,.agent-attention-note summary { cursor:pointer;color:var(--color-muted);font-size:12px; }

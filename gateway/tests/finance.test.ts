@@ -75,6 +75,9 @@ it('deposit confirmations require session, same origin and server-derived review
  expect((await fetch(url+'/confirm',{method:'POST',headers:{cookie,'content-type':'application/json'},body})).status).toBe(403);
  expect((await fetch(url+'/confirm',{method:'POST',headers:{cookie,origin:'http://127.0.0.1:5173','content-type':'application/json'},body})).status).toBe(200);
  const call=upstream.mock.calls.at(-1) as unknown as [string,RequestInit];expect(call[0]).toContain('/v1/receipts/confirm');expect(JSON.parse(call[1].body as string).reviewer).toMatch(/^justiceos-owner-session:[a-f0-9]{64}$/);
+ const options='/options?'+new URLSearchParams({bankId:'a'.repeat(64),jobId:'00000000-0000-4000-8000-000000000001'});expect((await fetch(url+options)).status).toBe(401);expect((await fetch(url+options,{headers:{cookie}})).status).toBe(200);expect((await fetch(url+options+'&reviewer=spoof',{headers:{cookie}})).status).toBe(400);
+ const headers={cookie,origin:'http://127.0.0.1:5173','content-type':'application/json'},manual={...JSON.parse(body),recordKeys:['job/receivedPayments/receipt']};expect((await fetch(url+'/confirm',{method:'POST',headers,body:JSON.stringify(manual)})).status).toBe(200);expect((await fetch(url+'/confirm',{method:'POST',headers,body:JSON.stringify({...manual,recordKeys:['x','x']})})).status).toBe(400);
+
 });
 it('Plaid routes require session and refresh origin, bound filters and redact upstream errors',async()=>{
  let fail=false;const upstream=vi.fn(async(_input:string|URL|Request,_init?:RequestInit)=>fail?Response.json({secret:'never disclose'},{status:500}):Response.json({accounts:[],rows:[],trialOnly:true}));
