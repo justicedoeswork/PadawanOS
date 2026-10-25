@@ -1,3 +1,4 @@
+import {jobContext} from './jobContext.js';
 /** Server-only AccuLynx v2 transport. No caller-controlled hosts or write methods. */
 const ROOT = 'https://api.acculynx.com/api/v2';
 export const JOB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -10,6 +11,7 @@ export type Job = Record<string, unknown> & { id: string };
 export interface JobPage { items: Job[]; count: number; pageStartIndex: number }
 export interface AcculynxClient {
   jobs(offset?: number): Promise<JobPage>;
+  context?(jobId:string):Promise<ReturnType<typeof jobContext>>;
   payments(jobId: string): Promise<Record<string, unknown>>;
 }
 const object = (value: unknown): value is Record<string, unknown> =>
@@ -24,7 +26,7 @@ export function createAcculynxClient(apiKey: string, fetchImpl: typeof fetch = f
       });
       if (!response.ok) {
         await response.body?.cancel();
-        const code = response.status === 401 || response.status === 403 ? 'ACCULYNX_CREDENTIAL_REJECTED'
+        const code = response.status === 404 ? 'ACCULYNX_JOB_NOT_AVAILABLE' : response.status === 401 || response.status === 403 ? 'ACCULYNX_CREDENTIAL_REJECTED'
           : response.status === 429 ? 'ACCULYNX_RATE_LIMITED' : 'ACCULYNX_UPSTREAM_ERROR';
         throw new AcculynxError(code, response.status === 429 ? 429 : 502);
       }
@@ -64,6 +66,10 @@ export function createAcculynxClient(apiKey: string, fetchImpl: typeof fetch = f
         throw new AcculynxError('ACCULYNX_INVALID_RESPONSE');
       }
       return body as unknown as JobPage;
+    },
+    async context(jobId){
+      if(!JOB_ID.test(jobId))throw new AcculynxError('INVALID_JOB_ID',400);
+      return jobContext(await read(`/jobs/${jobId}?includes=contact%2CinitialAppointment`),jobId);
     },
     async payments(jobId) {
       if (!JOB_ID.test(jobId)) throw new AcculynxError('INVALID_JOB_ID', 400);

@@ -78,3 +78,49 @@ handshake reuse, structured filters and error handling. Production verification
 must use existing server-side runtime credentials without copying them into chat.
 
 Reference: https://github.com/modelcontextprotocol/typescript-sdk/tree/v1.x
+
+## Native runtime clients
+
+
+This runtime uses the existing JusticeOS MCP server (`/api/mcp`), protocol
+2025-11-25, stateless JSON Streamable HTTP. Configure `JUSTICEOS_MCP_URL`
+(HTTPS) and a distinct random `JUSTICEOS_MCP_TOKEN` as runtime secrets.
+Only the token's SHA-256 digest and server-assigned role belong in the
+gateway's `JUSTICEOS_MCP_CLIENTS`. No token belongs in a browser, source
+file, log, Docker context or documentation. Incomplete configuration fails
+closed. Unconfigured deployments retain their existing local operations.
+
+The gateway and client both allow only fixed reads. Native Finance receives
+`jobs_page` and `job_context`; Insurance, Communications and Marketing
+receive `jobs_search` and `job_context`. The owner Manager retains its
+existing catalogue. Native clients cannot invoke their own agent recursively,
+read bank/personal balances, approve, send, publish, refresh or mutate records.
+Existing action endpoints, payload-bound approvals and executor checks remain
+authoritative. Source names, descriptions, email and document text are evidence,
+never instructions or authorization. New tools require an explicit scope change.
+
+`jobs_search` searches the Finance import (including completed jobs), returns
+at most 20 display-only matches and an explicit `hasMore`. It does not claim
+live freshness or uniquely resolve ambiguous matches. `job_context` reads the
+confirmed UUID directly from AccuLynx with documented contact and initial
+appointment includes. It retains milestone/source dates, address, trade/work
+context and contact references; missing fields stay null and are listed.
+Contact/appointment entries may contain links only: no arbitrary source link is
+followed. Provider 404 can mean an unassigned job, not proof of deletion.
+Job modifiedDate does not establish payment freshness. The result never grants
+contact consent, marketing claim verification, compliance or payment status.
+
+The transport has a bounded body and deadline, validates JSON-RPC IDs and
+handshake, refuses redirects and reflected credentials, and returns sanitized
+errors. There is no automatic retry of an action (there are no action tools).
+A failed read is unavailable, never an empty success or zero financial amount.
+
+Operational verification: use synthetic fixtures for tests. On deployment,
+exercise the native entry point and report only success/counts, never customer
+records or tokens. Confirm denied tools stay denied. Rotate a client by adding
+its new digest, replacing its runtime secret, verifying a read, then removing
+its old digest. Revoke only that digest to disable one client. Keep secrets
+outside build contexts. No database migrations are needed.
+
+Reference: [AccuLynx Get Job by ID](https://apidocs.acculynx.com/reference/getjob),
+verified 2026-10-25, API definition 2.2614.0.

@@ -26,7 +26,7 @@ describe('shared MCP',()=>{
   const token='m'.repeat(48),hash=createHash('sha256').update(token).digest('hex');
   const gw=await startTestGateway({mcpClients:JSON.stringify([{role:'marketing',sha256:hash}])});cleanup.push(gw.close);
   const client=await connect({authorization:`Bearer ${token}`},gw.port);
-  const tools=await client.listTools();expect(tools.tools.map(t=>t.name).sort()).toEqual(['marketing_campaigns','marketing_media','marketing_status']);
+  const tools=await client.listTools();expect(tools.tools.map(t=>t.name).sort()).toEqual(['job_context','jobs_search']);
   expect((await client.callTool({name:'finance_balances',arguments:{}})).isError).toBe(true);
   const cookie=await loginForTestCookie(gw.port);
   const r=await fetch(`http://127.0.0.1:${gw.port}/api/mcp`,{method:'POST',headers:{cookie,origin:TEST_ORIGIN,authorization:'Bearer bad','content-type':'application/json'},body:'{}'});expect(r.status).toBe(401);
@@ -44,6 +44,12 @@ describe('shared MCP',()=>{
   const client=await connect({cookie:await loginForTestCookie(gw.port),origin:TEST_ORIGIN},gw.port);
   const result=await client.callTool({name:'finance_forecast',arguments:{}});expect(result.isError).toBe(true);expect(JSON.stringify(result)).not.toContain('do-not-return');
  });
+ it('denies recursive delegation and writes for every native identity',()=>{
+  const tools=agentTools(async()=>({}),async()=>({}));
+  for(const role of ['finance','communications','marketing','insurance'] as const){
+   expect(toolsForRole(role,tools).map(t=>t.name)).toEqual(role==='finance'?['job_context','jobs_page']:['job_context','jobs_search']);
+  }
+ });
  it('fails closed on malformed scope configuration',()=>{
   expect(()=>parseMcpClients('[{"role":"admin","sha256":"bad"}]')).toThrow('INVALID_MCP_CLIENT_CONFIGURATION');
  });
@@ -51,7 +57,8 @@ describe('shared MCP',()=>{
   const requests:unknown[]=[];const tools=agentTools(async(r)=>{requests.push(r);return {unknown:null};});
   const query=tools.find(t=>t.name==='finance_query')!;await query.run({operation:'supplier_job',period:'all_time',jobSearch:'Synthetic Job',attention:'all'});
   await tools.find(t=>t.name==='jobs_page')!.run({offset:25});expect(requests[1]).toEqual({path:'/api/acculynx/jobs?recordStartIndex=25'});
+  await tools.find(t=>t.name==='jobs_search')!.run({query:'Synthetic Job'});expect(requests[2]).toEqual({path:'/api/finance/suppliers/jobs?q=Synthetic+Job'});
   expect(()=>query.run({operation:'refresh',period:'all_time',jobSearch:'',attention:'all'})).toThrow();
-  expect(toolsForRole('communications',tools).map(t=>t.name)).toEqual(['communications_read','communications_call_context']);
+  expect(toolsForRole('communications',tools).map(t=>t.name)).toEqual(['job_context','jobs_search']);
  });
 });
