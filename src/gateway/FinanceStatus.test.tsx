@@ -7,7 +7,7 @@ describe('Finance workspace',()=>{
   const html=renderToStaticMarkup(<FinanceStatus/>);
   expect(html).toContain('<main');
   expect(html).toContain('Automatic feed status');
-  expect(html).toContain('Feeds refresh automatically while this page is closed');
+  expect(html).not.toContain('Feeds refresh automatically while this page is closed');
   expect(html).toContain('aria-label="Finance Agent"');
   expect(html).toContain('aria-current="page">Dashboard');
   expect(html).toContain('Finance dashboard');
@@ -15,6 +15,6 @@ describe('Finance workspace',()=>{
   expect(html).not.toContain('Connect / reconnect QuickBooks');
  });
  it('labels the evidence view separately from the task view',()=>{
-  expect(renderToStaticMarkup(<SupplierStatus mode="evidence"/>)).toContain('Supplier invoices, credits &amp; payment evidence');
+  expect(renderToStaticMarkup(<SupplierStatus mode="evidence"/>)).toContain('Supplier evidence');
  });
 });

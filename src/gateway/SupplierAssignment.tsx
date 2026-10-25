@@ -1,16 +1,15 @@
-import {useState,useId,useRef} from 'react';
-import {Button,TextInput} from '@astryxdesign/core';
+import {JobPicker} from './JobPicker';
+import {useState,useRef} from 'react';
+import {Button} from '@astryxdesign/core';
 type Job={id:string;name:string;jobNumber:string|null;address:string};
 export function SupplierAssignment({documentKey,reviewVersion,onSaved}:{documentKey:string;reviewVersion:string;onSaved:()=>void}){
- const [open,setOpen]=useState(false),[query,setQuery]=useState(''),[jobs,setJobs]=useState<Job[]>([]),[selected,setSelected]=useState<Job|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
- const group=useId(),request=useRef<{jobId:string;id:string}|null>(null);
- async function search(){setBusy(true);setMessage('');setSelected(null);request.current=null;try{const r=await fetch('/api/finance/suppliers/jobs?'+new URLSearchParams({q:query}),{credentials:'same-origin',signal:AbortSignal.timeout(25000)});if(!r.ok)throw Error();const data=await r.json();setJobs(data.jobs);setMessage(data.hasMore?'More jobs match. Add a street or job number to narrow the search.':data.jobs.length?'Select the correct job below.':'No jobs found. Try a customer name, address or job number.');}catch{setJobs([]);setMessage('Job search is unavailable. Please try again.');}finally{setBusy(false);}}
+ const [open,setOpen]=useState(false),[selected,setSelected]=useState<Job|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ const request=useRef<{jobId:string;id:string}|null>(null);
  async function assign(){if(!selected)return;setBusy(true);setMessage('');if(request.current?.jobId!==selected.id)request.current={jobId:selected.id,id:crypto.randomUUID()};try{const r=await fetch('/api/finance/suppliers/assign',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({documentKey,jobId:selected.id,requestId:request.current.id,expectedReviewId:reviewVersion}),signal:AbortSignal.timeout(25000)});if(r.status===409){setMessage('This assignment changed in another view. Refresh the task before assigning it.');return;}if(!r.ok)throw Error();setMessage('Assignment saved.');setOpen(false);onSaved();}catch{setMessage('Save could not be confirmed. Retry to safely check the same assignment.');}finally{setBusy(false);}}
  return <div className="gw-supplier-assignment">
- <Button label={open?'Cancel assignment':'Assign to job'} variant="secondary" isDisabled={busy} clickAction={()=>{setOpen(!open);setMessage('');}}/>
- {open&&<div><p>Search all imported jobs, including completed jobs. Your choice assigns this document only; it does not confirm payment or change source amounts. Saving a different job replaces the current assignment and preserves its history.</p>
- <form onSubmit={e=>{e.preventDefault();void search();}}><TextInput label="Customer, address or job number" value={query} onChange={value=>{setQuery(value);setJobs([]);setSelected(null);}}/><Button label="Search jobs" isDisabled={busy||query.trim().length<2} clickAction={()=>void search()}/></form>
- <fieldset disabled={busy}><legend>Choose a job</legend>{jobs.map(j=><label key={j.id} className="gw-supplier-job-option"><input type="radio" name={group} checked={selected?.id===j.id} onChange={()=>{setSelected(j);request.current=null;}}/><span><strong>{j.name}</strong><span>{j.jobNumber?`Job ${j.jobNumber} · `:''}{j.address||'Address unavailable'}</span></span></label>)}</fieldset>
+ <Button label={open?'Cancel':'Assign to job'} variant="secondary" isDisabled={busy} clickAction={()=>{setOpen(!open);setMessage('');}}/>
+ {open&&<div><p>Includes completed jobs. Assignment does not confirm payment.</p>
+ <JobPicker disabled={busy} onSelect={j=>{setSelected(j);request.current=null;}}/>
  {selected&&<p>Assign to <strong>{selected.name}</strong>{selected.jobNumber?` · Job ${selected.jobNumber}`:''}?</p>}
  <Button label={busy?'Saving / searching…':'Save assignment'} isDisabled={busy||!selected} clickAction={()=>void assign()}/></div>}
  <p role="status">{message}</p></div>;
