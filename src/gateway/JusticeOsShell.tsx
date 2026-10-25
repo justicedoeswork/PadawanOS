@@ -6,6 +6,7 @@ import { connectionLifecycle } from '../projector/connectionLifecycle';
 import { MANAGED_INSURANCE_PROFILE_ID } from './managedAgentId';
 import { AgentRail, type RailView } from './AgentRail';
 import { FinanceStatus } from './FinanceStatus';
+import type { FinanceSection } from './FinanceStatus';
 import { Dashboard } from './Dashboard';
 import { ManagerChat } from './ManagerChat';
 import { useGatewayAuth } from './gatewayAuthStore';
@@ -93,6 +94,8 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
     saveSidebarCollapsed(next);
   }
 
+  const [financeSection, setFinanceSection] = useState<FinanceSection>('overview');
+
   function goHome() {
     setView('dashboard');
     closeMobileNav();
@@ -144,7 +147,7 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
         onOpenAgent={openAgent}
         onOpenMarketing={openMarketing}
         onOpenCommunications={openCommunications}
-        onOpenFinance={() => { navigate('finance'); showWorkspace(); }}
+        onOpenFinance={() => { setFinanceSection('overview'); navigate('finance'); showWorkspace(); }}
         onSettings={() => {
           navigate('settings');
           showWorkspace();
@@ -171,7 +174,7 @@ function GatewayDashboardShell({ children }: { children: ReactNode }) {
             <Menu size={20} />
           </button>
         </div>
-        {view === 'dashboard' ? <Dashboard /> : route === 'finance' ? <FinanceStatus /> : children}
+        {view === 'dashboard' ? <Dashboard onNavigate={section => { setFinanceSection(section); navigate('finance'); showWorkspace(); }} /> : route === 'finance' ? <FinanceStatus key={financeSection} initialTab={financeSection} /> : children}
       </div>
       <ManagerChat />
     </div>

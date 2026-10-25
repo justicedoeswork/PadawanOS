@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Bell, Activity, CircleCheck, CircleAlert, ScanLine, Files, CalendarDays, Sparkles } from 'lucide-react';
+import { HomeOverview } from './HomeOverview';
 import justiceOsLogo from '../assets/brand/justiceos-logo.png';
 import { useI18n } from '../i18n/context';
 import { usePanda } from '../store';
@@ -54,77 +54,17 @@ export function dashboardInProgressKeys(lifecycle: ConnectionLifecycle | null): 
   return lifecycle?.running ? ['dashboard.inProgress.running'] : [];
 }
 
-/**
- * JusticeOS dashboard home screen (LAYOUT #2): an operational overview of
- * what the agents have produced, what they're doing, and what they need
- * from Austin -- never another agent picker (agent navigation lives
- * exclusively in the collapsible sidebar, AgentRail; this screen has no
- * agent card, avatar, or launch control of its own).
- *
- * Every figure here comes from the managed connection's own real state
- * (connectionLifecycle, same projection Sidebar/StatusBar already use) --
- * never invented. Completed work, failed/blocked work, audit findings, and
- * documents/reports have no backing data source in this frontend yet, so
- * they render an honest "nothing reported yet" empty state unconditionally
- * rather than a fabricated count -- each card stays structured so a real
- * data source can be wired in later without changing this shape.
- */
-export function Dashboard() {
+export function Dashboard({ onNavigate }: { onNavigate?: (section: 'overview'|'bank'|'forecast'|'tasks'|'connections') => void }) {
   const { t } = useI18n();
-  // Computed once per mount, not on every render (a dashboard left open
-  // past a period boundary keeps its opening greeting rather than
-  // flickering mid-visit -- device-local time per the spec, read once).
   const [greetingPeriod] = useState(() => greetingPeriodForHour(new Date().getHours()));
-
   const slot = usePanda((s) => s.connections[MANAGED_INSURANCE_PROFILE_ID]);
   const lifecycle = useMemo(() => (slot ? connectionLifecycle(slot) : null), [slot]);
-  const attentionItems = dashboardAttentionKeys(lifecycle).map((key) => t(key));
-  const inProgressItems = dashboardInProgressKeys(lifecycle).map((key) => t(key));
-
-  return (
-    <div className="gw-dashboard">
-      <header className="gw-dashboard-header">
-        <h1 className="gw-dashboard-heading">
-          <img src={justiceOsLogo} alt={t('dashboard.heading')} className="gw-dashboard-logo" />
-        </h1>
-        <p className="gw-dashboard-greeting">{t(GREETING_KEYS[greetingPeriod])}</p>
-      </header>
-
-      <section className="gw-dashboard-briefing" aria-label={t('dashboard.briefing.title')}>
-        <Sparkles className="gw-dashboard-briefing-icon" size={22} aria-hidden="true" />
-        <h2 className="gw-dashboard-briefing-title">{t('dashboard.briefing.title')}</h2>
-        <p className="gw-dashboard-briefing-body">{t('dashboard.briefing.placeholder')}</p>
-      </section>
-
-      <div className="gw-dashboard-grid">
-        <DashboardCard icon={Bell} title={t('dashboard.card.attention')} items={attentionItems} emptyText={t('dashboard.empty.attention')} />
-        <DashboardCard icon={Activity} title={t('dashboard.card.inProgress')} items={inProgressItems} emptyText={t('dashboard.empty.inProgress')} />
-        <DashboardCard icon={CircleCheck} title={t('dashboard.card.completed')} items={[]} emptyText={t('dashboard.empty.completed')} />
-        <DashboardCard icon={CircleAlert} title={t('dashboard.card.failedBlocked')} items={[]} emptyText={t('dashboard.empty.failedBlocked')} />
-        <DashboardCard icon={ScanLine} title={t('dashboard.card.findings')} items={[]} emptyText={t('dashboard.empty.findings')} />
-        <DashboardCard icon={Files} title={t('dashboard.card.documents')} items={[]} emptyText={t('dashboard.empty.documents')} />
-        <DashboardCard icon={CalendarDays} title={t('dashboard.card.upcoming')} items={[]} emptyText={t('dashboard.empty.upcoming')} />
-      </div>
-    </div>
-  );
-}
-
-function DashboardCard({ icon: Icon, title, items, emptyText }: { icon: typeof Bell; title: string; items: string[]; emptyText: string }) {
-  return (
-    <section className="gw-dashboard-card" aria-label={title}>
-      <span className="gw-dashboard-card-icon"><Icon size={20} strokeWidth={1.7} aria-hidden="true" /></span>
-      <h3 className="gw-dashboard-card-title">{title}</h3>
-      {items.length === 0 ? (
-        <p className="gw-dashboard-card-empty">{emptyText}</p>
-      ) : (
-        <ul className="gw-dashboard-card-list">
-          {items.map((item, index) => (
-            <li key={index} className="gw-dashboard-card-item">
-              {item}
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
+  return <div className="gw-dashboard gw-home">
+    <header className="gw-dashboard-header">
+      <h1 className="gw-dashboard-heading"><img src={justiceOsLogo} alt={t('dashboard.heading')} className="gw-dashboard-logo" /></h1>
+      <p className="gw-dashboard-greeting">{t(GREETING_KEYS[greetingPeriod])}</p>
+      <p className="home-subtitle">Your business, at a glance. Cash today, work ahead, and decisions that need you.</p>
+    </header>
+    <HomeOverview onNavigate={onNavigate} attention={dashboardAttentionKeys(lifecycle).map(key=>t(key))} running={Boolean(lifecycle?.running)} />
+  </div>;
 }
