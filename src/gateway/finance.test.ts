@@ -1,3 +1,7 @@
+vi.mock('./agentMcpClient',()=>({callAgentTool:async(_name:string,args:unknown)=>{
+ const response=await fetch('/api/finance/query',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(args)});
+ if(!response.ok)throw Error('unavailable');return response.json();
+}}));
 import {afterEach,expect,it,vi} from 'vitest';
 import {askFinance,financeIntent} from './finance';
 afterEach(()=>vi.unstubAllGlobals());
@@ -9,7 +13,7 @@ it('queries through the authenticated gateway and retains the service limitation
 });
 it('rejects write-like or extra fields and returns an honest outage message',async()=>{
  expect(()=>financeIntent({...intent,operation:'refresh'})).toThrow();expect(()=>financeIntent({...intent,url:'https://elsewhere.example'})).toThrow();
- vi.stubGlobal('fetch',async()=>Response.json({}, {status:503}));expect(await askFinance(intent)).toContain('unavailable');
+ vi.stubGlobal('fetch',async()=>Response.json({}, {status:503}));expect(await askFinance(intent)).toContain('could not be reached');
 });
 it('accepts Plaid chat intents and fetches their answers without falling back to CRM',async()=>{
  const intent=financeIntent({kind:'finance',operation:'plaid_activity',period:'this_month',jobSearch:'',attention:'all'});

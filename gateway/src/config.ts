@@ -14,6 +14,7 @@ function requireEnv(name: string): string | null {
 }
 
 export const config = {
+  mcpClients: requireEnv('JUSTICEOS_MCP_CLIENTS'),
   financeAgentBaseUrl: requireEnv('FINANCE_AGENT_BASE_URL'),
   financeReadKey: requireEnv('FINANCE_READ_KEY'),
   financeReviewKey: requireEnv('FINANCE_REVIEW_KEY'),

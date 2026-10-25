@@ -1,3 +1,8 @@
+// Presenter tests isolate the transport; agentMcpClient.test covers the wire protocol.
+vi.mock('./agentMcpClient',()=>({readCommunicationsTool:async(path:string)=>{
+ const response=await fetch(path,{credentials:'same-origin',headers:{accept:'application/json'}});
+ if(!response.ok)throw Error('Source unavailable');return response.json();
+}}));
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {askConversationalManager,readIntent} from './conversationalManager';
 import {askInsuranceRead} from './insuranceRead';

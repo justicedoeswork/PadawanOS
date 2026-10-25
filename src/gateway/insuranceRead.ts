@@ -1,3 +1,4 @@
+import {callAgentTool} from './agentMcpClient';
 /** One bounded read through the existing authenticated insurance ACP bridge.
  * The bridge's server-enforced read_only mode remains the authority. No
  * credentials, realm, recipient, tool names or endpoint come from the model. */
@@ -7,6 +8,11 @@ const unavailable = () => new Error('Insurance records could not be loaded. Plea
 
 export function askInsuranceRead(question:string, options:Options={}):Promise<string> {
   if(typeof question!=='string'||!question.trim()||question.length>2000) return Promise.reject(unavailable());
+  if (!options.createSocket) return callAgentTool('insurance_question',{question:question.trim()},210000).then(value=>{
+    const result=value as {answer?:unknown};
+    if(typeof result?.answer!=='string'||!result.answer.trim())throw unavailable();
+    return result.answer;
+  });
   const origin=options.origin??window.location.origin;
   const url=new URL('/acp/insurance',origin);
   if(!['http:','https:'].includes(url.protocol))return Promise.reject(unavailable());
