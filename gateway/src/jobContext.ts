@@ -3,11 +3,11 @@ const object=(v:unknown):v is Record<string,unknown>=>v!==null&&typeof v==='obje
 /** Explicit read projection: preserve source values and missing fields, never forward future financial fields. */
 export function jobContext(body:Record<string,unknown>,jobId:string){
  if(typeof body.id!=='string'||!JOB_ID.test(body.id)||body.id.toLowerCase()!==jobId.toLowerCase())throw new AcculynxError('ACCULYNX_INVALID_RESPONSE');
- const fields={jobName:'string',jobNumber:'string',currentMilestone:'string',milestoneDate:'string',createdDate:'string',modifiedDate:'string',priority:'string',locationAddress:'object',geoLocation:'object',jobCategory:'object',workType:'object',leadSource:'object',leadDeadReason:'object',initialAppointment:'object',contacts:'array',tradeTypes:'array'};
+ const fields={jobName:'string',jobNumber:'string',currentMilestone:'string',milestoneDate:'string',createdDate:'string',modifiedDate:'string',priority:'string',locationAddress:'object',geoLocation:'object',jobCategory:'object',workType:'object',leadSource:'object',leadDeadReason:'object|string',initialAppointment:'object',contacts:'array',tradeTypes:'array'};
  const job:Record<string,unknown>={id:body.id};const missingFields:string[]=[];
  for(const [key,type] of Object.entries(fields)){
   const value=body[key];if(value==null){job[key]=null;missingFields.push(key);continue;}
-  if(type==='string'?typeof value!=='string':type==='array'?!Array.isArray(value)||!value.every(object):!object(value))throw new AcculynxError('ACCULYNX_INVALID_RESPONSE');
+  if(type==='string'?typeof value!=='string':type==='array'?!Array.isArray(value)||!value.every(object):type==='object|string'?!object(value)&&typeof value!=='string':!object(value))throw new AcculynxError('ACCULYNX_INVALID_RESPONSE');
   job[key]=value;
  }
  if(Buffer.byteLength(JSON.stringify(job))>60000)throw new AcculynxError('ACCULYNX_RESPONSE_TOO_LARGE');
