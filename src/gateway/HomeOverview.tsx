@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@astryxdesign/core';
 import { ArrowUpRight, Wallet, TrendingUp, CircleAlert, Radio } from 'lucide-react';
-import { BarChart, businessTotal, numeric, type DashboardBank, type DashboardForecast, type DashboardActivity } from './FinanceDashboard';
+import { BarChart, businessTotal, businessCashRoles, numeric, type DashboardBank, type DashboardForecast, type DashboardActivity } from './FinanceDashboard';
 import './HomeOverview.css';
 
 type Section = 'overview'|'bank'|'forecast'|'tasks'|'connections';
@@ -11,7 +11,7 @@ type Key = keyof HomeData;
 export type HomeErrors = Partial<Record<Key,string>>;
 const endpoints:Record<Key,string>={bank:'/api/finance/plaid/status',forecast:'/api/finance/forecast',activity:'/api/finance/dashboard',feeds:'/api/finance/feeds',suppliers:'/api/finance/suppliers/status?offset=0',receipts:'/api/finance/receipts'};
 const names:Record<Key,string>={bank:'Bank balances',forecast:'Job forecasts',activity:'Collections',feeds:'Feed status',suppliers:'Invoice reviews',receipts:'Deposit reviews'};
-const roles=['receivables','bill_pay','incidentals','job_savings'];
+const roles=businessCashRoles;
 const money=(v:unknown)=>numeric(v)===null?'Not available':numeric(v)!.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2});
 const count=(v:unknown):v is number=>typeof v==='number'&&Number.isInteger(v)&&v>=0;
 const object=(v:unknown):v is Record<string,unknown>=>Boolean(v)&&typeof v==='object'&&!Array.isArray(v);
@@ -54,7 +54,7 @@ export function HomeOverviewView({data,errors={},onNavigate,attention=[],running
  const sourceNote=(key:Key,at?:string|null,stale?:boolean,error?:string|null)=>`${errors[key]||error?'Refresh failed · ':stale?'May be stale · ':''}Updated ${date(at)}`;
  return <div className="home-overview">
  <div className="home-metrics">
- <article className="home-metric home-cash"><Wallet size={20} aria-hidden="true"/><h2>Business cash available</h2><strong>{money(cash)}</strong><p>Bank-reported available · four business accounts</p>{bankWarning&&<p className="home-warning">Check account coverage and freshness before spending.</p>}{action('View cash & transactions','bank')}</article>
+ <article className="home-metric home-cash"><Wallet size={20} aria-hidden="true"/><h2>Business cash available</h2><strong>{money(cash)}</strong><p>Receivables + Incidentals · business cash only</p>{bankWarning&&<p className="home-warning">Check account coverage and freshness before spending.</p>}{action('View cash & transactions','bank')}</article>
  <article className="home-metric"><TrendingUp size={20} aria-hidden="true"/><h2>Forecast gross profit</h2><strong>{money(forecast?.projectedGrossProfit)}</strong><p>{forecast?`${forecast.matchedJobs} of ${forecast.approvedJobs} approved jobs with matched budgets`:'Waiting for approved job budgets'}</p><small>Whole-job estimate before overhead and tax</small><small>{sourceNote('forecast',forecast?.lastRefresh,forecast?.stale,forecast?.error)}</small></article>
  <article className="home-metric"><ArrowUpRight size={20} aria-hidden="true"/><h2>Still to collect</h2><strong>{money(forecast?.outstandingCollections)}</strong><p>Customer balances on approved work</p><small>Includes money needed to finish jobs; timing not established.</small>{action('See approved jobs','forecast')}</article>
  <article className="home-metric"><ArrowUpRight size={20} aria-hidden="true"/><h2>Collected this month</h2><strong>{money(latest?.receipts)}</strong><p>{latest?`${latest.month} · month to date`:'Current month not available'}</p><small>AccuLynx receipts, not bank-verified income</small><small>{sourceNote('activity',activity?.lastRefresh,activity?.stale,activity?.error)}</small></article>
@@ -72,8 +72,8 @@ export function HomeOverviewView({data,errors={},onNavigate,attention=[],running
  <p className="home-note">Counts are separate review queues, not a combined count of unique transactions. Sending and record changes keep their existing approvals.</p>
  </section>
  <section className="home-panel"><div className="home-title"><Wallet size={20} aria-hidden="true"/><div><p className="home-eyebrow">Cash position</p><h2>Available & pending</h2></div></div>
- {bank?<BarChart labels={['Available now','Pending-adjusted ledger']} rows={accounts.map(a=>({label:a.role.replaceAll('_',' '),note:`••${a.mask} · ${a.stale||a.error?'Check freshness':date(a.providerUpdated??a.lastImport)}`,a:a.present&&a.currency==='USD'?numeric(a.planning.reportedAvailable):null,b:a.present&&a.currency==='USD'?numeric(a.planning.projectedBalance):null}))}/>:<p>Loading bank balances. Missing amounts are not treated as zero.</p>}
- <div className="home-projection"><span>Combined pending-adjusted ledger</span><strong>{money(projected)}</strong></div><p className="home-note">Pending items may already affect available cash. This is a separate ledger scenario, not an extra deduction or extra money. Personal accounts, cards and loans are excluded.</p>
+ {bank?<BarChart labels={['Available now','Pending-adjusted ledger']} rows={accounts.map(a=>({label:a.role==='receivables'?'Receivables · main business cash':'Incidentals · everyday business cash',note:`••${a.mask} · ${a.stale||a.error?'Check freshness':date(a.providerUpdated??a.lastImport)}`,a:a.present&&a.currency==='USD'?numeric(a.planning.reportedAvailable):null,b:a.present&&a.currency==='USD'?numeric(a.planning.projectedBalance):null}))}/>:<p>Loading bank balances. Missing amounts are not treated as zero.</p>}
+ <div className="home-projection"><span>Business pending-adjusted ledger</span><strong>{money(projected)}</strong></div><p className="home-note">Pending items may already affect available cash. This is a separate ledger scenario, not an extra deduction or extra money. Only Receivables and Incidentals are included. Bill Pay is outgoing funds; Job Savings and personal cash stay separate. Cash held here is not automatically profit.</p>
  </section>
  <section className="home-panel"><p className="home-eyebrow">Last three months</p><h2>Collections & job costs</h2>
  {activity?.available?<BarChart labels={['Customer receipts','Recorded job costs']} rows={activity.months.slice(-3).map(m=>({label:m.month,note:m.partial?'Month to date':undefined,a:numeric(m.receipts),b:numeric(m.recordedCosts)}))}/>:<p>A completed AccuLynx import is needed to show this chart.</p>}
