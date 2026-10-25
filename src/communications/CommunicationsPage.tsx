@@ -45,7 +45,7 @@ function nestedString(value: unknown, parent: string, ...keys: string[]): string
 
 export function CommunicationsPage() {
   const { t } = useI18n();
-  const [selected, setSelected] = useState<PanelKey | null>(null);
+  const [selected, setSelected] = useState<PanelKey | null>(() => {const panel=typeof window==='undefined'?null:new URLSearchParams(window.location.hash.split('?')[1]).get('panel');return panel==='replies'||panel==='approvals'?panel:null;});
   const [data, setData] = useState<LoadedData>({
     status: 'loading',
     reachable: false,

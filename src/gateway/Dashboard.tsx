@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { AgentAttention, type AgentDestination } from './AgentAttention';
 import { HomeOverview } from './HomeOverview';
 import justiceOsLogo from '../assets/brand/justiceos-logo.png';
 import { useI18n } from '../i18n/context';
@@ -54,7 +55,7 @@ export function dashboardInProgressKeys(lifecycle: ConnectionLifecycle | null): 
   return lifecycle?.running ? ['dashboard.inProgress.running'] : [];
 }
 
-export function Dashboard({ onNavigate }: { onNavigate?: (section: 'overview'|'bank'|'forecast'|'tasks'|'connections') => void }) {
+export function Dashboard({ onNavigate, onOpenAgent }: { onOpenAgent?: (destination:AgentDestination)=>void; onNavigate?: (section: 'overview'|'bank'|'forecast'|'tasks'|'connections') => void }) {
   const { t } = useI18n();
   const [greetingPeriod] = useState(() => greetingPeriodForHour(new Date().getHours()));
   const slot = usePanda((s) => s.connections[MANAGED_INSURANCE_PROFILE_ID]);
@@ -65,6 +66,7 @@ export function Dashboard({ onNavigate }: { onNavigate?: (section: 'overview'|'b
       <p className="gw-dashboard-greeting">{t(GREETING_KEYS[greetingPeriod])}</p>
       <p className="home-subtitle">Your business, at a glance. Cash today, work ahead, and decisions that need you.</p>
     </header>
+    <AgentAttention onOpen={onOpenAgent}/>
     <HomeOverview onNavigate={onNavigate} attention={dashboardAttentionKeys(lifecycle).map(key=>t(key))} running={Boolean(lifecycle?.running)} />
   </div>;
 }
