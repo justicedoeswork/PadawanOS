@@ -1,0 +1,54 @@
+/* Shared workspace rhythm: concise summaries, spacious cards, optional detail. */
+.workspace-heading { display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:0 0 24px; }
+.workspace-heading h1 { font-size:28px;letter-spacing:-.04em;margin:0; }
+.workspace-heading > span,.workspace-muted { color:var(--color-muted);font-size:13px; }
+.workspace-pill { padding:8px 12px;background:var(--color-raised);border-radius:24px;font-size:12px;white-space:nowrap; }
+.workspace-disclosure > summary { cursor:pointer;font-size:14px;font-weight:600;padding-block:8px; }
+.communications-page,.mkt-page { padding:32px clamp(16px,4vw,48px) 64px; }
+.communications-page > *,.mkt-page > * { max-width:1120px;margin-inline:auto; }
+.communications-hero h1 { font-size:28px;letter-spacing:-.04em; }
+.communications-grid { gap:12px;margin-bottom:24px; }
+.communications-card { background:var(--color-surface);padding:20px;border-radius:20px;min-height:108px; }
+.communications-card-value { font-size:32px;font-variant-numeric:tabular-nums;letter-spacing:-.04em; }
+.communications-card[aria-pressed='true'] { border-color:var(--color-accent);background:var(--color-raised); }
+.communications-card:disabled { cursor:wait; }
+.communications-drilldown { background:transparent;border:0;padding:0; }
+.communications-drilldown-header { margin-block:24px; }
+.communications-list { display:grid;gap:12px; }
+.communications-list-item { padding:20px 24px;border:1px solid var(--color-border);border-radius:16px;background:var(--color-surface); }
+.communications-list-item:first-child { padding-top:20px;border-top:1px solid var(--color-border); }
+.communications-list-item strong { font-size:15px;line-height:1.5; }
+.communications-list-item p { margin-block:8px; }
+.communications-list-item details { margin-block:12px; }
+.communications-list-item summary,.communications-note summary { cursor:pointer;font-size:13px;color:var(--color-muted); }
+.communications-list-item > span { font-size:12px;color:var(--color-muted); }
+.communications-drilldown-close { min-width:44px;min-height:44px; }
+.mkt-card-grid { gap:20px; }
+.mkt-card,.mkt-panel,.creative-review-card { border-radius:20px;padding:24px;background:var(--color-surface); }
+.mkt-card-title { font-size:18px;line-height:1.4;white-space:normal; }
+.mkt-card-facts { gap:12px; }
+.mkt-review-header { gap:20px; }
+.mkt-review-actions { gap:8px;flex-wrap:wrap; }
+.mkt-panel { margin-block:20px; }
+.mkt-panel > summary { cursor:pointer;font-size:15px;font-weight:600; }
+.mkt-panel > summary:focus-visible,.communications-list-item summary:focus-visible,.insurance-overview summary:focus-visible { outline:2px solid var(--color-accent);outline-offset:4px; }
+.creative-review-list { gap:24px; }
+.creative-review-card header { gap:16px; }
+.creative-review-previews { gap:16px; }
+.creative-review-note { margin-block:16px; }
+.insurance-overview { flex-shrink:0;padding:16px 24px;border-bottom:1px solid var(--color-border);background:var(--color-bg); }
+.insurance-overview > details > summary { display:flex;justify-content:space-between;align-items:center;gap:16px;cursor:pointer;list-style:none; }
+.insurance-overview > details > summary > span:first-child { display:flex;gap:16px;align-items:center;flex-wrap:wrap; }
+.insurance-overview > details[open] { max-height:40vh;overflow:auto;padding-bottom:12px; }
+.insurance-issue-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px;margin-block:16px; }
+.insurance-issue-grid article { padding:20px;border:1px solid var(--color-border);border-radius:16px;background:var(--color-surface); }
+.insurance-issue-grid h3 { font-size:14px;margin:0 0 12px; }
+.insurance-issue-grid ul { padding-left:16px;margin:0;font-size:13px;color:var(--color-muted);line-height:1.7; }
+.insurance-load-warning { color:var(--color-warn);font-size:12px;margin:8px 0 0; }
+@media(max-width:640px){.communications-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.communications-page,.mkt-page{padding:24px 16px 64px}.mkt-card,.mkt-panel,.creative-review-card{padding:20px}.insurance-overview{padding:16px}.workspace-heading{gap:8px}.communications-list-item{padding:20px}.mkt-card-grid{grid-template-columns:1fr}}
+.mkt-queue-entry { border:1px solid var(--color-border);border-radius:20px;background:var(--color-surface);overflow:hidden; }
+.mkt-queue-entry > .mkt-card { border:0;border-radius:0;width:100%; }
+.mkt-queue-extra { padding:0 24px 20px; }
+.mkt-queue-extra summary { cursor:pointer;color:var(--color-muted);font-size:12px; }
+.mkt-page > * { width:100%;box-sizing:border-box; }
+@media(max-width:640px){.communications-card:nth-child(n+3){min-height:60px;flex-direction:row;align-items:center;justify-content:flex-start;padding:12px 16px;gap:12px}.communications-card:nth-child(n+3) .communications-card-value{font-size:22px}.communications-card:nth-child(n+3) .communications-card-row{flex:1}.communications-card:last-child{grid-column:1 / -1}}
