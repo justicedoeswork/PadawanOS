@@ -98,53 +98,11 @@ describe('Dashboard (JusticeOS home screen, LAYOUT #2)', () => {
     expect(markup).toMatch(/justiceos-logo[.\w-]*\.png/);
   });
 
-  it('renders a Justice Manager briefing card that never claims to have real content', () => {
+  it('shows actionable live-data sections without claiming unloaded data is zero', () => {
     const markup = renderDashboard();
-    expect(markup).toContain('Justice Manager briefing');
-    expect(markup).toMatch(/will appear here once/i);
-  });
-
-  it('never renders an agent card, avatar, or launch control in the dashboard content -- agent navigation lives only in the sidebar', () => {
-    const markup = renderDashboard();
-    expect(markup).not.toContain('gw-dashboard-agent-card');
-    expect(markup).not.toContain('gw-dashboard-agent-icon');
-    expect(markup).not.toContain('gw-dashboard-agent-cta');
-    expect(markup).not.toMatch(/open chat/i);
-  });
-
-  it('shows honest, unfabricated empty states for every card before any connection exists', () => {
-    const markup = renderDashboard();
-    expect(markup).toContain('Nothing needs your attention right now.');
-    expect(markup).toContain('Nothing is in progress right now.');
-    expect(markup).toContain('No completed work has been reported yet.');
-    expect(markup).toContain('Nothing has failed or is blocked right now.');
-    expect(markup).toContain('No findings have been reported yet.');
-    expect(markup).toContain('No documents or reports have been produced yet.');
-    expect(markup).toContain('Nothing scheduled yet.');
-  });
-
-  it('never renders a hardcoded list item, nor any fabricated count/number, in a card with no real data source', () => {
-    const markup = renderDashboard();
-    // Before any connection exists, EVERY card is empty -- so no card's
-    // list markup should render at all, and no digit should appear in any
-    // of the cards' VISIBLE text (a stray "3 findings" or "$12,400" would
-    // be a fabricated figure with no backing data source). Tag names
-    // (e.g. <h3>) legitimately contain digits, so this strips markup down
-    // to text content first rather than scanning raw HTML.
-    expect(markup).not.toContain('gw-dashboard-card-list');
-    const gridMarkup = markup.slice(markup.indexOf('gw-dashboard-grid'));
-    const visibleText = gridMarkup.replace(/<[^>]*>/g, ' ');
-    expect(visibleText).not.toMatch(/[0-9]/);
-  });
-
-  it('covers every category the operational overview is required to prioritize', () => {
-    const markup = renderDashboard();
-    expect(markup).toContain('Needs your attention');
-    expect(markup).toContain('In progress');
-    expect(markup).toContain('Recently completed');
-    expect(markup).toContain('Failed or blocked');
-    expect(markup).toContain('Audit &amp; compliance findings');
-    expect(markup).toContain('Recent documents &amp; reports');
-    expect(markup).toContain('Upcoming deadlines &amp; follow-ups');
+    for (const label of ['Business cash available', 'Forecast gross profit', 'Still to collect', 'Collected this month', 'Needs your attention', 'Available &amp; pending', 'Collections &amp; job costs', 'How current is this?']) expect(markup).toContain(label);
+    expect(markup).toContain('Not available');
+    expect(markup).not.toContain('$0');
+    expect(markup).not.toContain('Nothing needs your attention right now');
   });
 });

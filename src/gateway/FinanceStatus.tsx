@@ -8,9 +8,10 @@ import {QuickBooksStatus} from './QuickBooksStatus';
 import {useEffect,useState} from 'react';
 type Feed={name:string;lastImport:string|null;providerUpdated?:string|null;nextRun:string|null;status:string;message:string};
 type Status={lastSuccessfulRefresh:string|null;status:string;stale:boolean;counts:Record<string,number>|null;error:string|null;scheduleEnabled:boolean;jobRefreshes?:{job_number:string;status:string;completed_at:string|null;error_code:string|null}[];currentRun?:{target_job_id?:string|null;processed_jobs:number;expected_jobs:number|null}|null};
-export function FinanceStatus(){
+export type FinanceSection='overview'|'forecast'|'tasks'|'evidence'|'bank'|'connections';
+export function FinanceStatus({initialTab='overview'}:{initialTab?:FinanceSection}){
  const [feeds,setFeeds]=useState<Feed[]>([]),[jobNumber,setJobNumber]=useState('');
- const [tab,setTab]=useState<'overview'|'forecast'|'tasks'|'evidence'|'bank'|'connections'>('overview'),[status,setStatus]=useState<Status|null>(null),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+ const [tab,setTab]=useState<FinanceSection>(initialTab),[status,setStatus]=useState<Status|null>(null),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
  async function load(){try{const r=await fetch('/api/finance/status',{credentials:'same-origin',signal:AbortSignal.timeout(25000)});if(!r.ok)throw Error();setStatus(await r.json());const f=await fetch('/api/finance/feeds',{credentials:'same-origin',signal:AbortSignal.timeout(25000)});if(f.ok)setFeeds((await f.json()).feeds);}catch{setMessage('Finance status is unavailable. Check the service connection before relying on saved answers.');}}
  useEffect(()=>{void load();const timer=setInterval(()=>void load(),30000);return()=>clearInterval(timer);},[]);
  async function refresh(){setBusy(true);setMessage('');try{const r=await fetch('/api/finance/refresh',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:'{}',signal:AbortSignal.timeout(25000)});

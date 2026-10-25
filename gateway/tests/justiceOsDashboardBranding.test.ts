@@ -54,12 +54,9 @@ describe('JusticeOS dashboard UI source (gateway-build-only files)', () => {
     expect(managerChatSource).not.toMatch(/fetch\s*\(|WebSocket\s*\(|axios/);
   });
 
-  it('the dashboard never hardcodes a fabricated count/business figure for Work queue or Upcoming', () => {
-    const dashboardSource = fs.readFileSync(path.join(REPO_ROOT, 'src/gateway/Dashboard.tsx'), 'utf8');
-    // Work queue and Upcoming have no backing data source in this
-    // frontend yet -- both cards must always be passed a literal empty
-    // items array, never a hardcoded number or fabricated list.
-    const emptyArrayCount = (dashboardSource.match(/items=\{\[\]\}/g) ?? []).length;
-    expect(emptyArrayCount).toBeGreaterThanOrEqual(2);
+  it('the home screen delegates to the live overview instead of placeholder counts', () => {
+    const source = fs.readFileSync(path.join(REPO_ROOT, 'src/gateway/Dashboard.tsx'), 'utf8');
+    expect(source).toContain('<HomeOverview');
+    expect(source).not.toContain('items={[]}');
   });
 });
