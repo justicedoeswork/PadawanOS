@@ -104,3 +104,7 @@
 .finance-action-tiles small { color:var(--color-muted); }
 .finance-actions [hidden] { display:none; }
 @media(max-width:639px){.finance-action-tiles{grid-template-columns:1fr}.finance-action-tiles button{grid-template-columns:40px 1fr;align-items:center;padding:16px}.finance-action-tiles small{grid-column:2}.finance-actions{padding:16px}.finance-actions > header{flex-wrap:wrap}}
+.supplier-pdf-links { display:flex;flex-wrap:wrap;gap:12px;margin-block:16px; }
+.supplier-pdf-links > div { display:flex;gap:16px;align-items:center; }
+.supplier-pdf-links a { display:inline-flex;align-items:center;min-height:44px;font-size:14px;color:var(--color-fg); }
+.supplier-pdf-links .supplier-pdf-open { padding:8px 16px;border:1px solid var(--color-border);border-radius:12px;background:var(--color-bg);text-decoration:none;font-weight:600; }

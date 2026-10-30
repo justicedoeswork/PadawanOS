@@ -120,3 +120,14 @@ it('forecasts require a session and use read-only credentials for panel and ques
  expect((await fetch(url+'/query',{method:'POST',headers:{cookie,'content-type':'application/json'},body:JSON.stringify({...query,operation:'forecast',period:'all_time'})})).status).toBe(200);
  expect((await fetch(url+'/forecast?sql=bad',{headers:{cookie}})).status).toBe(400);
 });
+it('PDF viewing requires session, fixed source hashes and bounded PDF bytes; download stays private',async()=>{
+ const bytes=Buffer.from('%PDF-1.4\nSynthetic');let response=()=>new Response(bytes,{headers:{'content-type':'application/pdf'}});const upstream=vi.fn(async()=>response());
+ const g=await startTestGateway({financeAgentBaseUrl:'http://justice-finance-agent.internal:8790',financeReadKey:read,financeRefreshKey:refresh,financeFetch:upstream});close.push(g.close);
+ const url=`http://127.0.0.1:${g.port}/api/finance/suppliers/pdf?source=${'a'.repeat(64)}&hash=${'b'.repeat(64)}`,cookie=await loginForTestCookie(g.port);
+ expect((await fetch(url)).status).toBe(401);expect(upstream).not.toHaveBeenCalled();
+ const r=await fetch(url,{headers:{cookie}});expect(r.status).toBe(200);expect(Buffer.from(await r.arrayBuffer())).toEqual(bytes);expect(r.headers.get('cache-control')).toContain('no-store');expect(r.headers.get('content-disposition')).toContain('inline');expect(r.headers.get('x-content-type-options')).toBe('nosniff');
+ expect((await fetch(url+'&download=1',{headers:{cookie}})).headers.get('content-disposition')).toContain('attachment');
+ expect((await fetch(url+'&hash=extra',{headers:{cookie}})).status).toBe(400);
+ response=()=>new Response('<html>private upstream detail</html>',{headers:{'content-type':'text/html'}});const bad=await fetch(url,{headers:{cookie}});expect(bad.status).toBe(503);expect(await bad.text()).not.toContain('private upstream detail');
+ response=()=>new Response(Buffer.alloc(8388609),{headers:{'content-type':'application/pdf'}});expect((await fetch(url,{headers:{cookie}})).status).toBe(503);
+});
