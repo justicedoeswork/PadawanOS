@@ -12,6 +12,10 @@ describe('Finance workspace',()=>{
   expect(html).toContain('aria-current="page">Dashboard');
   expect(html).toContain('Finance dashboard');
   expect(html).toContain('Needs your input');
+  expect(html.indexOf('aria-label="Finance actions"')).toBeLessThan(html.indexOf('aria-label="Finance dashboard"'));
+  expect(html).toContain('Invoice assignments');
+  expect(html).toContain('Deposit matches');
+  expect(html).toContain('Awaiting evidence');
   expect(html).not.toContain('Connect / reconnect QuickBooks');
  });
  it('labels the evidence view separately from the task view',()=>{

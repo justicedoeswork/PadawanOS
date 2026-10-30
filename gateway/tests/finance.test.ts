@@ -45,6 +45,9 @@ it('supplier evidence is session-protected, paginated and refresh uses the separ
  expect((await fetch(url+'/status')).status).toBe(401);
  expect((await fetch(url+'/status?job=Synthetic&offset=50',{headers:{cookie}})).status).toBe(200);
  expect(upstream.mock.calls.at(-1)?.[0]).toContain('offset=50');
+ expect((await fetch(url+'/status?tasks=true',{headers:{cookie}})).status).toBe(200);
+ expect(upstream.mock.calls.at(-1)?.[0]).toContain('tasks=true');
+ for(const suffix of ['tasks=all','tasks=true&tasks=false'])expect((await fetch(url+'/status?'+suffix,{headers:{cookie}})).status).toBe(400);
  expect((await fetch(url+'/refresh',{method:'POST',headers:{cookie}})).status).toBe(403);
  expect((await fetch(url+'/status?offset=-1',{headers:{cookie}})).status).toBe(400);
  expect((await fetch(url+'/refresh',{method:'POST',headers:{cookie,origin:'http://127.0.0.1:5173','content-type':'application/json'},body:'{}'})).status).toBe(200);

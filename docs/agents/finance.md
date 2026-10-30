@@ -18,3 +18,7 @@ Finance polls the lightweight authenticated `/api/finance/feeds` endpoint for im
 Connections & freshness includes a job-number payment refresh. `/api/finance/refresh-job` accepts exactly one numeric `jobNumber`, requires session and same-origin POST, and forwards with the separate refresh credential. The backend durably queues/coalesces the request after active work. A targeted refresh never advances the all-job coverage timestamp or replaces reviewed decisions. Full coverage scans remain enabled for older jobs with new payments.
 
 No paid Plaid refresh, new bank connection, provider posting, or Amex-to-QuickBooks synchronization is introduced.
+
+## Finance actions
+
+An always-present action panel precedes the dashboard and section tabs. Deposit matches and invoice assignments open existing authenticated review controls in place. Counts refresh while Finance is open; successful saves reload the corresponding task list. Supplier task filtering happens before pagination, so reviewed documents cannot hide pending assignments. Bank observations awaiting evidence are separate from owner decisions, with their matching basis available on demand. A failed/stale reconciliation remains visible and does not report an all-clear. Existing review authorization and conflict checks are unchanged.
